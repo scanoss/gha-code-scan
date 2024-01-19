@@ -1,0 +1,24 @@
+name: 'SCANOSS GH Action'
+description: 'Scan your code from GH Workflow and take action based on detected components'
+author: 'SCANOSS'
+
+# Add your action's branding here. This will appear on the GitHub Marketplace.
+branding:
+  icon: 'target'
+  color: 'purple'
+
+# Define your inputs here.
+inputs:
+  scanner-parameters:  
+    description: 'Parameters to run a scan'
+    required: false
+
+# Define your outputs here.
+outputs:
+  result-filepath:
+    description: 'Scanner results filepath'
+
+runs:
+  using: node20
+  main: dist/index.js
+
