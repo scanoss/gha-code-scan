@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - main
+      - '*'
 
 permissions:
   contents: read
@@ -12,28 +12,22 @@ permissions:
 jobs:
   test-action:
     name: GitHub Actions Test
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         id: checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        id: setup-python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      
-      - run: pip install scanoss[fast_winnowing] scancode-toolkit
-
       - name: Test Local Action
         id: test-action
         uses: ./
 
-      - name: Print Output
-        id: output
+      - name: Print output command
+        run: echo "${{ steps.test-action.outputs.output-command }}"
+
+      - name: Print Licenses
+        run: echo "${{ steps.test-action.outputs.licenses }}"
+
+      - name: Print Result
         run: cat "${{ steps.test-action.outputs.result-filepath }}"
