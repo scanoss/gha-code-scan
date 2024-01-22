@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
+import { getLicenses, readResult } from './services/result.service'
 
 /**
  * The main function for the action.
@@ -7,16 +8,16 @@ import * as exec from '@actions/exec'
  */
 export async function run(): Promise<void> {
   try {
-    const scanParams: string = core.getInput('scan-parameters')
-
     const repoDir = process.env.GITHUB_WORKSPACE as string
     const outputPath = 'results.json'
 
-    // Declara las opciones para ejecutar el exec
     const options: exec.ExecOptions = {}
-    let output: string = ''
+    let output = ''
     options.listeners = {
       stdout: (data: Buffer) => {
+        output += data.toString()
+      },
+      stderr: (data: Buffer) => {
         output += data.toString()
       }
     }
@@ -24,10 +25,17 @@ export async function run(): Promise<void> {
 
     // run scan
     await exec.exec(
-      'scanoss-py',
-      ['scan', repoDir, '--output', outputPath],
+      `docker run -v "${repoDir}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . --output ${outputPath}`,
+      [],
       options
     )
+
+    const scannerResults = await readResult(outputPath)
+    const licenses = getLicenses(scannerResults)
+
+    core.setOutput('licenses', licenses.toString())
+
+    core.setOutput('output-command', output)
 
     // set outputs for other workflow steps to use
     core.setOutput('result-filepath', outputPath)

@@ -3985,26 +3985,32 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(186));
 const exec = __importStar(__nccwpck_require__(514));
+const result_service_1 = __nccwpck_require__(414);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 async function run() {
     try {
-        const scanParams = core.getInput('scan-parameters');
         const repoDir = process.env.GITHUB_WORKSPACE;
         const outputPath = 'results.json';
-        // Declara las opciones para ejecutar el exec
         const options = {};
         let output = '';
         options.listeners = {
             stdout: (data) => {
                 output += data.toString();
+            },
+            stderr: (data) => {
+                output += data.toString();
             }
         };
         options.silent = true;
         // run scan
-        await exec.exec('scanoss-py', ['scan', repoDir, '--output', outputPath], options);
+        await exec.exec(`docker run -v "${repoDir}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . --output ${outputPath}`, [], options);
+        const scannerResults = await (0, result_service_1.readResult)(outputPath);
+        const licenses = (0, result_service_1.getLicenses)(scannerResults);
+        core.setOutput('licenses', licenses.toString());
+        core.setOutput('output-command', output);
         // set outputs for other workflow steps to use
         core.setOutput('result-filepath', outputPath);
     }
@@ -4015,6 +4021,87 @@ async function run() {
     }
 }
 exports.run = run;
+
+
+/***/ }),
+
+/***/ 554:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ComponentID = void 0;
+var ComponentID;
+(function (ComponentID) {
+    ComponentID["NONE"] = "none";
+    ComponentID["FILE"] = "file";
+    ComponentID["SNIPPET"] = "snippet";
+    ComponentID["DEPENDENCY"] = "dependency";
+})(ComponentID || (exports.ComponentID = ComponentID = {}));
+
+
+/***/ }),
+
+/***/ 414:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getLicenses = exports.readResult = void 0;
+const result_interfaces_1 = __nccwpck_require__(554);
+const fs = __importStar(__nccwpck_require__(147));
+async function readResult(filepath) {
+    const content = await fs.promises.readFile(filepath, 'utf-8');
+    return JSON.parse(content);
+}
+exports.readResult = readResult;
+function getLicenses(results) {
+    const licenses = new Set();
+    for (const component of Object.values(results)) {
+        for (const c of component) {
+            if (c.id === result_interfaces_1.ComponentID.DEPENDENCY) {
+                const dependencies = c.dependencies;
+                for (const d of dependencies) {
+                    for (const l of d.licenses) {
+                        licenses.add(l.spdx_id);
+                    }
+                }
+            }
+            if (c.id === result_interfaces_1.ComponentID.FILE || c.id === result_interfaces_1.ComponentID.SNIPPET) {
+                for (const l of c.licenses) {
+                    licenses.add(l.name);
+                }
+            }
+        }
+    }
+    return Array.from(licenses);
+}
+exports.getLicenses = getLicenses;
 
 
 /***/ }),
