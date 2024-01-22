@@ -8,11 +8,16 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
+  checks: write 
 
 jobs:
   test-action:
     name: GitHub Actions Test
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -22,6 +27,8 @@ jobs:
       - name: Test Local Action
         id: test-action
         uses: ./
+        with:
+           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Print output command
         run: echo "${{ steps.test-action.outputs.output-command }}"
