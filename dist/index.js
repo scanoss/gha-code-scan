@@ -30149,85 +30149,6 @@ exports.CHECK_NAME = 'SCANOSS Policy Checker';
 
 /***/ }),
 
-/***/ 1958:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.GitHubCheck = void 0;
-const github_1 = __nccwpck_require__(5438);
-const core = __importStar(__nccwpck_require__(2186));
-const github_utils_1 = __nccwpck_require__(7889);
-const NO_INITIALIZATE = -1;
-class GitHubCheck {
-    octokit; // TODO: type from actions/github ?
-    checkName;
-    checkRunId;
-    constructor(checkName) {
-        const GITHUB_TOKEN = core.getInput('github-token'); // TODO: move to inputs.ts file?
-        this.octokit = (0, github_1.getOctokit)(GITHUB_TOKEN);
-        this.checkName = checkName;
-        this.checkRunId = NO_INITIALIZATE;
-    }
-    async present() {
-        // Promise<OctokitResponse>
-        const result = await this.octokit.rest.checks.create({
-            owner: github_1.context.repo.owner,
-            repo: github_1.context.repo.repo,
-            name: this.checkName,
-            head_sha: (0, github_utils_1.getSha)()
-        });
-        this.checkRunId = result.data.id;
-        return result.data;
-    }
-    async finish(conclusion, summary, text) {
-        // Promise<OctokitResponse>
-        if (this.checkRunId === NO_INITIALIZATE)
-            throw new Error(`Error on finish. Check "${this.checkName}" is not created.`);
-        const result = await this.octokit.rest.checks.update({
-            owner: github_1.context.repo.owner,
-            repo: github_1.context.repo.repo,
-            check_run_id: this.checkRunId,
-            status: 'completed',
-            conclusion,
-            output: {
-                title: this.checkName,
-                summary,
-                text
-            }
-        });
-        return result.data;
-    }
-}
-exports.GitHubCheck = GitHubCheck;
-
-
-/***/ }),
-
 /***/ 399:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -30261,9 +30182,9 @@ exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const exec = __importStar(__nccwpck_require__(1514));
 const result_service_1 = __nccwpck_require__(2414);
-const app_config_1 = __nccwpck_require__(9014);
-const github_check_1 = __nccwpck_require__(1958);
 const github_utils_1 = __nccwpck_require__(7889);
+const license_policy_check_1 = __nccwpck_require__(2266);
+const report_service_1 = __nccwpck_require__(2467);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -30272,10 +30193,10 @@ async function run() {
     try {
         const repoDir = process.env.GITHUB_WORKSPACE;
         const outputPath = 'results.json';
-        // init check
-        const check = new github_check_1.GitHubCheck(app_config_1.CHECK_NAME);
-        await check.present();
-        // Declara las opciones para ejecutar el exec
+        // create policies
+        const policies = [new license_policy_check_1.LicensePolicyCheck()];
+        policies.forEach(async (policy) => policy.start());
+        // options to get standar output
         const options = {};
         let output = '';
         options.listeners = {
@@ -30291,12 +30212,12 @@ async function run() {
         await exec.exec(`docker run -v "${repoDir}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . --output ${outputPath}`, [], options);
         const scannerResults = await (0, result_service_1.readResult)(outputPath);
         const licenses = (0, result_service_1.getLicenses)(scannerResults);
-        // get reports
-        const licenseReport = 'Here are the licenses found:';
-        // finish
-        await check.finish('success', 'Code analysis completed successfully', licenseReport);
+        // create reports
+        const licensesReport = (0, report_service_1.getLicensesReport)(licenses);
+        // run policies // TODO: define run action for each policy
+        policies.forEach(async (policy) => await policy.run(licensesReport));
         if ((0, github_utils_1.isPullRequest)()) {
-            (0, github_utils_1.createCommentOnPR)(licenseReport);
+            (0, github_utils_1.createCommentOnPR)(licensesReport);
         }
         // set outputs for other workflow steps to use
         core.setOutput('licenses', licenses.toString());
@@ -30310,6 +30231,125 @@ async function run() {
     }
 }
 exports.run = run;
+
+
+/***/ }),
+
+/***/ 2266:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.LicensePolicyCheck = void 0;
+const app_config_1 = __nccwpck_require__(9014);
+const policy_check_1 = __nccwpck_require__(3702);
+class LicensePolicyCheck extends policy_check_1.PolicyCheck {
+    constructor() {
+        super(`${app_config_1.CHECK_NAME}: Licenses Policy`);
+    }
+}
+exports.LicensePolicyCheck = LicensePolicyCheck;
+
+
+/***/ }),
+
+/***/ 3702:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PolicyCheck = void 0;
+const github_1 = __nccwpck_require__(5438);
+const core = __importStar(__nccwpck_require__(2186));
+const github_utils_1 = __nccwpck_require__(7889);
+const NO_INITIALIZATE = -1;
+class PolicyCheck {
+    octokit; // TODO: type from actions/github ?
+    checkName;
+    checkRunId;
+    constructor(checkName) {
+        const GITHUB_TOKEN = core.getInput('github-token'); // TODO: move to inputs.ts file?
+        this.octokit = (0, github_1.getOctokit)(GITHUB_TOKEN);
+        this.checkName = checkName;
+        this.checkRunId = NO_INITIALIZATE;
+    }
+    async start() {
+        // Promise<OctokitResponse>
+        const result = await this.octokit.rest.checks.create({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            name: this.checkName,
+            head_sha: (0, github_utils_1.getSHA)()
+        });
+        this.checkRunId = result.data.id;
+        return result.data;
+    }
+    async run(text) {
+        // Promise<OctokitResponse>
+        if (this.checkRunId === NO_INITIALIZATE)
+            throw new Error(`Error on finish. Check "${this.checkName}" is not created.`);
+        const result = await this.octokit.rest.checks.update({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            check_run_id: this.checkRunId,
+            status: 'completed',
+            conclusion: 'success',
+            output: {
+                title: this.checkName,
+                summary: 'Policy checker completed successfully',
+                text
+            }
+        });
+        return result.data;
+    }
+}
+exports.PolicyCheck = PolicyCheck;
+
+
+/***/ }),
+
+/***/ 2467:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getLicensesReport = void 0;
+function getLicensesReport(licenses) {
+    let markdownTable = '| License | Copyleft | URL |\n';
+    markdownTable += '| ------- | -------- | --- |\n';
+    licenses.forEach(license => {
+        const copyleftIcon = license.copyleft ? ':heavy_check_mark:' : ':x:';
+        markdownTable += `| ${license.spdxid} | ${copyleftIcon} | ${license.url || ''} |\n`;
+    });
+    return markdownTable;
+}
+exports.getLicensesReport = getLicensesReport;
 
 
 /***/ }),
@@ -30370,26 +30410,39 @@ async function readResult(filepath) {
 }
 exports.readResult = readResult;
 function getLicenses(results) {
-    // { spdxid, copyleft, url }
-    const licenses = new Set();
+    const licenses = new Array();
     for (const component of Object.values(results)) {
         for (const c of component) {
+            if (c.id === result_interfaces_1.ComponentID.FILE || c.id === result_interfaces_1.ComponentID.SNIPPET) {
+                for (const l of c.licenses) {
+                    licenses.push({
+                        spdxid: l.name,
+                        copyleft: !l.copyleft ? null : l.copyleft === 'yes' ? true : false,
+                        url: l?.url ? l.url : null
+                    });
+                }
+            }
             if (c.id === result_interfaces_1.ComponentID.DEPENDENCY) {
                 const dependencies = c.dependencies;
                 for (const d of dependencies) {
                     for (const l of d.licenses) {
-                        licenses.add(l.spdx_id);
+                        if (!l.spdx_id)
+                            continue;
+                        licenses.push({ spdxid: l.spdx_id, copyleft: null, url: null });
                     }
-                }
-            }
-            if (c.id === result_interfaces_1.ComponentID.FILE || c.id === result_interfaces_1.ComponentID.SNIPPET) {
-                for (const l of c.licenses) {
-                    licenses.add(l.name);
                 }
             }
         }
     }
-    return Array.from(licenses);
+    const seenSpdxIds = new Set();
+    const uniqueLicenses = licenses.filter(license => {
+        if (!seenSpdxIds.has(license.spdxid)) {
+            seenSpdxIds.add(license.spdxid);
+            return true;
+        }
+        return false;
+    });
+    return uniqueLicenses;
 }
 exports.getLicenses = getLicenses;
 
@@ -30425,7 +30478,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createCommentOnPR = exports.getSha = exports.isPullRequest = void 0;
+exports.createCommentOnPR = exports.getSHA = exports.isPullRequest = void 0;
 const github_1 = __nccwpck_require__(5438);
 const core = __importStar(__nccwpck_require__(2186));
 const prEvents = ['pull_request', 'pull_request_review', 'pull_request_review_comment'];
@@ -30433,7 +30486,7 @@ function isPullRequest() {
     return prEvents.includes(github_1.context.eventName);
 }
 exports.isPullRequest = isPullRequest;
-function getSha() {
+function getSHA() {
     let sha = github_1.context.sha;
     if (isPullRequest()) {
         const pull = github_1.context.payload.pull_request;
@@ -30443,7 +30496,7 @@ function getSha() {
     }
     return sha;
 }
-exports.getSha = getSha;
+exports.getSHA = getSHA;
 async function createCommentOnPR(message) {
     const GITHUB_TOKEN = core.getInput('github-token');
     const octokit = (0, github_1.getOctokit)(GITHUB_TOKEN);

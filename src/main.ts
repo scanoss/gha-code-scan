@@ -3,6 +3,7 @@ import * as exec from '@actions/exec';
 import { getLicenses, readResult } from './services/result.service';
 import { createCommentOnPR, isPullRequest } from './utils/github.utils';
 import { LicensePolicyCheck } from './policies/license-policy-check';
+import { getLicensesReport } from './services/report.service';
 
 /**
  * The main function for the action.
@@ -15,7 +16,7 @@ export async function run(): Promise<void> {
 
     // create policies
     const policies = [new LicensePolicyCheck()];
-    policies.forEach(policy => policy.start());
+    policies.forEach(async policy => policy.start());
 
     // options to get standar output
     const options: exec.ExecOptions = {};
@@ -40,14 +41,14 @@ export async function run(): Promise<void> {
     const scannerResults = await readResult(outputPath);
     const licenses = getLicenses(scannerResults);
 
-    // get reports
-    const licenseReport = 'Here are the licenses found:';
+    // create reports
+    const licensesReport = getLicensesReport(licenses);
 
     // run policies // TODO: define run action for each policy
-    policies.forEach(async (policy) => await policy.run(licenseReport));
+    policies.forEach(async policy => await policy.run(licensesReport));
 
     if (isPullRequest()) {
-      createCommentOnPR(licenseReport);
+      createCommentOnPR(licensesReport);
     }
 
     // set outputs for other workflow steps to use

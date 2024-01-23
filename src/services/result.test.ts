@@ -1,5 +1,5 @@
-import { ScannerResults } from './result.interfaces'
-import { getLicenses, Licenses } from './result.service'
+import { ScannerResults } from './result.interfaces';
+import { getLicenses, Licenses } from './result.service';
 
 const licenseTableTest: { name: string; description: string; content: string; licenses: Licenses[] }[] = [
   {
@@ -47,16 +47,16 @@ const licenseTableTest: { name: string; description: string; content: string; li
       { spdxid: '0BSD', url: null, copyleft: null }
     ]
   }
-]
+];
 
 describe('Test Results service', () => {
   for (const t of licenseTableTest) {
     it(`${t.name}`, () => {
-      const scannerResults = JSON.parse(t.content) as ScannerResults
-      const licenses = getLicenses(scannerResults)
+      const scannerResults = JSON.parse(t.content) as ScannerResults;
+      const licenses = getLicenses(scannerResults);
 
-      const sortFn = (a: Licenses, b: Licenses) => a.spdxid.localeCompare(b.spdxid)
-      expect(licenses.sort(sortFn)).toEqual(t.licenses.sort(sortFn))
-    })
+      const sortFn = (a: Licenses, b: Licenses): number => a.spdxid.localeCompare(b.spdxid);
+      expect(licenses.sort(sortFn)).toEqual(t.licenses.sort(sortFn));
+    });
   }
-})
+});

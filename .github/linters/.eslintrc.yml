@@ -80,5 +80,6 @@ rules:
     '@typescript-eslint/semi': ['error', 'always'],
     '@typescript-eslint/space-before-function-paren': 'off',
     '@typescript-eslint/type-annotation-spacing': 'error',
-    '@typescript-eslint/unbound-method': 'error'
+    '@typescript-eslint/unbound-method': 'error',
+    'github/array-foreach' : 'off'
   }
