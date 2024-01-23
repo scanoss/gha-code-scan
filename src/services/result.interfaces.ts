@@ -49,6 +49,7 @@ export interface ScannerComponent extends CommonComponent {
     osadl_updated: string
     source: string
     incompatible_with?: string
+    url: string
   }[]
   dependencies: {
     vendor: string
