@@ -30183,7 +30183,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const exec = __importStar(__nccwpck_require__(1514));
 const result_service_1 = __nccwpck_require__(2414);
 const github_utils_1 = __nccwpck_require__(7889);
-const license_policy_check_1 = __nccwpck_require__(2266);
+const copyleft_policy_check_1 = __nccwpck_require__(4466);
 const report_service_1 = __nccwpck_require__(2467);
 /**
  * The main function for the action.
@@ -30196,7 +30196,7 @@ async function run() {
         const outputPath = 'results.json';
         // create policies
         core.debug(`Creating policies`);
-        const policies = [new license_policy_check_1.LicensePolicyCheck()];
+        const policies = [new copyleft_policy_check_1.CopyleftPolicyCheck()];
         policies.forEach(async (policy) => policy.start());
         // run scan
         const { stdout, stderr } = await exec.getExecOutput(`docker run -v "${repoDir}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . --output ${outputPath}`, []);
@@ -30224,21 +30224,33 @@ exports.run = run;
 
 /***/ }),
 
-/***/ 2266:
+/***/ 4466:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.LicensePolicyCheck = void 0;
+exports.CopyleftPolicyCheck = void 0;
 const app_config_1 = __nccwpck_require__(9014);
 const policy_check_1 = __nccwpck_require__(3702);
-class LicensePolicyCheck extends policy_check_1.PolicyCheck {
+const result_service_1 = __nccwpck_require__(2414);
+class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
     constructor() {
-        super(`${app_config_1.CHECK_NAME}: Licenses Policy`);
+        super(`${app_config_1.CHECK_NAME}: Copyleft Policy`);
+    }
+    async run(scannerResults) {
+        super.run(scannerResults);
+        const licenses = (0, result_service_1.getLicenses)(scannerResults);
+        const hasCopyleft = licenses.some(license => !!license.copyleft);
+        if (!hasCopyleft) {
+            this.success('Completed succesfully', 'Not copyleft licenses were found');
+        }
+        else {
+            this.reject('Completed failure', 'Copyleft licenses were found:'); // TODO: create a table with copyleft licenses
+        }
     }
 }
-exports.LicensePolicyCheck = LicensePolicyCheck;
+exports.CopyleftPolicyCheck = CopyleftPolicyCheck;
 
 
 /***/ }),
@@ -30272,23 +30284,33 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PolicyCheck = void 0;
+exports.PolicyCheck = exports.CONCLUSION = void 0;
 const github_1 = __nccwpck_require__(5438);
 const core = __importStar(__nccwpck_require__(2186));
 const github_utils_1 = __nccwpck_require__(7889);
-const NO_INITIALIZATE = -1;
+const UNINITIALIZED = -1;
+var CONCLUSION;
+(function (CONCLUSION) {
+    CONCLUSION["ActionRequired"] = "action_required";
+    CONCLUSION["Cancelled"] = "cancelled";
+    CONCLUSION["Failure"] = "failure";
+    CONCLUSION["Neutral"] = "neutral";
+    CONCLUSION["Success"] = "success";
+    CONCLUSION["Skipped"] = "skipped";
+    CONCLUSION["Stale"] = "stale";
+    CONCLUSION["TimedOut"] = "timed_out";
+})(CONCLUSION || (exports.CONCLUSION = CONCLUSION = {}));
 class PolicyCheck {
-    octokit; // TODO: type from actions/github ?
+    octokit;
     checkName;
     checkRunId;
     constructor(checkName) {
-        const GITHUB_TOKEN = core.getInput('github-token'); // TODO: move to inputs.ts file?
+        const GITHUB_TOKEN = core.getInput('github-token');
         this.octokit = (0, github_1.getOctokit)(GITHUB_TOKEN);
         this.checkName = checkName;
-        this.checkRunId = NO_INITIALIZATE;
+        this.checkRunId = UNINITIALIZED;
     }
     async start() {
-        // Promise<OctokitResponse>
         const result = await this.octokit.rest.checks.create({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
@@ -30299,22 +30321,30 @@ class PolicyCheck {
         return result.data;
     }
     async run(scannerResults) {
-        // Promise<OctokitResponse>
-        if (this.checkRunId === NO_INITIALIZATE)
-            throw new Error(`Error on finish. Check "${this.checkName}" is not created.`);
+        if (this.checkRunId === UNINITIALIZED)
+            throw new Error(`Error on finish. Policy "${this.checkName}" is not created.`);
+        core.debug(`Running policy check: ${this.checkName}`);
+    }
+    async success(summary, text) {
+        await this.finish(CONCLUSION.Success, summary, text);
+    }
+    async reject(summary, text) {
+        await this.finish(CONCLUSION.Failure, summary, text);
+    }
+    async finish(conclusion, summary, text) {
+        core.debug(`Finish policy check: ${this.checkName}. (conclusion=${conclusion})`);
         const result = await this.octokit.rest.checks.update({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
             check_run_id: this.checkRunId,
             status: 'completed',
-            conclusion: 'success',
+            conclusion,
             output: {
                 title: this.checkName,
-                summary: 'Policy checker completed successfully',
-                text: ''
+                summary,
+                text
             }
         });
-        return result.data;
     }
 }
 exports.PolicyCheck = PolicyCheck;

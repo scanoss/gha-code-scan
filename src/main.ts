@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import { getLicenses, readResult } from './services/result.service';
 import { createCommentOnPR, isPullRequest } from './utils/github.utils';
-import { LicensePolicyCheck } from './policies/license-policy-check';
+import { CopyleftPolicyCheck } from './policies/copyleft-policy-check';
 import { getLicensesReport } from './services/report.service';
 
 /**
@@ -18,7 +18,7 @@ export async function run(): Promise<void> {
 
     // create policies
     core.debug(`Creating policies`);
-    const policies = [new LicensePolicyCheck()];
+    const policies = [new CopyleftPolicyCheck()];
     policies.forEach(async policy => policy.start());
 
     // run scan
