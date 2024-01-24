@@ -5,6 +5,17 @@ import { ScannerResults } from '../services/result.interfaces';
 
 const NO_INITIALIZATE = -1;
 
+export enum CONCLUSSION {
+  ActionRequired = 'action_required',
+  Cancelled = 'cancelled',
+  Failure = 'failure',
+  Neutral = 'neutral',
+  Success = 'success',
+  Skipped = 'skipped',
+  Stale = 'stale',
+  TimedOut = 'timed_out'
+}
+
 export abstract class PolicyCheck {
   private octokit; // TODO: type from actions/github ?
 
@@ -34,24 +45,35 @@ export abstract class PolicyCheck {
     return result.data;
   }
 
-  async run(scannerResults: ScannerResults): Promise<any> {
-    // Promise<OctokitResponse>
+  async run(scannerResults: ScannerResults): Promise<void> {
     if (this.checkRunId === NO_INITIALIZATE)
-      throw new Error(`Error on finish. Check "${this.checkName}" is not created.`);
+      throw new Error(`Error on finish. Policy "${this.checkName}" is not created.`);
+
+    core.debug(`Running policy check: ${this.checkName}`);
+  }
+
+  protected async success(summary: string, text: string): Promise<void> {
+    await this.finish(CONCLUSSION.ActionRequired, summary, text);
+  }
+
+  protected async reject(summary: string, text: string): Promise<void> {
+    await this.finish(CONCLUSSION.Failure, summary, text);
+  }
+
+  protected async finish(conclusion: CONCLUSSION | undefined, summary: string, text: string): Promise<void> {
+    core.debug(`Finish policy check: ${this.checkName}. (conclusion=${conclusion})`);
 
     const result = await this.octokit.rest.checks.update({
       owner: context.repo.owner,
       repo: context.repo.repo,
       check_run_id: this.checkRunId,
       status: 'completed',
-      conclusion: 'success',
+      conclusion,
       output: {
         title: this.checkName,
-        summary: 'Policy checker completed successfully',
-        text: ''
+        summary,
+        text
       }
     });
-
-    return result.data;
   }
 }
