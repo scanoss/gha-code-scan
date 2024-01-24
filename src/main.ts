@@ -1,9 +1,10 @@
-import * as core from '@actions/core';
-import * as exec from '@actions/exec';
 import { getLicenses, readResult } from './services/result.service';
 import { createCommentOnPR, isPullRequest } from './utils/github.utils';
 import { CopyleftPolicyCheck } from './policies/copyleft-policy-check';
 import { getLicensesReport } from './services/report.service';
+import * as core from '@actions/core';
+import * as exec from '@actions/exec';
+import { commandBuilder, readInputs } from './input';
 
 /**
  * The main function for the action.
@@ -22,12 +23,9 @@ export async function run(): Promise<void> {
     policies.forEach(async policy => policy.start());
 
     // run scan
-    const { stdout, stderr } = await exec.getExecOutput(
-      `docker run -v "${repoDir}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . --output ${outputPath}`,
-      []
-    );
+    const { stdout, stderr } = await exec.getExecOutput(commandBuilder(), []);
 
-    const scannerResults = await readResult(outputPath);
+    const scannerResults = await readResult(readInputs().outputPath);
 
     // run policies // TODO: define run action for each policy
     policies.forEach(async policy => await policy.run(scannerResults));
@@ -40,8 +38,8 @@ export async function run(): Promise<void> {
     }
 
     // set outputs for other workflow steps to use
+    core.setOutput('result-filepath', readInputs().outputPath);
     core.setOutput('output-command', stdout);
-    core.setOutput('result-filepath', outputPath);
   } catch (error) {
     // fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message);

@@ -14,6 +14,21 @@ inputs:
     required: true
   scanner-parameters:  
     description: 'Parameters to run a scan'
+  output-path:
+    description: 'Output result file name'
+    required: false
+    default: 'result.json'
+  sbom-identify:
+    description: 'Scan and identify components in SBOM file'
+    required: false
+  sbom-ignore:
+    description: 'Ignore components specified in the SBOM file'
+    required: false
+  api-key:
+    description: 'SCANOSS API Key token (optional - not required for default OSSKB URL)'
+    required: false
+  api-url:
+    description: 'SCANOSS API URL (optional - default: https://osskb.org/api/scan/direct)'
     required: false
 
 # Define your outputs here.
