@@ -1,6 +1,7 @@
 import { context, getOctokit } from '@actions/github';
 import * as core from '@actions/core';
 import { getSHA } from '../utils/github.utils';
+import { ScannerResults } from '../services/result.interfaces';
 
 const NO_INITIALIZATE = -1;
 
@@ -33,7 +34,7 @@ export abstract class PolicyCheck {
     return result.data;
   }
 
-  async run(text: string): Promise<any> {
+  async run(scannerResults: ScannerResults): Promise<any> {
     // Promise<OctokitResponse>
     if (this.checkRunId === NO_INITIALIZATE)
       throw new Error(`Error on finish. Check "${this.checkName}" is not created.`);
@@ -47,7 +48,7 @@ export abstract class PolicyCheck {
       output: {
         title: this.checkName,
         summary: 'Policy checker completed successfully',
-        text
+        text: ''
       }
     });
 

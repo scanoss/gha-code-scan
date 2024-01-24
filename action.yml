@@ -20,7 +20,9 @@ inputs:
 outputs:
   result-filepath:
     description: 'Scanner results filepath'
-
+  output-command:
+    description: 'Scanner command output'
+    
 runs:
   using: node20
   main: dist/index.js

@@ -18,42 +18,26 @@ export async function run(): Promise<void> {
     const policies = [new LicensePolicyCheck()];
     policies.forEach(async policy => policy.start());
 
-    // options to get standar output
-    const options: exec.ExecOptions = {};
-    let output = '';
-    options.listeners = {
-      stdout: (data: Buffer) => {
-        output += data.toString();
-      },
-      stderr: (data: Buffer) => {
-        output += data.toString();
-      }
-    };
-    options.silent = true;
-
     // run scan
-    await exec.exec(
+    const { stdout, stderr } = await exec.getExecOutput(
       `docker run -v "${repoDir}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . --output ${outputPath}`,
-      [],
-      options
+      []
     );
 
     const scannerResults = await readResult(outputPath);
-    const licenses = getLicenses(scannerResults);
-
-    // create reports
-    const licensesReport = getLicensesReport(licenses);
 
     // run policies // TODO: define run action for each policy
-    policies.forEach(async policy => await policy.run(licensesReport));
+    policies.forEach(async policy => await policy.run(scannerResults));
 
     if (isPullRequest()) {
+      // create reports
+      const licenses = getLicenses(scannerResults);
+      const licensesReport = getLicensesReport(licenses);
       createCommentOnPR(licensesReport);
     }
 
     // set outputs for other workflow steps to use
-    core.setOutput('licenses', licenses.toString());
-    core.setOutput('output-command', output);
+    core.setOutput('output-command', stdout);
     core.setOutput('result-filepath', outputPath);
   } catch (error) {
     // fail the workflow run if an error occurs

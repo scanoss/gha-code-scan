@@ -1,5 +1,5 @@
-import { ScannerResults } from './result.interfaces';
-import { getLicenses, Licenses } from './result.service';
+import { ScannerResults } from '../src/services/result.interfaces';
+import { getLicenses, Licenses } from '../src/services/result.service';
 
 const licenseTableTest: { name: string; description: string; content: string; licenses: Licenses[] }[] = [
   {

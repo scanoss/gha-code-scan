@@ -30196,32 +30196,19 @@ async function run() {
         // create policies
         const policies = [new license_policy_check_1.LicensePolicyCheck()];
         policies.forEach(async (policy) => policy.start());
-        // options to get standar output
-        const options = {};
-        let output = '';
-        options.listeners = {
-            stdout: (data) => {
-                output += data.toString();
-            },
-            stderr: (data) => {
-                output += data.toString();
-            }
-        };
-        options.silent = true;
         // run scan
-        await exec.exec(`docker run -v "${repoDir}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . --output ${outputPath}`, [], options);
+        const { stdout, stderr } = await exec.getExecOutput(`docker run -v "${repoDir}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . --output ${outputPath}`, []);
         const scannerResults = await (0, result_service_1.readResult)(outputPath);
-        const licenses = (0, result_service_1.getLicenses)(scannerResults);
-        // create reports
-        const licensesReport = (0, report_service_1.getLicensesReport)(licenses);
         // run policies // TODO: define run action for each policy
-        policies.forEach(async (policy) => await policy.run(licensesReport));
+        policies.forEach(async (policy) => await policy.run(scannerResults));
         if ((0, github_utils_1.isPullRequest)()) {
+            // create reports
+            const licenses = (0, result_service_1.getLicenses)(scannerResults);
+            const licensesReport = (0, report_service_1.getLicensesReport)(licenses);
             (0, github_utils_1.createCommentOnPR)(licensesReport);
         }
         // set outputs for other workflow steps to use
-        core.setOutput('licenses', licenses.toString());
-        core.setOutput('output-command', output);
+        core.setOutput('output-command', stdout);
         core.setOutput('result-filepath', outputPath);
     }
     catch (error) {
@@ -30309,7 +30296,7 @@ class PolicyCheck {
         this.checkRunId = result.data.id;
         return result.data;
     }
-    async run(text) {
+    async run(scannerResults) {
         // Promise<OctokitResponse>
         if (this.checkRunId === NO_INITIALIZATE)
             throw new Error(`Error on finish. Check "${this.checkName}" is not created.`);
@@ -30322,7 +30309,7 @@ class PolicyCheck {
             output: {
                 title: this.checkName,
                 summary: 'Policy checker completed successfully',
-                text
+                text: ''
             }
         });
         return result.data;
