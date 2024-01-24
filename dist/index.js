@@ -30191,9 +30191,11 @@ const report_service_1 = __nccwpck_require__(2467);
  */
 async function run() {
     try {
+        core.debug(`SCANOSS Scan Action started...`);
         const repoDir = process.env.GITHUB_WORKSPACE;
         const outputPath = 'results.json';
         // create policies
+        core.debug(`Creating policies`);
         const policies = [new license_policy_check_1.LicensePolicyCheck()];
         policies.forEach(async (policy) => policy.start());
         // run scan

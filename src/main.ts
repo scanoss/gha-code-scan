@@ -11,10 +11,13 @@ import { getLicensesReport } from './services/report.service';
  */
 export async function run(): Promise<void> {
   try {
+    core.debug(`SCANOSS Scan Action started...`);
+
     const repoDir = process.env.GITHUB_WORKSPACE as string;
     const outputPath = 'results.json';
 
     // create policies
+    core.debug(`Creating policies`);
     const policies = [new LicensePolicyCheck()];
     policies.forEach(async policy => policy.start());
 
