@@ -3,7 +3,6 @@ import * as core from '@actions/core';
 import { getSHA } from '../utils/github.utils';
 import { ScannerResults } from '../services/result.interfaces';
 import { GitHub } from '@actions/github/lib/utils';
-import { OctokitResponse } from '@octokit/types';
 
 const UNINITIALIZED = -1;
 
