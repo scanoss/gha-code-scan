@@ -12,12 +12,10 @@ inputs:
   github-token:
     description: 'Your GitHub token'
     required: true
-  scanner-parameters:  
-    description: 'Parameters to run a scan'
   output-path:
     description: 'Output result file name'
     required: false
-    default: 'result.json'
+    default: 'results.json'
   sbom-identify:
     description: 'Scan and identify components in SBOM file'
     required: false
@@ -35,7 +33,7 @@ inputs:
 outputs:
   result-filepath:
     description: 'Scanner results filepath'
-  output-command:
+  stdout-scan-command:
     description: 'Scanner command output'
     
 runs:

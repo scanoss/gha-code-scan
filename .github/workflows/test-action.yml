@@ -28,11 +28,8 @@ jobs:
 #          sbom-ignore: 'scanoss-ignore.json'
            github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Print output command
-        run: echo "${{ steps.test-action.outputs.output-command }}"
+      - name: Print stdout scan command
+        run: echo "${{ steps.test-action.outputs.stdout-scan-command }}"
 
-      - name: Print Licenses
-        run: echo "${{ steps.test-action.outputs.licenses }}"
-
-      - name: Print Result
+      - name: Print Results
         run: cat "${{ steps.test-action.outputs.result-filepath }}"

@@ -4,8 +4,10 @@ import { CopyleftPolicyCheck } from './policies/copyleft-policy-check';
 import { getLicensesReport } from './services/report.service';
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
-import { commandBuilder, readInputs } from './input';
+import * as inputs from './app.input';
+import * as outputs from './app.output';
 
+import { commandBuilder } from './services/scan.service';
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -14,9 +16,6 @@ export async function run(): Promise<void> {
   try {
     core.debug(`SCANOSS Scan Action started...`);
 
-    const repoDir = process.env.GITHUB_WORKSPACE as string;
-    const outputPath = 'results.json';
-
     // create policies
     core.debug(`Creating policies`);
     const policies = [new CopyleftPolicyCheck()];
@@ -24,10 +23,9 @@ export async function run(): Promise<void> {
 
     // run scan
     const { stdout, stderr } = await exec.getExecOutput(commandBuilder(), []);
+    const scannerResults = await readResult(inputs.OUTPUT_PATH);
 
-    const scannerResults = await readResult(readInputs().outputPath);
-
-    // run policies // TODO: define run action for each policy
+    // run policies
     policies.forEach(async policy => await policy.run(scannerResults));
 
     if (isPullRequest()) {
@@ -38,8 +36,8 @@ export async function run(): Promise<void> {
     }
 
     // set outputs for other workflow steps to use
-    core.setOutput('result-filepath', readInputs().outputPath);
-    core.setOutput('output-command', stdout);
+    core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_PATH);
+    core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
   } catch (error) {
     // fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message);

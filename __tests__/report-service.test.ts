@@ -1,6 +1,4 @@
 import { getLicensesReport } from '../src/services/report.service';
-import { ScannerResults } from '../src/services/result.interfaces';
-import { getLicenses, Licenses } from '../src/services/result.service';
 
 const licenseTableTest = [
   {

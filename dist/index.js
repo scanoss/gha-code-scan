@@ -30149,7 +30149,7 @@ exports.CHECK_NAME = 'SCANOSS Policy Checker';
 
 /***/ }),
 
-/***/ 6747:
+/***/ 483:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -30178,33 +30178,27 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.commandBuilder = exports.readInputs = void 0;
+exports.API_URL = exports.API_KEY = exports.SBOM_IGNORE = exports.SBOM_INDENTIFY = exports.OUTPUT_PATH = exports.REPO_DIR = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-function readInputs() {
-    return {
-        repoDir: process.env.GITHUB_WORKSPACE,
-        outputPath: core.getInput('output-path'),
-        sbomIdentify: core.getInput('sbom-identify'),
-        sbomIgnore: core.getInput('sbom-ignore'),
-        apiKey: core.getInput('api-key'),
-        apiUrl: core.getInput('api-url')
-    };
-}
-exports.readInputs = readInputs;
-function commandBuilder() {
-    const ap = readInputs();
-    console.log(ap);
-    // prettier-ignore
-    const command = `docker run -v "${ap.repoDir}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . ` +
-        `--output ${ap.outputPath} ` +
-        (ap.sbomIdentify ? `--identify ${ap.sbomIdentify} ` : '') +
-        (ap.sbomIgnore ? `--ignore ${ap.sbomIgnore} ` : '') +
-        (ap.apiUrl ? `--apiurl ${ap.apiUrl} ` : '') +
-        (ap.apiKey ? `--key ${ap.apiKey} ` : '');
-    console.log(command);
-    return command;
-}
-exports.commandBuilder = commandBuilder;
+exports.REPO_DIR = process.env.GITHUB_WORKSPACE;
+exports.OUTPUT_PATH = core.getInput('output-path');
+exports.SBOM_INDENTIFY = core.getInput('sbom-identify');
+exports.SBOM_IGNORE = core.getInput('sbom-ignore');
+exports.API_KEY = core.getInput('api-key');
+exports.API_URL = core.getInput('api-url');
+
+
+/***/ }),
+
+/***/ 2698:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
+exports.RESULT_FILEPATH = 'result-filepath';
+exports.STDOUT_SCAN_COMMAND = 'stdout-scan-command';
 
 
 /***/ }),
@@ -30245,7 +30239,9 @@ const copyleft_policy_check_1 = __nccwpck_require__(4466);
 const report_service_1 = __nccwpck_require__(2467);
 const core = __importStar(__nccwpck_require__(2186));
 const exec = __importStar(__nccwpck_require__(1514));
-const input_1 = __nccwpck_require__(6747);
+const inputs = __importStar(__nccwpck_require__(483));
+const outputs = __importStar(__nccwpck_require__(2698));
+const scan_service_1 = __nccwpck_require__(7577);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -30253,16 +30249,14 @@ const input_1 = __nccwpck_require__(6747);
 async function run() {
     try {
         core.debug(`SCANOSS Scan Action started...`);
-        const repoDir = process.env.GITHUB_WORKSPACE;
-        const outputPath = 'results.json';
         // create policies
         core.debug(`Creating policies`);
         const policies = [new copyleft_policy_check_1.CopyleftPolicyCheck()];
         policies.forEach(async (policy) => policy.start());
         // run scan
-        const { stdout, stderr } = await exec.getExecOutput((0, input_1.commandBuilder)(), []);
-        const scannerResults = await (0, result_service_1.readResult)((0, input_1.readInputs)().outputPath);
-        // run policies // TODO: define run action for each policy
+        const { stdout, stderr } = await exec.getExecOutput((0, scan_service_1.commandBuilder)(), []);
+        const scannerResults = await (0, result_service_1.readResult)(inputs.OUTPUT_PATH);
+        // run policies
         policies.forEach(async (policy) => await policy.run(scannerResults));
         if ((0, github_utils_1.isPullRequest)()) {
             // create reports
@@ -30271,8 +30265,8 @@ async function run() {
             (0, github_utils_1.createCommentOnPR)(licensesReport);
         }
         // set outputs for other workflow steps to use
-        core.setOutput('result-filepath', (0, input_1.readInputs)().outputPath);
-        core.setOutput('output-command', stdout);
+        core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_PATH);
+        core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
     }
     catch (error) {
         // fail the workflow run if an error occurs
@@ -30525,6 +30519,51 @@ function getLicenses(results) {
     return uniqueLicenses;
 }
 exports.getLicenses = getLicenses;
+
+
+/***/ }),
+
+/***/ 7577:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.commandBuilder = void 0;
+const input = __importStar(__nccwpck_require__(483));
+function commandBuilder() {
+    return `docker run -v "${input.REPO_DIR}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . 
+                --dependencies 
+                --output ${input.OUTPUT_PATH} 
+                ${input.SBOM_INDENTIFY ? `--identify ${input.SBOM_INDENTIFY}` : ''} 
+                ${input.SBOM_IGNORE ? `--ignore ${input.SBOM_IGNORE}` : ''} 
+                ${input.API_URL ? `--apiurl ${input.API_URL}` : ''} 
+                ${input.API_KEY ? `--key ${input.API_KEY}` : ''}`.replace(/\n/gm, '');
+}
+exports.commandBuilder = commandBuilder;
 
 
 /***/ }),
