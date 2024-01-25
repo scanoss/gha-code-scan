@@ -1,7 +1,7 @@
 import { getLicenses, readResult } from './services/result.service';
 import { createCommentOnPR, isPullRequest } from './utils/github.utils';
 import { CopyleftPolicyCheck } from './policies/copyleft-policy-check';
-import { getLicensesReport } from './services/report.service';
+import { generateSummary, getLicensesTable } from './services/report.service';
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as inputs from './app.input';
@@ -30,9 +30,8 @@ export async function run(): Promise<void> {
 
     if (isPullRequest()) {
       // create reports
-      const licenses = getLicenses(scannerResults);
-      const licensesReport = getLicensesReport(licenses);
-      createCommentOnPR(licensesReport);
+      const report = generateSummary(scannerResults);
+      createCommentOnPR(report);
     }
 
     // set outputs for other workflow steps to use

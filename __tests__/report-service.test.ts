@@ -1,4 +1,4 @@
-import { getLicensesReport } from '../src/services/report.service';
+import { getLicensesTable } from '../src/services/report.service';
 
 const licenseTableTest = [
   {
@@ -32,7 +32,7 @@ const licenseTableTest = [
 describe('Test report service', () => {
   for (const t of licenseTableTest) {
     it(`${t.name}`, () => {
-      const report = getLicensesReport(t.licenses);
+      const report = getLicensesTable(t.licenses);
       expect(report).toEqual(t.output);
     });
   }
