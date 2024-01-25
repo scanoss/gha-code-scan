@@ -30178,7 +30178,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.API_URL = exports.API_KEY = exports.SBOM_IGNORE = exports.SBOM_INDENTIFY = exports.OUTPUT_PATH = exports.REPO_DIR = void 0;
+exports.WITH_DEPENDENCIES = exports.API_URL = exports.API_KEY = exports.SBOM_IGNORE = exports.SBOM_INDENTIFY = exports.OUTPUT_PATH = exports.REPO_DIR = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 exports.REPO_DIR = process.env.GITHUB_WORKSPACE;
 exports.OUTPUT_PATH = core.getInput('output-path');
@@ -30186,6 +30186,7 @@ exports.SBOM_INDENTIFY = core.getInput('sbom-identify');
 exports.SBOM_IGNORE = core.getInput('sbom-ignore');
 exports.API_KEY = core.getInput('api-key');
 exports.API_URL = core.getInput('api-url');
+exports.WITH_DEPENDENCIES = core.getInput('with-dependencies');
 
 
 /***/ }),
@@ -30418,7 +30419,7 @@ function getLicensesTable(licenses) {
     let markdownTable = '| License | Copyleft | URL |\n';
     markdownTable += '| ------- | -------- | --- |\n';
     licenses.forEach(license => {
-        const copyleftIcon = license.copyleft ? ':heavy_check_mark:' : ':x:';
+        const copyleftIcon = license.copyleft ? ':x:' : ' ';
         markdownTable += `| ${license.spdxid} | ${copyleftIcon} | ${license.url || ''} |\n`;
     });
     return markdownTable;
@@ -30568,8 +30569,8 @@ exports.commandBuilder = void 0;
 const input = __importStar(__nccwpck_require__(483));
 function commandBuilder() {
     return `docker run -v "${input.REPO_DIR}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . 
-                --dependencies 
-                --output ${input.OUTPUT_PATH} 
+                --output ${input.OUTPUT_PATH}  
+                ${input.WITH_DEPENDENCIES ? `--dependencies` : ''}  
                 ${input.SBOM_INDENTIFY ? `--identify ${input.SBOM_INDENTIFY}` : ''} 
                 ${input.SBOM_IGNORE ? `--ignore ${input.SBOM_IGNORE}` : ''} 
                 ${input.API_URL ? `--apiurl ${input.API_URL}` : ''} 
