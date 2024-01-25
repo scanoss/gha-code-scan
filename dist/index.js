@@ -30260,9 +30260,8 @@ async function run() {
         policies.forEach(async (policy) => await policy.run(scannerResults));
         if ((0, github_utils_1.isPullRequest)()) {
             // create reports
-            const licenses = (0, result_service_1.getLicenses)(scannerResults);
-            const licensesReport = (0, report_service_1.getLicensesReport)(licenses);
-            (0, github_utils_1.createCommentOnPR)(licensesReport);
+            const report = (0, report_service_1.generateSummary)(scannerResults);
+            (0, github_utils_1.createCommentOnPR)(report);
         }
         // set outputs for other workflow steps to use
         core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_PATH);
@@ -30408,13 +30407,14 @@ exports.PolicyCheck = PolicyCheck;
 /***/ }),
 
 /***/ 2467:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getLicensesReport = void 0;
-function getLicensesReport(licenses) {
+exports.generateSummary = exports.getLicensesTable = void 0;
+const result_service_1 = __nccwpck_require__(2414);
+function getLicensesTable(licenses) {
     let markdownTable = '| License | Copyleft | URL |\n';
     markdownTable += '| ------- | -------- | --- |\n';
     licenses.forEach(license => {
@@ -30423,7 +30423,19 @@ function getLicensesReport(licenses) {
     });
     return markdownTable;
 }
-exports.getLicensesReport = getLicensesReport;
+exports.getLicensesTable = getLicensesTable;
+function generateSummary(scannerResults) {
+    const licenses = (0, result_service_1.getLicenses)(scannerResults);
+    const licensesReport = getLicensesTable(licenses);
+    const content = `
+  ## SCANOSS Summary :rocket:
+  ### Licenses detected: ${licenses.length}
+
+  ${licensesReport}
+  `;
+    return content;
+}
+exports.generateSummary = generateSummary;
 
 
 /***/ }),

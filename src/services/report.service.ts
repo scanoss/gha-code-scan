@@ -1,6 +1,7 @@
-import { Licenses } from './result.service';
+import { ScannerResults } from './result.interfaces';
+import { Licenses, getLicenses } from './result.service';
 
-export function getLicensesReport(licenses: Licenses[]): string {
+export function getLicensesTable(licenses: Licenses[]): string {
   let markdownTable = '| License | Copyleft | URL |\n';
   markdownTable += '| ------- | -------- | --- |\n';
 
@@ -10,4 +11,18 @@ export function getLicensesReport(licenses: Licenses[]): string {
   });
 
   return markdownTable;
+}
+
+export function generateSummary(scannerResults: ScannerResults): string {
+  const licenses = getLicenses(scannerResults);
+  const licensesReport = getLicensesTable(licenses);
+
+  const content = `
+  ## SCANOSS Summary :rocket:
+  ### Licenses detected: ${licenses.length}
+
+  ${licensesReport}
+  `;
+
+  return content;
 }
