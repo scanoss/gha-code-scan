@@ -30264,6 +30264,7 @@ async function run() {
             const report = (0, report_service_1.generateSummary)(scannerResults);
             (0, github_utils_1.createCommentOnPR)(report);
         }
+        await (0, report_service_1.generateJobSummary)(scannerResults);
         // set outputs for other workflow steps to use
         core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_PATH);
         core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
@@ -30408,13 +30409,37 @@ exports.PolicyCheck = PolicyCheck;
 /***/ }),
 
 /***/ 2467:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.generateSummary = exports.getLicensesTable = void 0;
+exports.generateJobSummary = exports.generateSummary = exports.getLicensesTable = void 0;
 const result_service_1 = __nccwpck_require__(2414);
+const core = __importStar(__nccwpck_require__(2186));
 function getLicensesTable(licenses) {
     let markdownTable = '| License | Copyleft | URL |\n';
     markdownTable += '| ------- | -------- | --- |\n';
@@ -30437,6 +30462,45 @@ function generateSummary(scannerResults) {
     return content;
 }
 exports.generateSummary = generateSummary;
+async function generateJobSummary(scannerResults) {
+    const licenses = (0, result_service_1.getLicenses)(scannerResults);
+    licenses.sort((l1, l2) => l2.count - l1.count);
+    const genPie = (licenses) => {
+        let pie = `
+    %%{init: { "pie" : {"textPosition": "0.75"} ,"themeVariables": {"pieSectionTextSize": "0px", 
+    "pie1": "#E8B34B", "pie1":"#E8B34B","pie2":"#E22C2C","pie3":"#5754D0",
+    "pie4":"#9F69C0","pie5":"#FE7F10","pie6":"#E56399","pie7":"#E637BF",
+    "pie8":"#474647","pie9":"#153243","pie10":"#2DE1C2","pie11":"#F05365",
+    "pie12":"#A2D729"}} }%%
+    pie showData
+      title Licenses chart`;
+        licenses.forEach(l => {
+            pie += `\n"${l.spdxid}" : ${l.count}`;
+        });
+        return pie;
+    };
+    const genTable = (licenses) => {
+        const rows = [];
+        rows.push([
+            { data: 'License', header: true },
+            { data: 'Copyleft', header: true },
+            { data: 'URL', header: true }
+        ]);
+        licenses.forEach(l => {
+            const copyleftIcon = l.copyleft ? ':x:' : ' ';
+            rows.push([l.spdxid, copyleftIcon, `${l.url || ''}`]);
+        });
+        return rows;
+    };
+    await core.summary
+        .addHeading('Scan Report Section')
+        .addCodeBlock(genPie(licenses), 'mermaid')
+        .addRaw('<div align="center">')
+        .addTable(genTable(licenses))
+        .addRaw('</div>')
+        .write();
+}
+exports.generateJobSummary = generateJobSummary;
 
 
 /***/ }),
@@ -30505,7 +30569,8 @@ function getLicenses(results) {
                     licenses.push({
                         spdxid: l.name,
                         copyleft: !l.copyleft ? null : l.copyleft === 'yes' ? true : false,
-                        url: l?.url ? l.url : null
+                        url: l?.url ? l.url : null,
+                        count: 1
                     });
                 }
             }
@@ -30515,12 +30580,22 @@ function getLicenses(results) {
                     for (const l of d.licenses) {
                         if (!l.spdx_id)
                             continue;
-                        licenses.push({ spdxid: l.spdx_id, copyleft: null, url: null });
+                        licenses.push({ spdxid: l.spdx_id, copyleft: null, url: null, count: 1 });
                     }
                 }
             }
         }
     }
+    //Increase counter. The only counter valid is only the first occurence!
+    for (let i = 0; i < licenses.length; i++) {
+        const p = licenses[i];
+        for (let j = i + 1; j < licenses.length; j++) {
+            const q = licenses[j];
+            if (p.spdxid === q.spdxid)
+                p.count++;
+        }
+    }
+    //Clean duplicated
     const seenSpdxIds = new Set();
     const uniqueLicenses = licenses.filter(license => {
         if (!seenSpdxIds.has(license.spdxid)) {
