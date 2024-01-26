@@ -1,7 +1,7 @@
 import { getLicenses, readResult } from './services/result.service';
 import { createCommentOnPR, isPullRequest } from './utils/github.utils';
 import { CopyleftPolicyCheck } from './policies/copyleft-policy-check';
-import { generateSummary, getLicensesTable } from './services/report.service';
+import { generateJobSummary, generateSummary } from './services/report.service';
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as inputs from './app.input';
@@ -34,6 +34,7 @@ export async function run(): Promise<void> {
       createCommentOnPR(report);
     }
 
+    await generateJobSummary(scannerResults);
     // set outputs for other workflow steps to use
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_PATH);
     core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
