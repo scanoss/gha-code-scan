@@ -4,7 +4,7 @@ const licenseTableTest = [
   {
     name: '1) report test',
     licenses: [{ spdxid: 'MIT', url: null, copyleft: null }],
-    output: '| License | Copyleft | URL |\n| ------- | -------- | --- |\n| MIT | :x: |  |\n'
+    output: '| License | Copyleft | URL |\n| ------- | -------- | --- |\n| MIT |   |  |\n'
   },
   {
     name: '2) report test',
@@ -14,7 +14,7 @@ const licenseTableTest = [
       { spdxid: '0BSD', url: null, copyleft: null }
     ],
     output:
-      '| License | Copyleft | URL |\n| ------- | -------- | --- |\n| MIT | :x: |  |\n| Apache-2.0 | :x: |  |\n| 0BSD | :x: |  |\n'
+      '| License | Copyleft | URL |\n| ------- | -------- | --- |\n| MIT |   |  |\n| Apache-2.0 |   |  |\n| 0BSD |   |  |\n'
   },
   {
     name: '3) report test',
@@ -25,7 +25,7 @@ const licenseTableTest = [
       { spdxid: 'LicenseRef-scancode-unknown-license-reference', url: null, copyleft: null }
     ],
     output:
-      '| License | Copyleft | URL |\n| ------- | -------- | --- |\n| GPL-2.0-only | :heavy_check_mark: | https://spdx.org/licenses/GPL-2.0-only.html |\n| GPL-2.0-or-later | :heavy_check_mark: | https://spdx.org/licenses/GPL-2.0-or-later.html |\n| JSON | :x: | https://spdx.org/licenses/JSON.html |\n| LicenseRef-scancode-unknown-license-reference | :x: |  |\n'
+      '| License | Copyleft | URL |\n| ------- | -------- | --- |\n| GPL-2.0-only | :x: | https://spdx.org/licenses/GPL-2.0-only.html |\n| GPL-2.0-or-later | :x: | https://spdx.org/licenses/GPL-2.0-or-later.html |\n| JSON |   | https://spdx.org/licenses/JSON.html |\n| LicenseRef-scancode-unknown-license-reference |   |  |\n'
   }
 ];
 
