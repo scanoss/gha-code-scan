@@ -3,6 +3,7 @@ import * as core from '@actions/core';
 import { getSHA } from '../utils/github.utils';
 import { ScannerResults } from '../services/result.interfaces';
 import { GitHub } from '@actions/github/lib/utils';
+import * as inputs from '../app.input';
 
 const UNINITIALIZED = -1;
 
@@ -25,9 +26,7 @@ export abstract class PolicyCheck {
   private checkRunId: number;
 
   constructor(checkName: string) {
-    const GITHUB_TOKEN = core.getInput('github-token');
-
-    this.octokit = getOctokit(GITHUB_TOKEN);
+    this.octokit = getOctokit(inputs.GITHUB_TOKEN);
     this.checkName = checkName;
     this.checkRunId = UNINITIALIZED;
   }

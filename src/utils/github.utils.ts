@@ -1,5 +1,6 @@
 import { context, getOctokit } from '@actions/github';
 import * as core from '@actions/core';
+import * as inputs from '../app.input';
 
 const prEvents = ['pull_request', 'pull_request_review', 'pull_request_review_comment'];
 
@@ -20,8 +21,7 @@ export function getSHA(): string {
 }
 
 export async function createCommentOnPR(message: string): Promise<void> {
-  const GITHUB_TOKEN = core.getInput('github-token');
-  const octokit = getOctokit(GITHUB_TOKEN);
+  const octokit = getOctokit(inputs.GITHUB_TOKEN);
 
   core.debug('Creating comment on PR');
   octokit.rest.issues.createComment({
