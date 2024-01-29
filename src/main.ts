@@ -7,7 +7,7 @@ import * as exec from '@actions/exec';
 import * as inputs from './app.input';
 import * as outputs from './app.output';
 
-import { commandBuilder } from './services/scan.service';
+import { commandBuilder, uploadResults } from './services/scan.service';
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -23,6 +23,7 @@ export async function run(): Promise<void> {
 
     // run scan
     const { stdout, stderr } = await exec.getExecOutput(commandBuilder(), []);
+    await uploadResults();
     const scannerResults = await readResult(inputs.OUTPUT_PATH);
 
     // run policies

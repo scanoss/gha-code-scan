@@ -29,7 +29,7 @@ inputs:
     description: 'SCANOSS API URL (optional - default: https://osskb.org/api/scan/direct)'
     required: false
   with-dependencies:
-    description: Scan dependencies (optional - default false)
+    description: 'Scan dependencies (optional - default false)'
     required: false
 
 # Define your outputs here.
