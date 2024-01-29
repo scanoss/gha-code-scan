@@ -29,6 +29,7 @@ jobs:
            with-dependencies: true
            github-token: ${{ secrets.GITHUB_TOKEN }}
 
+
       - name: Print stdout scan command
         run: echo "${{ steps.test-action.outputs.stdout-scan-command }}"
 
