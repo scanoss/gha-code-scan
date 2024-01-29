@@ -1,6 +1,7 @@
 import path from 'path';
 import * as input from '../app.input';
 import { DefaultArtifactClient } from '@actions/artifact';
+
 const artifact = new DefaultArtifactClient();
 
 export async function uploadResults(): Promise<void> {

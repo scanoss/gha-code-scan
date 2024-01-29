@@ -42,8 +42,6 @@ jobs:
     - name: Run SCANOSS analysis
       id: scanoss-scan-action
       uses: scanoss/actions-scan@main
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 For example workflow runs, check out the
@@ -53,7 +51,7 @@ For example workflow runs, check out the
 
 | **Parameter** | **Description**                               | **Required** | **Default** | 
 |--------------|------------------------------------------------|--------------|-------------|
-| github-token | Your GitHub token| Required     | - |    
+| github-token | Your GitHub token | Optional     |  `${{ github.token }}` | 
 | output-path  | Output result file name. | Optional | `results.json` |
 | sbom-identify  | Scan and identify components in SBOM file | Optional     | - |
 | sbom-ignore  | Ignore components specified in the SBOM file | Optional     | - |

@@ -27,7 +27,7 @@ jobs:
         with:
 #          sbom-ignore: 'scanoss-ignore.json'
            with-dependencies: true
-           github-token: ${{ secrets.GITHUB_TOKEN }}
+#          github-token: ${{ secrets.GITHUB_TOKEN }}
 
 
       - name: Print stdout scan command
