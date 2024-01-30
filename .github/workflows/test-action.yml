@@ -25,7 +25,6 @@ jobs:
         id: test-action
         uses: ./
         with:
-           sbom.enabled: false
            dependencies.enabled: true
            policies: copyleft, undeclared
 
