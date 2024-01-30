@@ -9,29 +9,38 @@ branding:
 
 # Define your inputs here.
 inputs:
-  github-token:
+  policies:
+    description: 'List of policies separated by comma (e.g., "copyleft, undeclared")'
+    required: false
+  sbom.enabled:
+    description: 'Enable Sbom Identify'
+    required: false
+    default: true
+  sbom.filepath:
+    description: 'Sbom filepath'
+    required: false
+    default: 'sbom.json'
+  sbom.type:
+    description: 'Sbom type (identify | ignore)'
+    required: false
+    default: 'identify'
+  api.key:
+    description: 'SCANOSS API Key token (optional - not required for default OSSKB URL)'
+    required: false
+  api.url:
+    description: 'SCANOSS API URL (optional - default: https://osskb.org/api/scan/direct)'
+    required: false
+  dependencies.enabled:
+    description: 'Scan dependencies (optional - default false)'
+    required: false
+    default: enabled
+  output.filepath:
+    required: false
+    default: 'results.json'
+  github.token:
     description: 'Your GitHub token'
     required: false
     default: ${{ github.token }}
-  output-path:
-    description: 'Output result file name'
-    required: false
-    default: 'results.json'
-  sbom-identify:
-    description: 'Scan and identify components in SBOM file'
-    required: false
-  sbom-ignore:
-    description: 'Ignore components specified in the SBOM file'
-    required: false
-  api-key:
-    description: 'SCANOSS API Key token (optional - not required for default OSSKB URL)'
-    required: false
-  api-url:
-    description: 'SCANOSS API URL (optional - default: https://osskb.org/api/scan/direct)'
-    required: false
-  with-dependencies:
-    description: 'Scan dependencies (optional - default false)'
-    required: false
 
 # Define your outputs here.
 outputs:
