@@ -25,9 +25,9 @@ jobs:
         id: test-action
         uses: ./
         with:
-#          sbom-ignore: 'scanoss-ignore.json'
-           with-dependencies: true
-#          github-token: ${{ secrets.GITHUB_TOKEN }}
+           sbom.enabled: false
+           dependencies.enabled: true
+           policies: copyleft, undeclared
 
 
       - name: Print stdout scan command

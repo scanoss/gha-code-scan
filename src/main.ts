@@ -24,7 +24,7 @@ export async function run(): Promise<void> {
     // run scan
     const { stdout, stderr } = await exec.getExecOutput(commandBuilder(), []);
     await uploadResults();
-    const scannerResults = await readResult(inputs.OUTPUT_PATH);
+    const scannerResults = await readResult(inputs.OUTPUT_FILEPATH);
 
     // run policies
     policies.forEach(async policy => await policy.run(scannerResults));
@@ -37,7 +37,7 @@ export async function run(): Promise<void> {
 
     await generateJobSummary(scannerResults);
     // set outputs for other workflow steps to use
-    core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_PATH);
+    core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
     core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
   } catch (error) {
     // fail the workflow run if an error occurs

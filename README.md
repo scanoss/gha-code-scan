@@ -49,15 +49,17 @@ For example workflow runs, check out the
 
 ### Action Input Parameters
 
-| **Parameter** | **Description**                               | **Required** | **Default** | 
-|--------------|------------------------------------------------|--------------|-------------|
-| github-token | Your GitHub token | Optional     |  `${{ github.token }}` | 
-| output-path  | Output result file name. | Optional | `results.json` |
-| sbom-identify  | Scan and identify components in SBOM file | Optional     | - |
-| sbom-ignore  | Ignore components specified in the SBOM file | Optional     | - |
-| api-url  | SCANOSS API URL | Optional     | `https://osskb.org/api/scan/direct` |
-| api-key  | SCANOSS API Key token | Optional     | - |
-| with-dependencies  | Scan dependencies | Optional     | `false` |
+| **Parameter**        | **Description**                                                       | **Required** | **Default**                         | 
+|----------------------|-----------------------------------------------------------------------|--------------|-------------------------------------|
+| github.token         | Your GitHub token                                                     | Optional     | `${{ github.token }}`               | 
+| output.filepath      | Output result file name.                                              | Optional     | `results.json`                      |
+| sbom.enabled         | Enable or disable scanning based on the SBOM file                     | Optional     | `true`                              |
+| sbom.filepath        | Filepath of the SBOM file to be used for scanning                     | Optional     | `sbom.json`                         |
+| sbom.type            | Type of SBOM operation: either 'identify' or 'ignore                  | Optional     | `identify`                          |
+| dependencies.enabled | Option to enable or disable scanning of dependencies.                 | Optional     | `true`                              |
+| policies             | List of policies separated by commas, such as "copyleft, undeclared". | Optional     | `true`                              |
+| api.url              | SCANOSS API URL                                                       | Optional     | `https://osskb.org/api/scan/direct` |
+| api.key              | SCANOSS API Key token                                                 | Optional     | -                                   |
 
 ### Action Output Parameters
 In addition to the automatically generated reports, the action also outputs the raw scan data, enabling you to integrate the output into your custom workflow
@@ -111,12 +113,10 @@ jobs:
       id: scanoss-scan-action
       uses: scanoss/actions-scan@main
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        output-path: example_results.json
-        sbom-ignore: sbom.json
+        github.token: ${{ secrets.GITHUB_TOKEN }}
         # api-url: <YOUR_API_URL>
         # api-key: <YOUR_API_KEY>
-        with-dependencies: true
+        dependencies.enabled: true
 
       - name: Print stdout scan command
         run: echo "${{ steps.scanoss-scan-action.outputs.stdout-scan-command }}"
