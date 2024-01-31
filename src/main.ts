@@ -1,13 +1,11 @@
-import { getLicenses, readResult } from './services/result.service';
 import { createCommentOnPR, isPullRequest } from './utils/github.utils';
 import { CopyleftPolicyCheck } from './policies/copyleft-policy-check';
 import { generateJobSummary, generateSummary } from './services/report.service';
 import * as core from '@actions/core';
-import * as exec from '@actions/exec';
 import * as inputs from './app.input';
 import * as outputs from './app.output';
 
-import { commandBuilder, uploadResults } from './services/scan.service';
+import { scanService, uploadResults } from './services/scan.service';
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -22,20 +20,19 @@ export async function run(): Promise<void> {
     policies.forEach(async policy => policy.start());
 
     // run scan
-    const { stdout, stderr } = await exec.getExecOutput(commandBuilder(), []);
+    const { scan, stdout } = await scanService.scan();
     await uploadResults();
-    const scannerResults = await readResult(inputs.OUTPUT_FILEPATH);
 
     // run policies
-    policies.forEach(async policy => await policy.run(scannerResults));
+    policies.forEach(async policy => await policy.run(scan));
 
     if (isPullRequest()) {
       // create reports
-      const report = generateSummary(scannerResults);
+      const report = generateSummary(scan);
       createCommentOnPR(report);
     }
 
-    await generateJobSummary(scannerResults);
+    await generateJobSummary(scan);
     // set outputs for other workflow steps to use
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
     core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
