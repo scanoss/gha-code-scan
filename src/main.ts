@@ -6,6 +6,7 @@ import * as inputs from './app.input';
 import * as outputs from './app.output';
 
 import { scanService, uploadResults } from './services/scan.service';
+import { policyManager } from './policies/policy.manager';
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -16,7 +17,7 @@ export async function run(): Promise<void> {
 
     // create policies
     core.debug(`Creating policies`);
-    const policies = [new CopyleftPolicyCheck()];
+    const policies = policyManager.getPolicies();
     policies.forEach(async policy => policy.start());
 
     // run scan

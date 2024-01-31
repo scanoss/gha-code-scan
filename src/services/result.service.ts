@@ -1,10 +1,7 @@
 import { ComponentID, DependencyComponent, ScannerComponent, ScannerResults } from './result.interfaces';
 import * as fs from 'fs';
 
-export async function readResult(filepath: string): Promise<ScannerResults> {
-  const content = await fs.promises.readFile(filepath, 'utf-8');
-  return JSON.parse(content) as ScannerResults;
-}
+//TODO: Move all functions to a class named ResultService that produces an object { licenses: []; compoments: []; dependencies: []; vulns: [];}
 
 export interface License {
   spdxid: string;

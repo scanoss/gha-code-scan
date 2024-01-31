@@ -10,8 +10,12 @@ branding:
 # Define your inputs here.
 inputs:
   policies:
-    description: 'List of policies separated by comma (e.g., "copyleft, undeclared")'
+    description: 'List of policies separated by comma (e.g., copyleft, undeclared)'
     required: false
+  policies.halt_on_failure:
+    description: 'Halt if a check fails'
+    required: false
+    default: true
   sbom.enabled:
     description: 'Enable Sbom Identify'
     required: false
