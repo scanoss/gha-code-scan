@@ -1,0 +1,7 @@
+{
+    "components": [
+        {
+            "purl": "pkg:github/scanoss/actions-scan"
+        }
+    ]
+}

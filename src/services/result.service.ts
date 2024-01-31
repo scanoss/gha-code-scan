@@ -10,6 +10,32 @@ export interface License {
   count: number;
 }
 
+export interface Component {
+  purl: string;
+}
+export function getComponents(results: ScannerResults): Component[] {
+  const components = new Array<Component>();
+
+  for (const component of Object.values(results)) {
+    for (const c of component) {
+      if (c.id === ComponentID.FILE || c.id === ComponentID.SNIPPET) {
+        components.push({
+          purl: (c as ScannerComponent).purl[0]
+        });
+      }
+
+      if (c.id === ComponentID.DEPENDENCY) {
+        const dependencies = (c as DependencyComponent).dependencies;
+        for (const d of dependencies) {
+          components.push({ purl: d.purl });
+        }
+      }
+    }
+  }
+
+  return Array.from(new Set(components)); //Remove duplicated
+}
+
 export function getLicenses(results: ScannerResults): License[] {
   const licenses = new Array<License>();
 

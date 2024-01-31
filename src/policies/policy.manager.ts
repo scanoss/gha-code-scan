@@ -1,6 +1,7 @@
 import { CopyleftPolicyCheck } from './copyleft-policy-check';
 import { PolicyCheck } from './policy-check';
 import * as inputs from '../app.input';
+import { UndeclaredPolicyCheck } from './undeclared-policy-check';
 
 type PolicyRegistry = Record<string, new () => PolicyCheck>;
 
@@ -9,11 +10,12 @@ export class PolicyManager {
 
   constructor(policyRegistry?: PolicyRegistry) {
     this.policyRegistry = policyRegistry || {
-      copyleft: CopyleftPolicyCheck
+      copyleft: CopyleftPolicyCheck,
+      undeclared: UndeclaredPolicyCheck
     };
   }
 
-  getPolicies(policiesNames?: string[]) {
+  getPolicies(policiesNames?: string[]): PolicyCheck[] {
     const pNames = policiesNames || inputs.POLICIES.split(',').map(pn => pn.trim());
 
     //throw error if policy does not exist
