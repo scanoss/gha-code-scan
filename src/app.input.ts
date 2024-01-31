@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 
 export const POLICIES = core.getInput('policies');
+export const POLICIES_HALT_ON_FAILURE = core.getInput('policies.halt_on_failure') === 'true';
 export const SBOM_ENABLED = core.getInput('sbom.enabled') === 'true';
 export const SBOM_FILEPATH = core.getInput('sbom.filepath');
 export const SBOM_TYPE = core.getInput('sbom.type');

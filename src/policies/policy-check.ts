@@ -44,6 +44,9 @@ export abstract class PolicyCheck {
     return result.data;
   }
 
+  get name(): string {
+    return this.checkName;
+  }
   async run(scannerResults: ScannerResults): Promise<void> {
     if (this.checkRunId === UNINITIALIZED)
       throw new Error(`Error on finish. Policy "${this.checkName}" is not created.`);
@@ -56,7 +59,7 @@ export abstract class PolicyCheck {
   }
 
   protected async reject(summary: string, text: string): Promise<void> {
-    await this.finish(CONCLUSION.Failure, summary, text);
+    await this.finish(inputs.POLICIES_HALT_ON_FAILURE ? CONCLUSION.Failure : CONCLUSION.Neutral, summary, text);
   }
 
   protected async finish(conclusion: CONCLUSION | undefined, summary: string, text: string): Promise<void> {
