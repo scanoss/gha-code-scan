@@ -66,13 +66,9 @@ describe('Test components service', () => {
   it(`test c`, () => {
     const scannerResults = JSON.parse(t.content) as ScannerResults;
     const components = getComponents(scannerResults);
-    const util = require('util');
-    // console.log(util.inspect(compoments, {showHidden: false, depth: null, colors: true}))
 
     const componentsWithCopyleft = components.filter(component =>
       component.licenses.some(license => !!license.copyleft)
     );
-
-    console.log(util.inspect(componentsWithCopyleft, { showHidden: false, depth: null, colors: true }));
   });
 });

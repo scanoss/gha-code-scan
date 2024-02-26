@@ -2,7 +2,7 @@ import { ScannerResults } from '../services/result.interfaces';
 import { CHECK_NAME } from '../app.config';
 import { PolicyCheck } from './policy-check';
 import { Component, getComponents, getLicenses } from '../services/result.service';
-import { generateTable } from 'src/utils/markdown.util';
+import { generateTable } from '../utils/markdown.utils';
 
 export class CopyleftPolicyCheck extends PolicyCheck {
   constructor() {
@@ -30,8 +30,8 @@ export class CopyleftPolicyCheck extends PolicyCheck {
 
   private getSummary(components: Component[]): string {
     return components.length === 0
-      ? '### :white_check_mark: Policy Pass \n ' + '#### ' + 'Not copyleft components were found'
-      : '### :x: Policy Fail \n' + '#### ' + components.length + ' component(s) with copyleft licenses were found';
+      ? '### :white_check_mark: Policy Pass \n #### Not copyleft components were found'
+      : `### :x: Policy Fail \n #### ${components.length} component(s) with copyleft licenses were found. \n See details for more information.`;
   }
 
   private getDetails(components: Component[]): string {
