@@ -1,8 +1,8 @@
 import { ScannerResults } from './result.interfaces';
 import { License, getLicenses } from './result.service';
 import * as core from '@actions/core';
-import { SummaryTableRow } from '@actions/core/lib/summary';
-
+import { CONCLUSION, PolicyCheck } from '../policies/policy-check';
+import { generateTable } from '../utils/markdown.utils';
 export function getLicensesTable(licenses: License[]): string {
   let markdownTable = '| License | Copyleft | URL |\n';
   markdownTable += '| ------- | -------- | --- |\n';
@@ -29,11 +29,11 @@ export function generateSummary(scannerResults: ScannerResults): string {
   return content;
 }
 
-export async function generateJobSummary(scannerResults: ScannerResults): Promise<void> {
+export async function generateJobSummary(scannerResults: ScannerResults, policies: PolicyCheck[]): Promise<void> {
   const licenses = getLicenses(scannerResults);
   licenses.sort((l1, l2) => l2.count - l1.count);
 
-  const genPie = (licenses: License[]): string => {
+  const LicensesPie = (licenses: License[]): string => {
     let pie = `
     %%{init: { "pie" : {"textPosition": "0.75"} ,"themeVariables": {"pieSectionTextSize": "0px", 
     "pie1": "#E8B34B", "pie1":"#E8B34B","pie2":"#E22C2C","pie3":"#5754D0",
@@ -49,27 +49,36 @@ export async function generateJobSummary(scannerResults: ScannerResults): Promis
     return pie;
   };
 
-  const genTable = (licenses: License[]): SummaryTableRow[] => {
-    const rows: SummaryTableRow[] = [];
-
-    rows.push([
-      { data: 'License', header: true },
-      { data: 'Copyleft', header: true },
-      { data: 'URL', header: true }
-    ]);
+  const LicensesTable = (licenses: License[]): string => {
+    const HEADERS: string[] = ['License', 'Copyleft', 'URL'];
+    const ROWS: string[][] = [];
 
     licenses.forEach(l => {
       const copyleftIcon = l.copyleft ? ':x:' : ' ';
-      rows.push([l.spdxid, copyleftIcon, `${l.url || ''}`]);
+      ROWS.push([l.spdxid, copyleftIcon, `${l.url || ''}`]);
     });
-    return rows;
+    return generateTable(HEADERS, ROWS);
+  };
+
+  const PoliciesTable = (policies: PolicyCheck[]): string => {
+    const HEADERS = ['Policy', 'Status', 'Details'];
+    const ROWS: string[][] = [];
+
+    policies.forEach(p => {
+      const statusIcon = p.conclusion === CONCLUSION.Success ? ':white_check_mark:' : ':x:';
+      ROWS.push([p.name, statusIcon, `[More Details](${p.url})`]);
+    });
+
+    return generateTable(HEADERS, ROWS);
   };
 
   await core.summary
-    .addHeading('Scan Report Section')
-    .addCodeBlock(genPie(licenses), 'mermaid')
-    .addRaw('<div align="center">')
-    .addTable(genTable(licenses))
-    .addRaw('</div>')
+    .addHeading('Scan Report Section', 2)
+    .addHeading('Licenses', 3)
+    .addCodeBlock(LicensesPie(licenses), 'mermaid')
+    .addRaw(LicensesTable(licenses))
+    .addSeparator()
+    .addHeading('Policies', 3)
+    .addRaw(PoliciesTable(policies))
     .write();
 }

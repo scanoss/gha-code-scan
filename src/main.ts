@@ -17,23 +17,29 @@ export async function run(): Promise<void> {
 
     // create policies
     core.debug(`Creating policies`);
+
+    //Read declared policies on input parameter 'policies' and create an instance for each one.
     const policies = policyManager.getPolicies();
-    policies.forEach(async policy => policy.start());
+    for (const policy of policies) {
+      await policy.start();
+    }
 
     // run scan
     const { scan, stdout } = await scanService.scan();
     await uploadResults();
 
     // run policies
-    policies.forEach(async policy => await policy.run(scan));
+    for (const policy of policies) {
+      await policy.run(scan);
+    }
 
     if (isPullRequest()) {
       // create reports
       const report = generateSummary(scan);
-      createCommentOnPR(report);
+      await createCommentOnPR(report);
     }
 
-    await generateJobSummary(scan);
+    await generateJobSummary(scan, policies);
     // set outputs for other workflow steps to use
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
     core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
