@@ -12,7 +12,10 @@ export interface License {
 
 export interface Component {
   purl: string;
+  version: string;
+  licenses: License[];
 }
+
 export function getComponents(results: ScannerResults): Component[] {
   const components = new Array<Component>();
 
@@ -20,20 +23,33 @@ export function getComponents(results: ScannerResults): Component[] {
     for (const c of component) {
       if (c.id === ComponentID.FILE || c.id === ComponentID.SNIPPET) {
         components.push({
-          purl: (c as ScannerComponent).purl[0]
+          purl: (c as ScannerComponent).purl[0],
+          version: (c as ScannerComponent).version,
+          licenses: (c as ScannerComponent).licenses.map(l => ({
+            spdxid: l.name,
+            copyleft: !l.copyleft ? null : l.copyleft === 'yes' ? true : false,
+            url: l?.url ? l.url : null,
+            count: 1
+          }))
         });
       }
 
       if (c.id === ComponentID.DEPENDENCY) {
         const dependencies = (c as DependencyComponent).dependencies;
         for (const d of dependencies) {
-          components.push({ purl: d.purl });
+          components.push({
+            purl: d.purl,
+            version: d.version,
+            licenses: d.licenses.map(l => ({ spdxid: l.spdx_id, copyleft: null, url: null, count: 1 }))
+          });
         }
       }
     }
   }
 
-  return Array.from(new Set(components)); //Remove duplicated
+  //Merge duplicates purls
+
+  return components;
 }
 
 export function getLicenses(results: ScannerResults): License[] {

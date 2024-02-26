@@ -55,11 +55,11 @@ export abstract class PolicyCheck {
   }
 
   protected async success(summary: string, text: string): Promise<void> {
-    await this.finish(CONCLUSION.Success, summary, text);
+    return await this.finish(CONCLUSION.Success, summary, text);
   }
 
   protected async reject(summary: string, text: string): Promise<void> {
-    await this.finish(inputs.POLICIES_HALT_ON_FAILURE ? CONCLUSION.Failure : CONCLUSION.Neutral, summary, text);
+    return await this.finish(inputs.POLICIES_HALT_ON_FAILURE ? CONCLUSION.Failure : CONCLUSION.Neutral, summary, text);
   }
 
   protected async finish(conclusion: CONCLUSION | undefined, summary: string, text: string): Promise<void> {
