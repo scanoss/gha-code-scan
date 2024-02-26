@@ -1,5 +1,5 @@
 import { ScannerResults } from '../src/services/result.interfaces';
-import { getLicenses, License } from '../src/services/result.service';
+import { getComponents, getLicenses, License } from '../src/services/result.service';
 
 const licenseTableTest: { name: string; description: string; content: string; licenses: License[] }[] = [
   {
@@ -59,4 +59,20 @@ describe('Test Results service', () => {
       expect(licenses.sort(sortFn)).toEqual(t.licenses.sort(sortFn));
     });
   }
+});
+
+describe('Test components service', () => {
+  const t = licenseTableTest[3];
+  it(`test c`, () => {
+    const scannerResults = JSON.parse(t.content) as ScannerResults;
+    const components = getComponents(scannerResults);
+    const util = require('util');
+    // console.log(util.inspect(compoments, {showHidden: false, depth: null, colors: true}))
+
+    const componentsWithCopyleft = components.filter(component =>
+      component.licenses.some(license => !!license.copyleft)
+    );
+
+    console.log(util.inspect(componentsWithCopyleft, { showHidden: false, depth: null, colors: true }));
+  });
 });
