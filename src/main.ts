@@ -1,6 +1,5 @@
 import { createCommentOnPR, isPullRequest } from './utils/github.utils';
-import { CopyleftPolicyCheck } from './policies/copyleft-policy-check';
-import { generateJobSummary, generateSummary } from './services/report.service';
+import { generateJobSummary, generatePRSummary } from './services/report.service';
 import * as core from '@actions/core';
 import * as inputs from './app.input';
 import * as outputs from './app.output';
@@ -35,7 +34,7 @@ export async function run(): Promise<void> {
 
     if (isPullRequest()) {
       // create reports
-      const report = generateSummary(scan);
+      const report = generatePRSummary(scan, policies);
       await createCommentOnPR(report);
     }
 
