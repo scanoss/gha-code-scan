@@ -40,16 +40,41 @@ export function getComponents(results: ScannerResults): Component[] {
           components.push({
             purl: d.purl,
             version: d.version,
-            licenses: d.licenses.map(l => ({ spdxid: l.spdx_id, copyleft: null, url: null, count: 1 }))
+            licenses: d.licenses
+              .map(l => ({ spdxid: l.spdx_id, copyleft: null, url: null, count: 1 }))
+              .filter(l => l.spdxid)
           });
         }
       }
     }
   }
 
-  //Merge duplicates purls
+  // Merge duplicates
+  const componentMap = new Map<string, Component>();
+  components.forEach((component: Component) => {
+    const key = `${component.purl}-${component.version}`;
+    const existingComponent = componentMap.get(key);
+    if (existingComponent) {
+      const licenses = [...existingComponent.licenses, ...component.licenses];
+    } else {
+      componentMap.set(key, component);
+    }
 
-  return components;
+    // Remove duplicates licenses
+    const spdxidSet = new Set<string>();
+    const uniqueLicenses: License[] = [];
+    component.licenses.forEach(license => {
+      if (!spdxidSet.has(license.spdxid)) {
+        spdxidSet.add(license.spdxid);
+        uniqueLicenses.push(license);
+      }
+    });
+    component.licenses = uniqueLicenses;
+  });
+
+  const unqiqueComponents = [...componentMap.values()];
+
+  return unqiqueComponents;
 }
 
 export function getLicenses(results: ScannerResults): License[] {
