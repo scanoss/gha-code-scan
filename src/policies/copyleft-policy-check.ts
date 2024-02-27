@@ -1,7 +1,7 @@
 import { ScannerResults } from '../services/result.interfaces';
 import { CHECK_NAME } from '../app.config';
 import { PolicyCheck } from './policy-check';
-import { Component, getComponents, getLicenses } from '../services/result.service';
+import { Component, getComponents } from '../services/result.service';
 import { generateTable } from '../utils/markdown.utils';
 
 export class CopyleftPolicyCheck extends PolicyCheck {
@@ -34,8 +34,8 @@ export class CopyleftPolicyCheck extends PolicyCheck {
       : `### :x: Policy Fail \n #### ${components.length} component(s) with copyleft licenses were found. \n See details for more information.`;
   }
 
-  private getDetails(components: Component[]): string {
-    if (components.length === 0) return '';
+  private getDetails(components: Component[]): string | undefined {
+    if (components.length === 0) return undefined;
 
     const headers = ['Component', 'Version', 'License', 'URL', 'Copyleft'];
     const rows: string[][] = [];

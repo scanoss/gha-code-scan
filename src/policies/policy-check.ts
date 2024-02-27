@@ -83,18 +83,18 @@ export abstract class PolicyCheck {
     this._status = STATUS.RUNNING;
   }
 
-  protected async success(summary: string, text: string): Promise<void> {
+  protected async success(summary: string, text?: string): Promise<void> {
     this._conclusion = CONCLUSION.Success;
     return await this.finish(summary, text);
   }
 
-  protected async reject(summary: string, text: string): Promise<void> {
+  protected async reject(summary: string, text?: string): Promise<void> {
     if (inputs.POLICIES_HALT_ON_FAILURE) this._conclusion = CONCLUSION.Failure;
     else this._conclusion = CONCLUSION.Neutral;
     return await this.finish(summary, text);
   }
 
-  protected async finish(summary: string, text: string): Promise<void> {
+  protected async finish(summary: string, text?: string): Promise<void> {
     core.debug(`Finish policy check: ${this.checkName}. (conclusion=${this._conclusion})`);
     this._status = STATUS.FINISHED;
 

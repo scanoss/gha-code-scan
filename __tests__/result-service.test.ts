@@ -60,15 +60,3 @@ describe('Test Results service', () => {
     });
   }
 });
-
-describe('Test components service', () => {
-  const t = licenseTableTest[3];
-  it(`test c`, () => {
-    const scannerResults = JSON.parse(t.content) as ScannerResults;
-    const components = getComponents(scannerResults);
-
-    const componentsWithCopyleft = components.filter(component =>
-      component.licenses.some(license => !!license.copyleft)
-    );
-  });
-});

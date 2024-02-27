@@ -1,9 +1,10 @@
 import { PolicyCheck } from './policy-check';
 import { CHECK_NAME } from '../app.config';
 import { ScannerResults } from '../services/result.interfaces';
-import { getComponents } from '../services/result.service';
+import { Component, getComponents } from '../services/result.service';
 import * as inputs from '../app.input';
 import { parseSbom } from '../utils/sbom.utils';
+import { generateTable } from '../utils/markdown.utils';
 
 export class UndeclaredPolicyCheck extends PolicyCheck {
   constructor() {
@@ -13,21 +14,53 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
   async run(scannerResults: ScannerResults): Promise<void> {
     super.run(scannerResults);
 
-    const nonDeclaredComponents = new Set<string>();
+    const nonDeclaredComponents: Component[] = [];
 
     const comps = getComponents(scannerResults);
     const sbom = await parseSbom(inputs.SBOM_FILEPATH);
 
     comps.forEach(c => {
       if (!sbom.components.some(component => component.purl === c.purl)) {
-        nonDeclaredComponents.add(c.purl);
+        nonDeclaredComponents.push(c);
       }
     });
 
-    if (!nonDeclaredComponents.size) {
-      this.success('Completed succesfully', 'Undeclared components were not found');
+    const summary = this.getSummary(nonDeclaredComponents);
+    const details = this.getDetails(nonDeclaredComponents);
+
+    if (nonDeclaredComponents.length === 0) {
+      this.success(summary, details);
     } else {
-      this.reject('Failure', `Undeclared components were found: ${JSON.stringify(Array.from(nonDeclaredComponents))}`);
+      this.reject(summary, details);
     }
+  }
+
+  private getSummary(components: Component[]): string {
+    return components.length === 0
+      ? '### :white_check_mark: Policy Pass \n #### Not undeclared components were found'
+      : `### :x: Policy Fail \n #### ${components.length} undeclared component(s) were found. \n See details for more information.`;
+  }
+
+  private getDetails(components: Component[]): string | undefined {
+    if (components.length === 0) return undefined;
+
+    const headers = ['Component', 'Version', 'License'];
+    const rows: string[][] = [];
+
+    components.forEach(component => {
+      const licenses = component.licenses.map(l => l.spdxid).join(' - ');
+      rows.push([component.purl, component.version, licenses]);
+    });
+
+    const snippet = JSON.stringify(
+      components.map(({ purl }) => ({ purl })),
+      null,
+      4
+    );
+
+    let content = `### Undeclared components \n ${generateTable(headers, rows)}`;
+    content += `#### Add the following snippet into your \`sbom.json\` file \n \`\`\`json \n ${snippet} \n \`\`\``;
+
+    return content;
   }
 }
