@@ -1,29 +1,33 @@
 import { ScannerResults } from './result.interfaces';
-import { License, getLicenses } from './result.service';
+import { License, getComponents, getLicenses } from './result.service';
 import * as core from '@actions/core';
 import { CONCLUSION, PolicyCheck } from '../policies/policy-check';
 import { generateTable } from '../utils/markdown.utils';
-export function getLicensesTable(licenses: License[]): string {
-  let markdownTable = '| License | Copyleft | URL |\n';
-  markdownTable += '| ------- | -------- | --- |\n';
+import { context } from '@actions/github';
 
-  licenses.forEach(license => {
-    const copyleftIcon = license.copyleft ? ':x:' : ' ';
-    markdownTable += `| ${license.spdxid} | ${copyleftIcon} | ${license.url || ''} |\n`;
-  });
-
-  return markdownTable;
-}
-
-export function generateSummary(scannerResults: ScannerResults): string {
+export function generatePRSummary(scannerResults: ScannerResults, policies: PolicyCheck[]): string {
+  const components = getComponents(scannerResults);
   const licenses = getLicenses(scannerResults);
-  const licensesReport = getLicensesTable(licenses);
+
+  const polCount = {
+    total: policies.length,
+    success: policies.filter(p => p.conclusion === CONCLUSION.Success).length,
+    fail: policies.filter(p => p.conclusion !== CONCLUSION.Success).length
+  };
+
+  const polTxt = {
+    total: `(${polCount.total} total)`,
+    success: polCount.success ? `:white_check_mark: ${polCount.success} pass` : '',
+    fail: polCount.fail ? `:x: ${polCount.fail} fail` : ''
+  };
 
   const content = `
-  ## SCANOSS Summary :rocket:
-  ### Licenses detected: ${licenses.length}
+  ### SCANOSS SCAN Completed :rocket:
+  - **Components detected:** ${components.length}
+  - **Licenses detected:** ${licenses.length}
+  - **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
 
-  ${licensesReport}
+  View more details on [SCANOSS Action Summary](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
   `;
 
   return content;
@@ -33,7 +37,7 @@ export async function generateJobSummary(scannerResults: ScannerResults, policie
   const licenses = getLicenses(scannerResults);
   licenses.sort((l1, l2) => l2.count - l1.count);
 
-  const LicensesPie = (licenses: License[]): string => {
+  const LicensesPie = (items: License[]): string => {
     let pie = `
     %%{init: { "pie" : {"textPosition": "0.75"} ,"themeVariables": {"pieSectionTextSize": "0px", 
     "pie1": "#E8B34B", "pie1":"#E8B34B","pie2":"#E22C2C","pie3":"#5754D0",
@@ -43,28 +47,28 @@ export async function generateJobSummary(scannerResults: ScannerResults, policie
     pie showData
       title Licenses chart`;
 
-    licenses.forEach(l => {
+    items.forEach(l => {
       pie += `\n"${l.spdxid}" : ${l.count}`;
     });
     return pie;
   };
 
-  const LicensesTable = (licenses: License[]): string => {
+  const LicensesTable = (items: License[]): string => {
     const HEADERS: string[] = ['License', 'Copyleft', 'URL'];
     const ROWS: string[][] = [];
 
-    licenses.forEach(l => {
+    items.forEach(l => {
       const copyleftIcon = l.copyleft ? ':x:' : ' ';
       ROWS.push([l.spdxid, copyleftIcon, `${l.url || ''}`]);
     });
     return generateTable(HEADERS, ROWS);
   };
 
-  const PoliciesTable = (policies: PolicyCheck[]): string => {
+  const PoliciesTable = (items: PolicyCheck[]): string => {
     const HEADERS = ['Policy', 'Status', 'Details'];
     const ROWS: string[][] = [];
 
-    policies.forEach(p => {
+    items.forEach(p => {
       const statusIcon = p.conclusion === CONCLUSION.Success ? ':white_check_mark:' : ':x:';
       ROWS.push([p.name, statusIcon, `[More Details](${p.url})`]);
     });

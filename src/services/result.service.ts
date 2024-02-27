@@ -1,5 +1,4 @@
 import { ComponentID, DependencyComponent, ScannerComponent, ScannerResults } from './result.interfaces';
-import * as fs from 'fs';
 
 //TODO: Move all functions to a class named ResultService that produces an object { licenses: []; compoments: []; dependencies: []; vulns: [];}
 
@@ -55,7 +54,7 @@ export function getComponents(results: ScannerResults): Component[] {
     const key = `${component.purl}-${component.version}`;
     const existingComponent = componentMap.get(key);
     if (existingComponent) {
-      const licenses = [...existingComponent.licenses, ...component.licenses];
+      component.licenses = [...existingComponent.licenses, ...component.licenses];
     } else {
       componentMap.set(key, component);
     }
