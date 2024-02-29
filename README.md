@@ -8,7 +8,11 @@
 The SCANOSS Scan Action enhances your software development process by automatically scanning your code for security
 vulnerabilities and license compliance with configurable policies.
 
-![JOB Summary](./.github/assets/img_job_summary.jpg)
+<div style="text-align: center">
+  
+  ![JOB Summary](./.github/assets/img_job_summary.png)
+
+</div>
 
 ## Usage
 
@@ -43,8 +47,8 @@ jobs:
         uses: scanoss/actions-scan@main
 ```
 
-For example workflow runs, check out the
-[Actions Tab](https://github.com/scanoss/actions-scan/actions)! :rocket:
+For example workflow runs, check out our
+[GitHub Action Usage Example](https://github.com/scanoss/integration-test) :rocket:
 
 ### Action Input Parameters
 
@@ -55,10 +59,10 @@ For example workflow runs, check out the
 | sbom.filepath            | Filepath of the SBOM file to be used for scanning                                  | Optional     | `sbom.json`                         |
 | sbom.type                | Type of SBOM operation: either 'identify' or 'ignore                               | Optional     | `identify`                          |
 | dependencies.enabled     | Option to enable or disable scanning of dependencies.                              | Optional     | `false`                             |
-| policies                 | List of policies separated by commas, options available are: copyleft, undeclared. | Optional     | `true`                              |
+| policies                 | List of policies separated by commas, options available are: copyleft, undeclared. | Optional     | -                                   |
 | policies.halt_on_failure | Halt check on policy failure. If set to false checks will not fail.                | Optional     | `true`                              |
 | api.url                  | SCANOSS API URL                                                                    | Optional     | `https://osskb.org/api/scan/direct` |
-| api.key                  | SCANOSS API Key token                                                              | Optional     | -                                   |
+| api.key                  | SCANOSS API Key                                                                    | Optional     | -                                   |
 
 ### Action Output Parameters
 
@@ -70,8 +74,7 @@ the output into your custom workflow
 | result-filepath     | Scanner results filepath |  
 | stdout-scan-command | Scanner command output   |
 
-## Policy Checks (wip)
-
+## Policy Checks
 The SCANOSS Scan action includes two configurable policies:
 
 1. Copyleft: This policy checks if any component or code snippet is associated with a copyleft license. If such a
