@@ -37,7 +37,7 @@ inputs:
   dependencies.enabled:
     description: 'Scan dependencies (optional - default false)'
     required: false
-    default: enabled
+    default: false
   output.filepath:
     required: false
     default: 'results.json'
