@@ -48,7 +48,7 @@ jobs:
 ```
 
 For example workflow runs, check out our
-[GitHub Action Usage Example](https://github.com/scanoss/integration-test) :rocket:
+[GitHub Action Usage Example](https://github.com/scanoss/integration-github-actions) :rocket:
 
 ### Action Input Parameters
 
