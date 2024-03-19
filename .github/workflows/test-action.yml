@@ -26,7 +26,7 @@ jobs:
         uses: ./
         with:
            dependencies.enabled: false
-           policies: copyleft, undeclared
+           policies: copyleft
 
 
       - name: Print stdout scan command

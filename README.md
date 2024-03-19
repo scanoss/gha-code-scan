@@ -1,11 +1,11 @@
-# SCANOSS Action
+# SCANOSS Code Scan Action
 
-[![GitHub Super-Linter](https://github.com/scanoss/actions-scan/actions/workflows/linter.yml/badge.svg)](https://github.com/super-linter/super-linter)
-![CI](https://github.com/scanoss/actions-scan/actions/workflows/ci.yml/badge.svg)
-[![Check dist/](https://github.com/scanoss/actions-scan/actions/workflows/check-dist.yml/badge.svg)](https://github.com/scanoss/actions-scan/actions/workflows/check-dist.yml)
-[![CodeQL](https://github.com/scanoss/actions-scan/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/scanoss/actions-scan/actions/workflows/codeql-analysis.yml)
+[![GitHub Super-Linter](https://github.com/scanoss/code-scan-action/actions/workflows/linter.yml/badge.svg)](https://github.com/super-linter/super-linter)
+![CI](https://github.com/scanoss/code-scan-action/actions/workflows/ci.yml/badge.svg)
+[![Check dist/](https://github.com/scanoss/code-scan-action/actions/workflows/check-dist.yml/badge.svg)](https://github.com/scanoss/scanoss-code-scan-step/actions/workflows/check-dist.yml)
+[![CodeQL](https://github.com/scanoss/code-scan-action/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/scanoss/scanoss-code-scan-step/actions/workflows/codeql-analysis.yml)
 
-The SCANOSS Scan Action enhances your software development process by automatically scanning your code for security
+The SCANOSS Code Scan Action enhances your software development process by automatically scanning your code for security
 vulnerabilities and license compliance with configurable policies.
 
 <div style="text-align: center">
@@ -33,18 +33,17 @@ permissions:
   checks: write
 
 jobs:
-  scanoss-analysis:
-    name: SCANOSS Analysis
+  scanoss-code-scan:
+    name: SCANOSS Code Scan 
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        id: checkout
         uses: actions/checkout@v4
 
-      - name: Run SCANOSS analysis
-        id: scanoss-scan-action
-        uses: scanoss/actions-scan@main
+      - name: Run SCANOSS Code Scan
+        id: scanoss-code-scan-step
+        uses: scanoss/code-scan-action@main
 ```
 
 For example workflow runs, check out our
@@ -75,7 +74,7 @@ the output into your custom workflow
 | stdout-scan-command | Scanner command output   |
 
 ## Policy Checks
-The SCANOSS Scan action includes two configurable policies:
+The SCANOSS Code Scan Action includes two configurable policies:
 
 1. Copyleft: This policy checks if any component or code snippet is associated with a copyleft license. If such a
    license is detected, the pull request (PR) is rejected.
@@ -108,18 +107,17 @@ permissions:
   checks: write
 
 jobs:
-  scanoss-analysis:
-    name: SCANOSS Analysis
+   scanoss-code-scan:
+    name: SCANOSS Code Scan
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        id: checkout
         uses: actions/checkout@v4
 
-      - name: Run SCANOSS analysis
-        id: scanoss-scan-action
-        uses: scanoss/actions-scan@main
+      - name: Run SCANOSS Code Scan
+        id: scanoss-code-scan-step
+        uses: scanoss/code-scan-action@main
         with:
           policies: copyleft, undeclared  #NOTE: undeclared policy requires a sbom.json in the project root
           dependencies.enabled: true
@@ -128,8 +126,8 @@ jobs:
 
 
       - name: Print stdout scan command
-        run: echo "${{ steps.scanoss-scan-action.outputs.stdout-scan-command }}"
+        run: echo "${{ steps.scanoss-code-scan-step.outputs.stdout-scan-command }}"
 
       - name: Print Results
-        run: cat "${{ steps.scanoss-scan-action.outputs.result-filepath }}"
+        run: cat "${{ steps.scanoss-code-scan-step.outputs.result-filepath }}"
 ```

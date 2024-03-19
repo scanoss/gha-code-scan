@@ -1,19 +1,21 @@
 {
-  "name": "scanoss-actions-scan",
+  "name": "scanoss-code-scan-action",
   "description": "SCANOSS Action",
   "version": "0.1.0",
-  "author": "",
+  "author": "SCANOSS",
   "private": true,
-  "homepage": "https://github.com/scanoss/actions-scan/",
+  "homepage": "https://github.com/scanoss/code-scan-action/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/scanoss/actions-scan.git"
+    "url": "git+https://github.com/scanoss/code-scan-action.git"
   },
   "bugs": {
-    "url": "https://github.com/scanoss/actions-scan/issues"
+    "url": "https://github.com/scanoss/code-scan-action/issues"
   },
   "keywords": [
     "actions",
+    "code-scan",
+    "code-scan-action",
     "node",
     "setup"
   ],
