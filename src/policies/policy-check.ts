@@ -94,7 +94,7 @@ export abstract class PolicyCheck {
     return await this.finish(summary, text);
   }
 
-  protected async finish(summary: string, text?: string): Promise<void> {
+  async finish(summary: string, text?: string): Promise<void> {
     core.debug(`Finish policy check: ${this.checkName}. (conclusion=${this._conclusion})`);
     this._status = STATUS.FINISHED;
 

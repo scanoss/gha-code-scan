@@ -30,7 +30,7 @@ describe('action', () => {
     setOutputMock = jest.spyOn(core, 'setOutput').mockImplementation();
   });
 
-  it('sets the time output', async () => {
+  it('SCANOSS Scan Action started', async () => {
     // Set the action's inputs as return values from core.getInput()
     getInputMock.mockImplementation((name: string): string => {
       switch (name) {
