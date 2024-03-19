@@ -1,6 +1,7 @@
 import * as github from '@actions/github';
+import * as core from '@actions/core';
 
-import { generatePRSummary } from '../src/services/report.service';
+import { generateJobSummary, generatePRSummary } from '../src/services/report.service';
 
 const tableTest = [
   {
@@ -654,7 +655,7 @@ const tableTest = [
   }
 ];
 
-describe('Test report service', () => {
+describe('Test report service: generatePRSummary', () => {
   beforeEach(() => {
     jest.spyOn(github.context, 'repo', 'get').mockReturnValue({ owner: 'x', repo: 'y' });
     github.context.runId = 0;
@@ -663,8 +664,22 @@ describe('Test report service', () => {
   for (const t of tableTest) {
     it(`${t.name}`, () => {
       const report = generatePRSummary(JSON.parse(t.scannerResults), []);
-      console.log(report);
       expect(report).toEqual(t.output);
+    });
+  }
+});
+
+describe('Test report service: generateJobSummary', () => {
+  beforeEach(() => {
+    jest.spyOn(github.context, 'repo', 'get').mockReturnValue({ owner: 'x', repo: 'y' });
+    jest.spyOn(core.summary, 'write').mockImplementation();
+
+    github.context.runId = 0;
+  });
+
+  for (const t of tableTest) {
+    it(`${t.name}`, async () => {
+      await expect(generateJobSummary(JSON.parse(t.scannerResults), [])).resolves.toEqual(undefined);
     });
   }
 });
