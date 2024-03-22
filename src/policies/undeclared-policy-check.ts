@@ -6,6 +6,13 @@ import * as inputs from '../app.input';
 import { parseSBOM } from '../utils/sbom.utils';
 import { generateTable } from '../utils/markdown.utils';
 
+/**
+ * Verifies that all components identified in scanner results are declared in the project's SBOM.
+ * The run method compares components found by the scanner against those declared in the SBOM.
+ *
+ * It identifies and reports undeclared components, generating a summary and detailed report of the findings.
+ *
+ */
 export class UndeclaredPolicyCheck extends PolicyCheck {
   constructor() {
     super(`${CHECK_NAME}: Undeclared Policy`);

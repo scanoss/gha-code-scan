@@ -15,6 +15,14 @@ export interface Component {
   licenses: License[];
 }
 
+/**
+ * This function groups components by their `purl` and aggregates their licenses,
+ * ensuring that each unique `purl` is represented once with a comprehensive list of licenses.
+ *
+ * @param results - The raw scanner results to be processed of type {@link ScannerResults}
+ * @returns An array of {@link Component} objects, each representing a unique component
+ *          with an aggregated list of licenses.
+ */
 export function getComponents(results: ScannerResults): Component[] {
   const components = new Array<Component>();
 
@@ -76,6 +84,12 @@ export function getComponents(results: ScannerResults): Component[] {
   return unqiqueComponents;
 }
 
+/**
+ * This function generate an array of {@link License } from raw scanner results {@link ScannerResults }
+ *
+ * @param results - The raw scanner results to be processed of type {@link ScannerResults}
+ * @returns An array of {@link License} objects
+ */
 export function getLicenses(results: ScannerResults): License[] {
   const licenses = new Array<License>();
 
