@@ -3,7 +3,7 @@ import { ScannerResults } from '../src/services/result.interfaces';
 import * as github from '@actions/github';
 import { resultsMock } from './results.mock';
 import { UndeclaredPolicyCheck } from '../src/policies/undeclared-policy-check';
-import * as sbom from '../src/utils/sbom.utils';
+import * as sbomUtils from '../src/utils/sbom.utils';
 import { sbomMock } from './sbom.mock';
 
 describe('UndeclaredPolicyCheck', () => {
@@ -24,14 +24,14 @@ describe('UndeclaredPolicyCheck', () => {
   });
 
   it('should pass the policy check when undeclared components are not found', async () => {
-    jest.spyOn(sbom, 'parseSbom').mockImplementation(async _ => Promise.resolve(sbomMock[1]));
+    jest.spyOn(sbomUtils, 'parseSBOM').mockImplementation(async _ => Promise.resolve(sbomMock[1]));
 
     await undeclaredPolicyCheck.run(scannerResults);
     expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Success);
   });
 
   it('should fail the policy check when undeclared components are found', async () => {
-    jest.spyOn(sbom, 'parseSbom').mockImplementation(async _ => Promise.resolve(sbomMock[0]));
+    jest.spyOn(sbomUtils, 'parseSBOM').mockImplementation(async _ => Promise.resolve(sbomMock[0]));
 
     await undeclaredPolicyCheck.run(scannerResults);
     expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);

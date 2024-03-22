@@ -55,12 +55,12 @@ export class ScanService {
     return `docker run -v "${this.options.inputFilepath}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . 
                     --output ${this.options.outputFilepath}  
                     ${this.options.dependenciesEnabled ? `--dependencies` : ''}  
-                    ${await this.detectSbom()} 
+                    ${await this.detectSBOM()} 
                     ${this.options.apiUrl ? `--apiurl ${this.options.apiUrl}` : ''} 
                     ${this.options.apiKey ? `--key ${this.options.apiKey}` : ''}`.replace(/\n/gm, ' ');
   }
 
-  private async detectSbom(): Promise<string> {
+  private async detectSBOM(): Promise<string> {
     if (!this.options.sbomEnabled || !this.options.sbomFilepath) return '';
 
     try {

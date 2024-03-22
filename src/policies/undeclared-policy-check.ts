@@ -3,7 +3,7 @@ import { CHECK_NAME } from '../app.config';
 import { ScannerResults } from '../services/result.interfaces';
 import { Component, getComponents } from '../services/result.service';
 import * as inputs from '../app.input';
-import { parseSbom } from '../utils/sbom.utils';
+import { parseSBOM } from '../utils/sbom.utils';
 import { generateTable } from '../utils/markdown.utils';
 
 export class UndeclaredPolicyCheck extends PolicyCheck {
@@ -17,7 +17,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     const nonDeclaredComponents: Component[] = [];
 
     const comps = getComponents(scannerResults);
-    const sbom = await parseSbom(inputs.SBOM_FILEPATH);
+    const sbom = await parseSBOM(inputs.SBOM_FILEPATH);
 
     comps.forEach(c => {
       if (!sbom.components.some(component => component.purl === c.purl)) {

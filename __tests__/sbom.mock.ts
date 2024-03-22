@@ -1,8 +1,8 @@
-import { Sbom } from '../src/utils/sbom.utils';
+import { SBOM } from '../src/utils/sbom.utils';
 
-export const sbomMock: Sbom[] = [
+export const sbomMock: SBOM[] = [
   {
-    components: [] // empty sbom
+    components: [] // empty SBOM
   },
   {
     components: [
