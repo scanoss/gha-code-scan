@@ -1,13 +1,11 @@
-name: 'SCANOSS GH Action'
+name: 'SCANOSS Code Scan Action'
 description: 'Scan your code from GH Workflow and take action based on detected components'
 author: 'SCANOSS'
 
-# Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
-  icon: 'target'
-  color: 'purple'
+  icon: 'check-circle'
+  color: 'gray-dark'
 
-# Define your inputs here.
 inputs:
   policies:
     description: 'List of policies separated by comma (e.g., copyleft, undeclared)'
@@ -46,8 +44,6 @@ inputs:
     required: false
     default: ${{ github.token }}
 
-
-# Define your outputs here.
 outputs:
   result-filepath:
     description: 'Scanner results filepath'
