@@ -17,15 +17,15 @@ inputs:
     required: false
     default: true
   sbom.enabled:
-    description: 'Enable Sbom Identify'
+    description: 'Enable SBOM Identify'
     required: false
     default: true
   sbom.filepath:
-    description: 'Sbom filepath'
+    description: 'SBOM filepath'
     required: false
     default: 'sbom.json'
   sbom.type:
-    description: 'Sbom type (identify | ignore)'
+    description: 'SBOM type (identify | ignore)'
     required: false
     default: 'identify'
   api.key:
