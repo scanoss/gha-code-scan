@@ -27,6 +27,11 @@ import { PolicyCheck } from './policy-check';
 import { Component, getComponents } from '../services/result.service';
 import { generateTable } from '../utils/markdown.utils';
 
+/**
+ * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
+ * It filters components based on their licenses and looks for those with copyleft obligations.
+ * It then generates a summary and detailed report of the findings.
+ */
 export class CopyleftPolicyCheck extends PolicyCheck {
   constructor() {
     super(`${CHECK_NAME}: Copyleft Policy`);

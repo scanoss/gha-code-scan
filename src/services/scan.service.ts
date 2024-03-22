@@ -40,19 +40,47 @@ export async function uploadResults(): Promise<void> {
 }
 
 export interface Options {
-  sbomType?: string;
+  /**
+   * Whether SBOM ingestion is enabled. Optional.
+   */
   sbomEnabled?: boolean;
+
+  /**
+   * Specifies the SBOM processing type: "identify" or "ignore". Optional.
+   */
+  sbomType?: string;
+
+  /**
+   * Absolute path to the SBOM file. Required if sbomEnabled is set to true.
+   */
   sbomFilepath?: string;
 
+  /**
+   * Enables scanning for dependencies, utilizing scancode internally. Optional.
+   */
   dependenciesEnabled?: boolean;
 
+  /**
+   * Credentials for SCANOSS, enabling unlimited scans. Optional.
+   */
   apiKey?: string;
   apiUrl?: string;
 
+  /**
+   * Absolute path where scan results are saved. Required.
+   */
   outputFilepath: string;
+
+  /**
+   * Absolute path of the folder or file to scan. Required.
+   */
   inputFilepath: string;
 }
 
+/**
+ * `ScanService` is a class that wraps the `scanoss.py` Docker image, providing a simplified interface
+ * for configuring and executing source code scans
+ */
 export class ScanService {
   private options: Options;
   constructor(options?: Options) {
@@ -83,6 +111,18 @@ export class ScanService {
                     ${this.options.apiKey ? `--key ${this.options.apiKey}` : ''}`.replace(/\n/gm, ' ');
   }
 
+  /**
+   * Constructs the command segment for SBOM ingestion based on the current configuration. This method checks if SBOM
+   * ingestion is enabled and verifies the SBOM file's existence before constructing the command.
+   *
+   * @example
+   * // When SBOM ingestion is enabled with a specified SBOM file and type:
+   * // sbomEnabled = true, sbomFilepath = "/src/SBOM.json", sbomType = "identify"
+   * // returns "--identify /src/SBOM.json"
+   *
+   * @returns A command string segment for SBOM ingestion or an empty string if conditions are not met.
+   * @private
+   */
   private async detectSBOM(): Promise<string> {
     if (!this.options.sbomEnabled || !this.options.sbomFilepath) return '';
 
