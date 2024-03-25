@@ -4,6 +4,7 @@
 ![CI](https://github.com/scanoss/code-scan-action/actions/workflows/ci.yml/badge.svg)
 [![Check dist/](https://github.com/scanoss/code-scan-action/actions/workflows/check-dist.yml/badge.svg)](https://github.com/scanoss/scanoss-code-scan-step/actions/workflows/check-dist.yml)
 [![CodeQL](https://github.com/scanoss/code-scan-action/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/scanoss/scanoss-code-scan-step/actions/workflows/codeql-analysis.yml)
+![Coverage](./badges/coverage.svg)
 
 The SCANOSS Code Scan Action enhances your software development process by automatically scanning your code for security
 vulnerabilities and license compliance with configurable policies.
@@ -43,7 +44,7 @@ jobs:
 
       - name: Run SCANOSS Code Scan
         id: scanoss-code-scan-step
-        uses: scanoss/code-scan-action@main
+        uses: scanoss/code-scan-action@v0
 ```
 
 For example workflow runs, check out our
@@ -117,7 +118,7 @@ jobs:
 
       - name: Run SCANOSS Code Scan
         id: scanoss-code-scan-step
-        uses: scanoss/code-scan-action@main
+        uses: scanoss/code-scan-action@v0
         with:
           policies: copyleft, undeclared  #NOTE: undeclared policy requires a sbom.json in the project root
           dependencies.enabled: true

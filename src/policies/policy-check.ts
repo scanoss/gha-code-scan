@@ -121,7 +121,7 @@ export abstract class PolicyCheck {
     core.debug(`Finish policy check: ${this.checkName}. (conclusion=${this._conclusion})`);
     this._status = STATUS.FINISHED;
 
-    const result = await this.octokit.rest.checks.update({
+    await this.octokit.rest.checks.update({
       owner: context.repo.owner,
       repo: context.repo.repo,
       check_run_id: this.checkRunId,

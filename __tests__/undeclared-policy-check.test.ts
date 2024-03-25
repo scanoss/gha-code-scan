@@ -24,14 +24,14 @@ describe('UndeclaredPolicyCheck', () => {
   });
 
   it('should pass the policy check when undeclared components are not found', async () => {
-    jest.spyOn(sbomUtils, 'parseSBOM').mockImplementation(async _ => Promise.resolve(sbomMock[1]));
+    jest.spyOn(sbomUtils, 'parseSBOM').mockImplementation(async () => Promise.resolve(sbomMock[1]));
 
     await undeclaredPolicyCheck.run(scannerResults);
     expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Success);
   });
 
   it('should fail the policy check when undeclared components are found', async () => {
-    jest.spyOn(sbomUtils, 'parseSBOM').mockImplementation(async _ => Promise.resolve(sbomMock[0]));
+    jest.spyOn(sbomUtils, 'parseSBOM').mockImplementation(async () => Promise.resolve(sbomMock[0]));
 
     await undeclaredPolicyCheck.run(scannerResults);
     expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
