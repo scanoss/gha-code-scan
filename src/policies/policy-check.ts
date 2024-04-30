@@ -49,7 +49,7 @@ export enum STATUS {
 export abstract class PolicyCheck {
   private octokit: InstanceType<typeof GitHub>;
 
-  private checkName: string;
+  protected checkName: string;
 
   private checkRunId: number;
 

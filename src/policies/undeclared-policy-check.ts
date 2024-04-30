@@ -26,6 +26,7 @@ import { CHECK_NAME } from '../app.config';
 import { ScannerResults } from '../services/result.interfaces';
 import { Component, getComponents } from '../services/result.service';
 import * as inputs from '../app.input';
+import * as core from '@actions/core';
 import { parseSBOM } from '../utils/sbom.utils';
 import { generateTable } from '../utils/markdown.utils';
 
@@ -45,12 +46,20 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     super.run(scannerResults);
 
     const nonDeclaredComponents: Component[] = [];
+    let declaredComponents: Partial<Component>[] = [];
 
     const comps = getComponents(scannerResults);
-    const sbom = await parseSBOM(inputs.SBOM_FILEPATH);
+
+    // get declared components
+    try {
+      const sbom = await parseSBOM(inputs.SBOM_FILEPATH);
+      declaredComponents = sbom.components || [];
+    } catch (e) {
+      core.info(`Warning on policy check: ${this.checkName}. SBOM file could not be parsed (${inputs.SBOM_FILEPATH})`);
+    }
 
     comps.forEach(c => {
-      if (!sbom.components.some(component => component.purl === c.purl)) {
+      if (!declaredComponents.some(component => component.purl === c.purl)) {
         nonDeclaredComponents.push(c);
       }
     });
