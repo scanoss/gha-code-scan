@@ -1,0 +1,34 @@
+# This workflow was inspirated on https://github.com/actions/checkout/blob/main/.github/workflows/update-main-version.yml
+
+name: Update Main Version
+run-name: Move ${{ github.event.inputs.major_version }} to ${{ github.event.inputs.target }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: The tag or reference to use
+        required: true
+      major_version:
+        type: choice
+        description: The major version to update
+        options:
+          - v0
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+    # Note this update workflow can also be used as a rollback tool.
+    # For that reason, it's best to pin `scanoss/code-scan-action` to a known, stable version.
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Git config
+      run: |
+        git config user.name "scanoss-bot[bot]"
+        git config user.email "no-reply@scanoss.com"
+    - name: Tag new target
+      run: git tag -f ${{ github.event.inputs.major_version }} ${{ github.event.inputs.target }}
+    - name: Push new tag
+      run: git push origin ${{ github.event.inputs.major_version }} --force
