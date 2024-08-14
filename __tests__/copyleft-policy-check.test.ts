@@ -29,4 +29,17 @@ describe('CopyleftPolicyCheck', () => {
     await policyCheck.run(scannerResults);
     expect(policyCheck.conclusion).toEqual(CONCLUSION.Neutral);
   });
+
+  it('should fail the policy check when copyleft dependencies are found', async () => {
+    scannerResults = JSON.parse(resultsMock[4].content);
+    await policyCheck.run(scannerResults);
+    // NEUTRAL is the same as failure in this context.  See inputs.POLICIES_HALT_ON_FAILURE. (Default FALSE)
+    expect(policyCheck.conclusion).toEqual(CONCLUSION.Neutral);
+  });
+
+  it('should pass the copyleft policy check', async () => {
+    scannerResults = JSON.parse(resultsMock[5].content);
+    await policyCheck.run(scannerResults);
+    expect(policyCheck.conclusion).toEqual(CONCLUSION.Success);
+  });
 });

@@ -33,6 +33,8 @@ import { generateTable } from '../utils/markdown.utils';
  * It then generates a summary and detailed report of the findings.
  */
 export class CopyleftPolicyCheck extends PolicyCheck {
+
+  private copyleftLicenses = new Set<string>(["GPL-1.0-only","GPL-2.0-only","GPL-3.0-only","AGPL-3.0-only","Sleepycat","Watcom-1.0","GFDL-1.1-only","GFDL-1.2-only","GFDL-1.3-only","LGPL-2.1-only","LGPL-3.0-only","MPL-1.1","MPL-2.0","EPL-1.0","EPL-2.0","CDDL-1.0","CDDL-1.1","CECILL-2.1","Artistic-1.0","Artistic-2.0","CC-BY-SA-4.0"].map(l=>l.toLowerCase()));
   constructor() {
     super(`${CHECK_NAME}: Copyleft Policy`);
   }
@@ -43,8 +45,9 @@ export class CopyleftPolicyCheck extends PolicyCheck {
 
     // Filter copyleft components
     const componentsWithCopyleft = components.filter(component =>
-      component.licenses.some(license => !!license.copyleft)
+      component.licenses.some(license => !!license.copyleft || this.copyleftLicenses.has(license.spdxid.trim().toLowerCase()))
     );
+
 
     const summary = this.getSummary(componentsWithCopyleft);
     const details = this.getDetails(componentsWithCopyleft);
