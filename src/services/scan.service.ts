@@ -103,7 +103,7 @@ export class ScanService {
   }
 
   private async buildCommand(): Promise<string> {
-    return `docker run -v "${this.options.inputFilepath}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.9.0 scan . 
+    return `docker run -v "${this.options.inputFilepath}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.13.0 scan . 
                     --output ${this.options.outputFilepath}  
                     ${this.options.dependenciesEnabled ? `--dependencies` : ''}  
                     ${await this.detectSBOM()} 
