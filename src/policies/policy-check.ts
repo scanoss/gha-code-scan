@@ -22,11 +22,14 @@
  */
 
 import { context, getOctokit } from '@actions/github';
+import { promises as fs } from 'fs';
 import * as core from '@actions/core';
 import { getSHA } from '../utils/github.utils';
 import { ScannerResults } from '../services/result.interfaces';
 import { GitHub } from '@actions/github/lib/utils';
 import * as inputs from '../app.input';
+import { DefaultArtifactClient, UploadArtifactResponse } from '@actions/artifact';
+import path from 'path';
 
 export enum CONCLUSION {
   ActionRequired = 'action_required',
@@ -68,6 +71,10 @@ export abstract class PolicyCheck {
     this._conclusion = CONCLUSION.Neutral;
     this.checkRunId = -1;
   }
+
+  abstract artifactPolicyFileName(): string;
+
+  abstract getPolicyName(): string;
 
   async start(): Promise<any> {
     const result = await this.octokit.rest.checks.create({
@@ -122,11 +129,21 @@ export abstract class PolicyCheck {
   async finish(summary: string, text?: string): Promise<void> {
     core.debug(`Finish policy check: ${this.checkName}. (conclusion=${this._conclusion})`);
     this._status = STATUS.FINISHED;
-
+    let artifactId = null;
+    if (text) {
+      const { id } = await this.uploadArtifact(text);
+      artifactId = id;
+    }
     if (text && text.length > this.MAX_GH_API_CONTENT_SIZE) {
       core.warning(`Details of ${text.length} surpass limit of ${this.MAX_GH_API_CONTENT_SIZE}`);
       core.info(`Policy check results: ${text}`);
-      text = 'Policy check details omitted from GitHub UI due to length. See console logs for details.';
+
+      text =
+        `Policy check details omitted from GitHub UI due to length.` +
+        `See console logs for details or download the ` +
+        `[${this.getPolicyName()} Result](${context.serverUrl}/` +
+        `${context.repo.owner}/${context.repo.repo}/actions/runs/` +
+        `${context.runId}/artifacts/${artifactId})`;
     }
 
     await this.updateCheck(summary, text);
@@ -145,5 +162,15 @@ export abstract class PolicyCheck {
         text
       }
     });
+  }
+
+  async uploadArtifact(file: string): Promise<UploadArtifactResponse> {
+    await fs.writeFile(this.artifactPolicyFileName(), file);
+    const artifact = new DefaultArtifactClient();
+    return await artifact.uploadArtifact(
+      path.basename(this.artifactPolicyFileName()),
+      [this.artifactPolicyFileName()],
+      path.dirname(this.artifactPolicyFileName())
+    );
   }
 }

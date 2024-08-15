@@ -38,8 +38,9 @@ import { generateTable } from '../utils/markdown.utils';
  *
  */
 export class UndeclaredPolicyCheck extends PolicyCheck {
+  static policyName = 'Undeclared Policy';
   constructor() {
-    super(`${CHECK_NAME}: Undeclared Policy`);
+    super(`${CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`);
   }
 
   async run(scannerResults: ScannerResults): Promise<void> {
@@ -101,5 +102,13 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     content += `#### Add the following snippet into your \`sbom.json\` file \n \`\`\`json \n ${snippet} \n \`\`\``;
 
     return content;
+  }
+
+  artifactPolicyFileName(): string {
+    return 'policy-check-undeclared-results.md';
+  }
+
+  getPolicyName(): string {
+    return UndeclaredPolicyCheck.policyName;
   }
 }

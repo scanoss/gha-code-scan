@@ -6,15 +6,32 @@ import { UndeclaredPolicyCheck } from '../src/policies/undeclared-policy-check';
 import * as sbomUtils from '../src/utils/sbom.utils';
 import { sbomMock } from './sbom.mock';
 
+// Mock the @actions/github module
+jest.mock('@actions/github', () => ({
+  context: {
+    repo: { owner: 'mock-owner', repo: 'mock-repo' },
+    serverUrl: 'github',
+    runId: 12345678
+    // Add other properties as needed
+  },
+  getOctokit: jest.fn().mockReturnValue({
+    rest: {
+      checks: {
+        update: jest.fn().mockResolvedValue({})
+      }
+    }
+  })
+}));
+
 describe('UndeclaredPolicyCheck', () => {
   let scannerResults: ScannerResults;
   let undeclaredPolicyCheck: UndeclaredPolicyCheck;
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    jest.spyOn(github, 'getOctokit').mockImplementation();
-
+    jest.spyOn(PolicyCheck.prototype, 'uploadArtifact').mockImplementation(async () => {
+      return Promise.resolve({ id: 123456 });
+    });
     jest.spyOn(PolicyCheck.prototype, 'run').mockImplementation();
     jest.spyOn(PolicyCheck.prototype, 'updateCheck').mockImplementation();
 
