@@ -137,7 +137,13 @@ export abstract class PolicyCheck {
     if (text && text.length > this.MAX_GH_API_CONTENT_SIZE) {
       core.warning(`Details of ${text.length} surpass limit of ${this.MAX_GH_API_CONTENT_SIZE}`);
       core.info(`Policy check results: ${text}`);
-      text = `Policy check details omitted from GitHub UI due to length. See console logs for details or download the [${this.getPolicyName()} Result](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${artifactId})`;
+
+      text =
+        `Policy check details omitted from GitHub UI due to length.` +
+        `See console logs for details or download the ` +
+        `[${this.getPolicyName()} Result](${context.serverUrl}/` +
+        `${context.repo.owner}/${context.repo.repo}/actions/runs/` +
+        `${context.runId}/artifacts/${artifactId})`;
     }
 
     await this.updateCheck(summary, text);
