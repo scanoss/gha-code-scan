@@ -33,6 +33,7 @@ import { generateTable } from '../utils/markdown.utils';
  * It then generates a summary and detailed report of the findings.
  */
 export class CopyleftPolicyCheck extends PolicyCheck {
+  static policyName = 'Copyleft Policy';
   private copyleftLicenses = new Set<string>(
     [
       'GPL-1.0-only',
@@ -60,7 +61,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
   );
 
   constructor() {
-    super(`${CHECK_NAME}: Copyleft Policy`);
+    super(`${CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`);
   }
 
   async run(scannerResults: ScannerResults): Promise<void> {
@@ -102,11 +103,14 @@ export class CopyleftPolicyCheck extends PolicyCheck {
         rows.push([component.purl, component.version, license.spdxid, `${license.url || ''}`, copyleftIcon]);
       });
     });
-
-    return generateTable(headers, rows);
+    return `### Copyleft licenses \n ${generateTable(headers, rows)}`;
   }
 
   artifactPolicyFileName(): string {
     return 'policy-check-copyleft-results.md';
+  }
+
+  getPolicyName(): string {
+    return CopyleftPolicyCheck.policyName;
   }
 }
