@@ -121,6 +121,14 @@ export abstract class PolicyCheck {
     core.debug(`Finish policy check: ${this.checkName}. (conclusion=${this._conclusion})`);
     this._status = STATUS.FINISHED;
 
+    const maxLength = 65_534;
+    if (text && text.length > maxLength) {
+      console.log("Max lenght exeeded", text.length);
+      core.warning(`Details of ${text.length} surpass limit of ${maxLength}`);
+      core.info(`Policy check results: ${text}`)
+      text = 'Policy check details omitted from GitHub UI due to length. See console logs for details.';    
+    }
+
     await this.octokit.rest.checks.update({
       owner: context.repo.owner,
       repo: context.repo.repo,

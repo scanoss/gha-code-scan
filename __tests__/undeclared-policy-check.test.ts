@@ -36,4 +36,10 @@ describe('UndeclaredPolicyCheck', () => {
     await undeclaredPolicyCheck.run(scannerResults);
     expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
   });
+
+  it('should exeed the max limit', async () => {
+    scannerResults = JSON.parse(resultsMock[5].content);
+    await undeclaredPolicyCheck.run(scannerResults);
+    expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Success);
+  });
 });
