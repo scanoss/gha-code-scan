@@ -41,7 +41,7 @@ describe('UndeclaredPolicyCheck', () => {
     jest.spyOn(sbomUtils, 'parseSBOM').mockImplementation(async () => Promise.resolve(sbomMock[0]));
     scannerResults = JSON.parse(resultsMock[6].content);
     await undeclaredPolicyCheck.run(scannerResults);
-    // Neutral = Failure
+    // Neutral = Failure on test environment
     expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
   });
 });
