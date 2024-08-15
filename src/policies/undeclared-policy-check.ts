@@ -102,4 +102,8 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
 
     return content;
   }
+
+  artifactPolicyFileName(): string {
+    return 'policy-check-undeclared-results.md';
+  }
 }

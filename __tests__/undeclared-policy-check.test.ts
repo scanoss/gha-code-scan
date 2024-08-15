@@ -14,7 +14,7 @@ describe('UndeclaredPolicyCheck', () => {
     jest.clearAllMocks();
 
     jest.spyOn(github, 'getOctokit').mockImplementation();
-
+    jest.spyOn(PolicyCheck.prototype, 'uploadArtifact').mockImplementation();
     jest.spyOn(PolicyCheck.prototype, 'run').mockImplementation();
     jest.spyOn(PolicyCheck.prototype, 'updateCheck').mockImplementation();
 

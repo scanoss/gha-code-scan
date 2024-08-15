@@ -105,4 +105,8 @@ export class CopyleftPolicyCheck extends PolicyCheck {
 
     return generateTable(headers, rows);
   }
+
+  artifactPolicyFileName(): string {
+    return 'policy-check-copyleft-results.md';
+  }
 }
