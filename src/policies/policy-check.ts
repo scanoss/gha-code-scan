@@ -47,6 +47,8 @@ export enum STATUS {
 }
 
 export abstract class PolicyCheck {
+  private readonly MAX_GH_API_CONTENT_SIZE = 65534;
+
   private octokit: InstanceType<typeof GitHub>;
 
   protected checkName: string;
@@ -114,13 +116,23 @@ export abstract class PolicyCheck {
   protected async reject(summary: string, text?: string): Promise<void> {
     if (inputs.POLICIES_HALT_ON_FAILURE) this._conclusion = CONCLUSION.Failure;
     else this._conclusion = CONCLUSION.Neutral;
-    return await this.finish(summary, text);
+    await this.finish(summary, text);
   }
 
   async finish(summary: string, text?: string): Promise<void> {
     core.debug(`Finish policy check: ${this.checkName}. (conclusion=${this._conclusion})`);
     this._status = STATUS.FINISHED;
 
+    if (text && text.length > this.MAX_GH_API_CONTENT_SIZE) {
+      core.warning(`Details of ${text.length} surpass limit of ${this.MAX_GH_API_CONTENT_SIZE}`);
+      core.info(`Policy check results: ${text}`);
+      text = 'Policy check details omitted from GitHub UI due to length. See console logs for details.';
+    }
+
+    await this.updateCheck(summary, text);
+  }
+
+  async updateCheck(summary: string, text?: string): Promise<void> {
     await this.octokit.rest.checks.update({
       owner: context.repo.owner,
       repo: context.repo.repo,

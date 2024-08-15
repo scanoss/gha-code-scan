@@ -16,7 +16,7 @@ describe('UndeclaredPolicyCheck', () => {
     jest.spyOn(github, 'getOctokit').mockImplementation();
 
     jest.spyOn(PolicyCheck.prototype, 'run').mockImplementation();
-    jest.spyOn(PolicyCheck.prototype, 'finish').mockImplementation();
+    jest.spyOn(PolicyCheck.prototype, 'updateCheck').mockImplementation();
 
     scannerResults = JSON.parse(resultsMock[3].content);
 
@@ -34,6 +34,14 @@ describe('UndeclaredPolicyCheck', () => {
     jest.spyOn(sbomUtils, 'parseSBOM').mockImplementation(async () => Promise.resolve(sbomMock[0]));
 
     await undeclaredPolicyCheck.run(scannerResults);
+    expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
+  });
+
+  it('should exceeded the max limit', async () => {
+    jest.spyOn(sbomUtils, 'parseSBOM').mockImplementation(async () => Promise.resolve(sbomMock[0]));
+    scannerResults = JSON.parse(resultsMock[6].content);
+    await undeclaredPolicyCheck.run(scannerResults);
+    // Neutral = Failure on test environment
     expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
   });
 });

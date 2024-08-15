@@ -68,9 +68,9 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     const details = this.getDetails(nonDeclaredComponents);
 
     if (nonDeclaredComponents.length === 0) {
-      this.success(summary, details);
+      return this.success(summary, details);
     } else {
-      this.reject(summary, details);
+      return this.reject(summary, details);
     }
   }
 
