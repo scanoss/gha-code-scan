@@ -27,6 +27,7 @@ import * as core from '@actions/core';
 import { CONCLUSION, PolicyCheck } from '../policies/policy-check';
 import { generateTable } from '../utils/markdown.utils';
 import { context } from '@actions/github';
+import { getOSADL } from '../utils/license.utils';
 
 export function generatePRSummary(scannerResults: ScannerResults, policies: PolicyCheck[]): string {
   const components = getComponents(scannerResults);
@@ -82,7 +83,7 @@ export async function generateJobSummary(scannerResults: ScannerResults, policie
 
     items.forEach(l => {
       const copyleftIcon = l.copyleft ? ':x:' : ' ';
-      ROWS.push([l.spdxid, copyleftIcon, `${l.url || ''}`]);
+      ROWS.push([l.spdxid, copyleftIcon, `${getOSADL(l.spdxid) || ''}`]);
     });
     return generateTable(HEADERS, ROWS);
   };
