@@ -1,6 +1,5 @@
 import { CONCLUSION, PolicyCheck } from '../src/policies/policy-check';
 import { ScannerResults } from '../src/services/result.interfaces';
-import * as github from '@actions/github';
 import { resultsMock } from './results.mock';
 import { UndeclaredPolicyCheck } from '../src/policies/undeclared-policy-check';
 import * as sbomUtils from '../src/utils/sbom.utils';

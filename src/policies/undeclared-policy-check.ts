@@ -66,7 +66,12 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     });
 
     const summary = this.getSummary(nonDeclaredComponents);
-    const details = this.getDetails(nonDeclaredComponents);
+    let details = this.getDetails(nonDeclaredComponents);
+
+    if (details) {
+      const { id } = await this.uploadArtifact(details);
+      if (id) details = this.concatPolicyArtifactURLToPolicyCheck(details, id);
+    }
 
     if (nonDeclaredComponents.length === 0) {
       return this.success(summary, details);

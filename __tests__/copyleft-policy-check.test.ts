@@ -1,8 +1,24 @@
 import { CopyleftPolicyCheck } from '../src/policies/copyleft-policy-check';
 import { CONCLUSION, PolicyCheck } from '../src/policies/policy-check';
 import { ScannerResults } from '../src/services/result.interfaces';
-import * as github from '@actions/github';
 import { resultsMock } from './results.mock';
+
+// Mock the @actions/github module
+jest.mock('@actions/github', () => ({
+  context: {
+    repo: { owner: 'mock-owner', repo: 'mock-repo' },
+    serverUrl: 'github',
+    runId: 12345678
+    // Add other properties as needed
+  },
+  getOctokit: jest.fn().mockReturnValue({
+    rest: {
+      checks: {
+        update: jest.fn().mockResolvedValue({})
+      }
+    }
+  })
+}));
 
 describe('CopyleftPolicyCheck', () => {
   let scannerResults: ScannerResults;
@@ -10,9 +26,9 @@ describe('CopyleftPolicyCheck', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    jest.spyOn(github, 'getOctokit').mockImplementation();
-    jest.spyOn(PolicyCheck.prototype, 'uploadArtifact').mockImplementation();
+    jest.spyOn(PolicyCheck.prototype, 'uploadArtifact').mockImplementation(async () => {
+      return Promise.resolve({ id: 123456 });
+    });
     jest.spyOn(PolicyCheck.prototype, 'run').mockImplementation();
     jest.spyOn(PolicyCheck.prototype, 'finish').mockImplementation();
 

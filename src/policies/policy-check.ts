@@ -129,22 +129,6 @@ export abstract class PolicyCheck {
   async finish(summary: string, text?: string): Promise<void> {
     core.debug(`Finish policy check: ${this.checkName}. (conclusion=${this._conclusion})`);
     this._status = STATUS.FINISHED;
-    let artifactId = null;
-    if (text) {
-      const { id } = await this.uploadArtifact(text);
-      artifactId = id;
-    }
-    if (text && text.length > this.MAX_GH_API_CONTENT_SIZE) {
-      core.warning(`Details of ${text.length} surpass limit of ${this.MAX_GH_API_CONTENT_SIZE}`);
-      core.info(`Policy check results: ${text}`);
-
-      text =
-        `Policy check details omitted from GitHub UI due to length.` +
-        `See console logs for details or download the ` +
-        `[${this.getPolicyName()} Result](${context.serverUrl}/` +
-        `${context.repo.owner}/${context.repo.repo}/actions/runs/` +
-        `${context.runId}/artifacts/${artifactId})`;
-    }
 
     await this.updateCheck(summary, text);
   }
@@ -162,6 +146,34 @@ export abstract class PolicyCheck {
         text
       }
     });
+  }
+
+  protected exceedMaxGiHubApiLimit(text: string): boolean {
+    return text.length > this.MAX_GH_API_CONTENT_SIZE;
+  }
+
+  protected concatPolicyArtifactURLToPolicyCheck(details: string, artifactId: number): string {
+    const link =
+      `\n\nDownload the ` +
+      `[${this.getPolicyName()} Result](${context.serverUrl}/` +
+      `${context.repo.owner}/${context.repo.repo}/actions/runs/` +
+      `${context.runId}/artifacts/${artifactId})`;
+
+    let text = details + link;
+
+    if (this.exceedMaxGiHubApiLimit(text)) {
+      //core.warning(`Details of ${text.length} surpass limit of ${this.MAX_GH_API_CONTENT_SIZE}`);
+      core.info(`Policy check results: ${details}`);
+
+      text =
+        `Policy check details omitted from GitHub UI due to length.` +
+        `See console logs for details or download the ` +
+        `[${this.getPolicyName()} Result](${context.serverUrl}/` +
+        `${context.repo.owner}/${context.repo.repo}/actions/runs/` +
+        `${context.runId}/artifacts/${artifactId})`;
+    }
+
+    return text;
   }
 
   async uploadArtifact(file: string): Promise<UploadArtifactResponse> {
