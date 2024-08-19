@@ -26,6 +26,8 @@ import { CHECK_NAME } from '../app.config';
 import { PolicyCheck } from './policy-check';
 import { Component, getComponents } from '../services/result.service';
 import { generateTable } from '../utils/markdown.utils';
+import * as core from '@actions/core';
+import { context } from '@actions/github';
 
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
@@ -76,7 +78,12 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     );
 
     const summary = this.getSummary(componentsWithCopyleft);
-    const details = this.getDetails(componentsWithCopyleft);
+    let details = this.getDetails(componentsWithCopyleft);
+
+    if (details) {
+      const { id } = await this.uploadArtifact(details);
+      if (id) details = this.concatPolicyArtifactURLToPolicyCheck(details, id);
+    }
 
     if (componentsWithCopyleft.length === 0) {
       return this.success(summary, details);
