@@ -28,7 +28,7 @@ import { Component, getComponents } from '../services/result.service';
 import { generateTable } from '../utils/markdown.utils';
 import * as core from '@actions/core';
 import { context } from '@actions/github';
-import { getOSADL } from '../utils/license.utils';
+import { licenseUtil } from '../utils/license.utils';
 
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
@@ -74,7 +74,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     // Filter copyleft components
     const componentsWithCopyleft = components.filter(component =>
       component.licenses.some(
-        license => !!license.copyleft || this.copyleftLicenses.has(license.spdxid.trim().toLowerCase())
+        license => !!license.copyleft || licenseUtil.isCopyLeft(license.spdxid.trim().toLowerCase())
       )
     );
 
@@ -107,12 +107,12 @@ export class CopyleftPolicyCheck extends PolicyCheck {
 
     components.forEach(component => {
       component.licenses.forEach(license => {
-        const copyleftIcon = license.copyleft ? ':x:' : ' ';
+        const copyleftIcon = licenseUtil.isCopyLeft(license.spdxid?.trim().toLowerCase()) ? ':x:' : ' ';
         rows.push([
           component.purl,
           component.version,
           license.spdxid,
-          `${getOSADL(license.spdxid) || ''}`,
+          `${licenseUtil.getOSADL(license?.spdxid) || ''}`,
           copyleftIcon
         ]);
       });

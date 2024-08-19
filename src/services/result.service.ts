@@ -22,7 +22,7 @@
  */
 
 import { ComponentID, DependencyComponent, ScannerComponent, ScannerResults } from './result.interfaces';
-import { getOSADL } from '../utils/license.utils';
+import { licenseUtil } from '../utils/license.utils';
 
 //TODO: Move all functions to a class named ResultService that produces an object { licenses: []; compoments: []; dependencies: []; vulns: [];}
 
@@ -58,7 +58,7 @@ export function getComponents(results: ScannerResults): Component[] {
           version: (c as ScannerComponent).version,
           licenses: (c as ScannerComponent).licenses.map(l => ({
             spdxid: l.name,
-            copyleft: !l.copyleft ? null : l.copyleft === 'yes' ? true : false,
+            copyleft: licenseUtil.isCopyLeft(l.name?.trim().toLowerCase()),
             url: l?.url ? l.url : null,
             count: 1
           }))
@@ -72,7 +72,12 @@ export function getComponents(results: ScannerResults): Component[] {
             purl: d.purl,
             version: d.version,
             licenses: d.licenses
-              .map(l => ({ spdxid: l.spdx_id, copyleft: null, url: null, count: 1 }))
+              .map(l => ({
+                spdxid: l.spdx_id,
+                copyleft: licenseUtil.isCopyLeft(l.spdx_id?.trim().toLowerCase()),
+                url: null,
+                count: 1
+              }))
               .filter(l => l.spdxid)
           });
         }
@@ -123,8 +128,8 @@ export function getLicenses(results: ScannerResults): License[] {
         for (const l of (c as ScannerComponent).licenses) {
           licenses.push({
             spdxid: l.name,
-            copyleft: !l.copyleft ? null : l.copyleft === 'yes' ? true : false,
-            url: getOSADL(l.name),
+            copyleft: licenseUtil.isCopyLeft(l.name.trim().toLowerCase()),
+            url: licenseUtil.getOSADL(l?.name),
             count: 1
           });
         }
@@ -135,7 +140,12 @@ export function getLicenses(results: ScannerResults): License[] {
         for (const d of dependencies) {
           for (const l of d.licenses) {
             if (!l.spdx_id) continue;
-            licenses.push({ spdxid: l.spdx_id, copyleft: null, url: getOSADL(l.spdx_id), count: 1 });
+            licenses.push({
+              spdxid: l.spdx_id,
+              copyleft: licenseUtil.isCopyLeft(l.spdx_id?.trim().toLowerCase()),
+              url: licenseUtil.getOSADL(l?.spdx_id),
+              count: 1
+            });
           }
         }
       }
