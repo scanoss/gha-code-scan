@@ -26,8 +26,7 @@ import { CHECK_NAME } from '../app.config';
 import { PolicyCheck } from './policy-check';
 import { Component, getComponents } from '../services/result.service';
 import { generateTable } from '../utils/markdown.utils';
-import * as core from '@actions/core';
-import { context } from '@actions/github';
+import { licenseUtil } from '../utils/license.utils';
 
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
@@ -73,7 +72,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     // Filter copyleft components
     const componentsWithCopyleft = components.filter(component =>
       component.licenses.some(
-        license => !!license.copyleft || this.copyleftLicenses.has(license.spdxid.trim().toLowerCase())
+        license => !!license.copyleft || licenseUtil.isCopyLeft(license.spdxid.trim().toLowerCase())
       )
     );
 
@@ -102,15 +101,22 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     if (components.length === 0) return undefined;
 
     const headers = ['Component', 'Version', 'License', 'URL', 'Copyleft'];
+    const centeredColumns = [1, 4];
     const rows: string[][] = [];
 
     components.forEach(component => {
       component.licenses.forEach(license => {
-        const copyleftIcon = license.copyleft ? ':x:' : ' ';
-        rows.push([component.purl, component.version, license.spdxid, `${license.url || ''}`, copyleftIcon]);
+        const copyleftIcon = licenseUtil.isCopyLeft(license.spdxid?.trim().toLowerCase()) ? 'YES' : 'NO';
+        rows.push([
+          component.purl,
+          component.version,
+          license.spdxid,
+          `${licenseUtil.getOSADL(license?.spdxid) || ''}`,
+          copyleftIcon
+        ]);
       });
     });
-    return `### Copyleft licenses \n ${generateTable(headers, rows)}`;
+    return `### Copyleft licenses \n ${generateTable(headers, rows, centeredColumns)}`;
   }
 
   artifactPolicyFileName(): string {

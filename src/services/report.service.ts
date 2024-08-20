@@ -27,6 +27,7 @@ import * as core from '@actions/core';
 import { CONCLUSION, PolicyCheck } from '../policies/policy-check';
 import { generateTable } from '../utils/markdown.utils';
 import { context } from '@actions/github';
+import { licenseUtil } from '../utils/license.utils';
 
 export function generatePRSummary(scannerResults: ScannerResults, policies: PolicyCheck[]): string {
   const components = getComponents(scannerResults);
@@ -78,13 +79,14 @@ export async function generateJobSummary(scannerResults: ScannerResults, policie
 
   const LicensesTable = (items: License[]): string => {
     const HEADERS: string[] = ['License', 'Copyleft', 'URL'];
+    const centeredColumns = [1];
     const ROWS: string[][] = [];
 
     items.forEach(l => {
-      const copyleftIcon = l.copyleft ? ':x:' : ' ';
-      ROWS.push([l.spdxid, copyleftIcon, `${l.url || ''}`]);
+      const copyleftIcon = l.copyleft ? 'YES' : 'NO';
+      ROWS.push([l.spdxid, copyleftIcon, `${licenseUtil.getOSADL(l?.spdxid) || ''}`]);
     });
-    return generateTable(HEADERS, ROWS);
+    return generateTable(HEADERS, ROWS, centeredColumns);
   };
 
   const PoliciesTable = (items: PolicyCheck[]): string => {
