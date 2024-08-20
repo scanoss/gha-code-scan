@@ -106,14 +106,16 @@ export class CopyleftPolicyCheck extends PolicyCheck {
 
     components.forEach(component => {
       component.licenses.forEach(license => {
-        const copyleftIcon = licenseUtil.isCopyLeft(license.spdxid?.trim().toLowerCase()) ? 'YES' : 'NO';
-        rows.push([
-          component.purl,
-          component.version,
-          license.spdxid,
-          `${licenseUtil.getOSADL(license?.spdxid) || ''}`,
-          copyleftIcon
-        ]);
+        if (licenseUtil.isCopyLeft(license.spdxid?.trim().toLowerCase())) {
+          const copyleftIcon = licenseUtil.isCopyLeft(license.spdxid?.trim().toLowerCase()) ? 'YES' : 'NO';
+          rows.push([
+            component.purl,
+            component.version,
+            license.spdxid,
+            `${licenseUtil.getOSADL(license?.spdxid) || ''}`,
+            copyleftIcon
+          ]);
+        }
       });
     });
     return `### Copyleft licenses \n ${generateTable(headers, rows, centeredColumns)}`;

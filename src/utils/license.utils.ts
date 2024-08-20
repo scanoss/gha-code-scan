@@ -1,3 +1,6 @@
+import * as inputs from '../app.input';
+import * as core from '@actions/core';
+
 export class LicenseUtil {
   private BASE_OSADL_URL = 'https://spdx.org/licenses';
   private HTML = 'html';
@@ -34,7 +37,27 @@ export class LicenseUtil {
   private copyLeftLicenses = new Set<string>();
 
   private init(): void {
+    if (inputs.COPYLEFT_LICENSE_EXPLICIT) {
+      const explicitCopyleftLicenses = inputs.COPYLEFT_LICENSE_EXPLICIT.split(',').map(pn => pn.trim().toLowerCase());
+      core.debug(`Explicit licenses: ${explicitCopyleftLicenses}`);
+      this.copyLeftLicenses = new Set<string>(explicitCopyleftLicenses);
+      return;
+    }
+
+    core.debug(`Explicit licenses not defined, setting default licenses...`);
     this.copyLeftLicenses = this.defaultCopyleftLicenses;
+
+    if (inputs.COPYLEFT_LICENSE_INCLUDE) {
+      const includedCopyleftLicenses = inputs.COPYLEFT_LICENSE_INCLUDE.split(',').map(pn => pn.trim());
+      core.debug(`Included copyleft licenses: ${includedCopyleftLicenses}`);
+      includedCopyleftLicenses.forEach(l => this.copyLeftLicenses.add(l.toLowerCase()));
+    }
+
+    if (inputs.COPYLEFT_LICENSE_EXCLUDE) {
+      const excludedCopyleftLicenses = inputs.COPYLEFT_LICENSE_EXCLUDE.split(',').map(pn => pn.trim());
+      core.debug(`Excluded copyleft licenses: ${excludedCopyleftLicenses}`);
+      excludedCopyleftLicenses.forEach(l => this.copyLeftLicenses.delete(l.toLowerCase()));
+    }
   }
 
   isCopyLeft(spdxid: string): boolean {

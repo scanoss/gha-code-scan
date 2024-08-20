@@ -43,6 +43,15 @@ inputs:
     description: 'Your GitHub token'
     required: false
     default: ${{ github.token }}
+  licenses.copyleft.include:
+    description: 'List of Copyleft licenses to append to the default list. Provide licenses as a comma-separated list.'
+    required: false
+  licenses.copyleft.exclude:
+    description: 'List of Copyleft licenses to remove from default list. Provide licenses as a comma-separated list.'
+    required: false
+  licenses.copyleft.explicit:
+    description: 'Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.'
+    required: false
 
 outputs:
   result-filepath:
