@@ -21,12 +21,24 @@
    THE SOFTWARE.
  */
 
-export const generateTable = (headers: string[], rows: string[][]): string => {
+export const generateTable = (headers: string[], rows: string[][], centeredColumns?: number[]): string => {
   const COL_SEP = ' | ';
+  const centeredColumnMapper: Set<number> = new Set<number>();
+  if (centeredColumns) centeredColumns.forEach(c => centeredColumnMapper.add(c));
+
+  const rowSeparator =
+    COL_SEP +
+    headers
+      .map((header, index) => {
+        if (!centeredColumns) return '-';
+        return centeredColumnMapper.has(index) ? ':-:' : '-';
+      })
+      .join(COL_SEP) +
+    COL_SEP;
 
   return `
   ${COL_SEP} ${headers.join(COL_SEP)} ${COL_SEP}                                     
-  ${COL_SEP + new Array(headers.length).fill('-').join(COL_SEP) + COL_SEP}      
+  ${rowSeparator}      
   ${rows.map(row => COL_SEP + row.join(COL_SEP) + COL_SEP).join('\n')}       
   `;
 };

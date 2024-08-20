@@ -26,8 +26,6 @@ import { CHECK_NAME } from '../app.config';
 import { PolicyCheck } from './policy-check';
 import { Component, getComponents } from '../services/result.service';
 import { generateTable } from '../utils/markdown.utils';
-import * as core from '@actions/core';
-import { context } from '@actions/github';
 import { licenseUtil } from '../utils/license.utils';
 
 /**
@@ -103,11 +101,12 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     if (components.length === 0) return undefined;
 
     const headers = ['Component', 'Version', 'License', 'URL', 'Copyleft'];
+    const centeredColumns = [1, 4];
     const rows: string[][] = [];
 
     components.forEach(component => {
       component.licenses.forEach(license => {
-        const copyleftIcon = licenseUtil.isCopyLeft(license.spdxid?.trim().toLowerCase()) ? ':x:' : ' ';
+        const copyleftIcon = licenseUtil.isCopyLeft(license.spdxid?.trim().toLowerCase()) ? 'YES' : 'NO';
         rows.push([
           component.purl,
           component.version,
@@ -117,7 +116,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
         ]);
       });
     });
-    return `### Copyleft licenses \n ${generateTable(headers, rows)}`;
+    return `### Copyleft licenses \n ${generateTable(headers, rows, centeredColumns)}`;
   }
 
   artifactPolicyFileName(): string {

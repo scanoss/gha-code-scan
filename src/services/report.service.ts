@@ -79,13 +79,14 @@ export async function generateJobSummary(scannerResults: ScannerResults, policie
 
   const LicensesTable = (items: License[]): string => {
     const HEADERS: string[] = ['License', 'Copyleft', 'URL'];
+    const centeredColumns = [1];
     const ROWS: string[][] = [];
 
     items.forEach(l => {
-      const copyleftIcon = l.copyleft ? ':x:' : ' ';
+      const copyleftIcon = l.copyleft ? 'YES' : 'NO';
       ROWS.push([l.spdxid, copyleftIcon, `${licenseUtil.getOSADL(l?.spdxid) || ''}`]);
     });
-    return generateTable(HEADERS, ROWS);
+    return generateTable(HEADERS, ROWS, centeredColumns);
   };
 
   const PoliciesTable = (items: PolicyCheck[]): string => {
