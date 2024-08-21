@@ -65,7 +65,7 @@ For example workflow runs, check out our
 | api.key                    | SCANOSS API Key                                                                                      | Optional     | -                                   |
 | licenses.copyleft.include  | List of Copyleft licenses to append to the default list. Provide licenses as a comma-separated list. | Optional     | -                                   |
 | licenses.copyleft.exclude  | List of Copyleft licenses to remove from default list. Provide licenses as a comma-separated list.   | Optional     | -                                   |
-| licenses.copyleft.implicit | Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.          | Optional     | -                                   |
+| licenses.copyleft.explicit | Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.          | Optional     | -                                   |
 
 ### Action Output Parameters
 
@@ -81,7 +81,7 @@ the output into your custom workflow
 The SCANOSS Code Scan Action includes two configurable policies:
 
 1. Copyleft: This policy checks if any component or code snippet is associated with a copyleft license. If such a
-   license is detected, the pull request (PR) is rejected.
+   license is detected, the pull request (PR) is rejected. The default list of Copyleft licenses is defined in the following [file](https://github.com/scanoss/gha-code-scan/blob/main/src/utils/license.utils.ts).
 
 2. Undeclared: This policy compares the components detected in the repository against those declared in an sbom.json
    file (customizable through the sbom.filepath parameter). If there are undeclared components, the PR is rejected.
