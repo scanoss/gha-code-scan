@@ -54,3 +54,46 @@ export async function createCommentOnPR(message: string): Promise<void> {
     body: message
   });
 }
+
+export async function getFirstRunId(){
+  let firstRunId = context.runId;
+  if(context.eventName == 'workflow_dispatch'){
+    const firstRun = await loadFirstRun(context.repo.owner, context.repo.repo); 
+    if(firstRun) {
+      core.info(`First Run ID found: ${firstRun.id}`);
+      firstRunId = firstRun.id; 
+    }
+  }
+  return firstRunId;
+}
+
+
+async function loadFirstRun(owner: string, repo: string) {
+  const octokit = getOctokit(inputs.GITHUB_TOKEN);
+  const sha = getSHA();
+
+  const workflowRun = await octokit.rest.actions.getWorkflowRun({
+    owner,
+    repo,
+    run_id: context.runId
+  })
+
+  const runs = await octokit.rest.actions.listWorkflowRuns({
+    owner,
+    repo,
+    head_sha: sha,
+    workflow_id: workflowRun.data.workflow_id
+  });
+
+  // Filter by the given SHA
+  const filteredRuns = runs.data.workflow_runs.filter(
+    (run) => run.head_sha === sha
+  );
+
+  // Sort by creation date to find the first run
+  const sortedRuns = filteredRuns.sort(
+    (a, b) => a.created_at && b.created_at ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : 0
+  );
+
+  return sortedRuns.length ? sortedRuns[0] : null;
+}
