@@ -33,4 +33,7 @@ export const API_KEY = core.getInput('api.key');
 export const API_URL = core.getInput('api.url');
 export const OUTPUT_FILEPATH = core.getInput('output.filepath');
 export const GITHUB_TOKEN = core.getInput('github.token');
+export const COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
+export const COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
+export const COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 export const REPO_DIR = process.env.GITHUB_WORKSPACE as string;

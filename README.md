@@ -52,17 +52,20 @@ For example workflow runs, check out our
 
 ### Action Input Parameters
 
-| **Parameter**            | **Description**                                                                    | **Required** | **Default**                         | 
-|--------------------------|------------------------------------------------------------------------------------|--------------|-------------------------------------|
-| output.filepath          | Scan output file name.                                                             | Optional     | `results.json`                      |
-| sbom.enabled             | Enable or disable scanning based on the SBOM file                                  | Optional     | `true`                              |
-| sbom.filepath            | Filepath of the SBOM file to be used for scanning                                  | Optional     | `sbom.json`                         |
-| sbom.type                | Type of SBOM operation: either 'identify' or 'ignore                               | Optional     | `identify`                          |
-| dependencies.enabled     | Option to enable or disable scanning of dependencies.                              | Optional     | `false`                             |
-| policies                 | List of policies separated by commas, options available are: copyleft, undeclared. | Optional     | -                                   |
-| policies.halt_on_failure | Halt check on policy failure. If set to false checks will not fail.                | Optional     | `true`                              |
-| api.url                  | SCANOSS API URL                                                                    | Optional     | `https://osskb.org/api/scan/direct` |
-| api.key                  | SCANOSS API Key                                                                    | Optional     | -                                   |
+| **Parameter**              | **Description**                                                                                      | **Required** | **Default**                         | 
+|----------------------------|------------------------------------------------------------------------------------------------------|--------------|-------------------------------------|
+| output.filepath            | Scan output file name.                                                                               | Optional     | `results.json`                      |
+| sbom.enabled               | Enable or disable scanning based on the SBOM file                                                    | Optional     | `true`                              |
+| sbom.filepath              | Filepath of the SBOM file to be used for scanning                                                    | Optional     | `sbom.json`                         |
+| sbom.type                  | Type of SBOM operation: either 'identify' or 'ignore                                                 | Optional     | `identify`                          |
+| dependencies.enabled       | Option to enable or disable scanning of dependencies.                                                | Optional     | `false`                             |
+| policies                   | List of policies separated by commas, options available are: copyleft, undeclared.                   | Optional     | -                                   |
+| policies.halt_on_failure   | Halt check on policy failure. If set to false checks will not fail.                                  | Optional     | `true`                              |
+| api.url                    | SCANOSS API URL                                                                                      | Optional     | `https://osskb.org/api/scan/direct` |
+| api.key                    | SCANOSS API Key                                                                                      | Optional     | -                                   |
+| licenses.copyleft.include  | List of Copyleft licenses to append to the default list. Provide licenses as a comma-separated list. | Optional     | -                                   |
+| licenses.copyleft.exclude  | List of Copyleft licenses to remove from default list. Provide licenses as a comma-separated list.   | Optional     | -                                   |
+| licenses.copyleft.explicit | Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.          | Optional     | -                                   |
 
 ### Action Output Parameters
 
@@ -78,7 +81,7 @@ the output into your custom workflow
 The SCANOSS Code Scan Action includes two configurable policies:
 
 1. Copyleft: This policy checks if any component or code snippet is associated with a copyleft license. If such a
-   license is detected, the pull request (PR) is rejected.
+   license is detected, the pull request (PR) is rejected. The default list of Copyleft licenses is defined in the following [file](https://github.com/scanoss/gha-code-scan/blob/main/src/utils/license.utils.ts).
 
 2. Undeclared: This policy compares the components detected in the repository against those declared in an sbom.json
    file (customizable through the sbom.filepath parameter). If there are undeclared components, the PR is rejected.
