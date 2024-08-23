@@ -64,6 +64,8 @@ export abstract class PolicyCheck {
 
   private _conclusion: CONCLUSION;
 
+  private _firstRunId = -1;
+
   constructor(checkName: string) {
     this.octokit = getOctokit(inputs.GITHUB_TOKEN);
     this.checkName = checkName;
@@ -76,7 +78,7 @@ export abstract class PolicyCheck {
 
   abstract getPolicyName(): string;
 
-  async start(): Promise<any> {
+  async start(runId: number): Promise<any> {
     const result = await this.octokit.rest.checks.create({
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -86,6 +88,8 @@ export abstract class PolicyCheck {
 
     this.checkRunId = result.data.id;
     this._raw = result.data;
+
+    this._firstRunId = runId;
 
     this._status = STATUS.INITIALIZED;
     return result.data;
@@ -104,7 +108,7 @@ export abstract class PolicyCheck {
   }
 
   get url(): string {
-    return `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/job/${this.raw.id}`;
+    return `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${this._firstRunId}/job/${this.raw.id}`;
   }
 
   async run(scannerResults: ScannerResults): Promise<void> {
@@ -152,7 +156,7 @@ export abstract class PolicyCheck {
     return text.length > this.MAX_GH_API_CONTENT_SIZE;
   }
 
-  protected concatPolicyArtifactURLToPolicyCheck(details: string, artifactId: number): string {
+  protected async concatPolicyArtifactURLToPolicyCheck(details: string, artifactId: number): Promise<string> {
     const link =
       `\n\nDownload the ` +
       `[${this.getPolicyName()} Result](${context.serverUrl}/` +
