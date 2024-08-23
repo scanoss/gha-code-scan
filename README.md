@@ -32,6 +32,7 @@ permissions:
   contents: read
   pull-requests: write
   checks: write
+  actions: read
 
 jobs:
   scanoss-code-scan:
@@ -109,6 +110,7 @@ permissions:
   contents: read
   pull-requests: write
   checks: write
+  actions: read
 
 jobs:
    scanoss-code-scan:

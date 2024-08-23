@@ -81,7 +81,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
 
     if (details) {
       const { id } = await this.uploadArtifact(details);
-      if (id) details = this.concatPolicyArtifactURLToPolicyCheck(details, id);
+      if (id) details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);
     }
 
     if (componentsWithCopyleft.length === 0) {
