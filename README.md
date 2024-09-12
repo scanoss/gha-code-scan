@@ -60,6 +60,9 @@ For example workflow runs, check out our
 | sbom.filepath              | Filepath of the SBOM file to be used for scanning                                                    | Optional     | `sbom.json`                         |
 | sbom.type                  | Type of SBOM operation: either 'identify' or 'ignore                                                 | Optional     | `identify`                          |
 | dependencies.enabled       | Option to enable or disable scanning of dependencies.                                                | Optional     | `false`                             |
+| dependencies.scope         | Gets development or production dependencies (scopes - prod|dev)                                              | Optional     | -                                   |
+| dependencies.scope.include | Custom list of dependency scopes to be included. Provide scopes as a comma-separated list.                                              | Optional     | -                                   |
+| dependencies.scope.exclude | Custom list of dependency scopes to be excluded. Provide scopes as a comma-separated list.                     | Optional     | -                                   |
 | policies                   | List of policies separated by commas, options available are: copyleft, undeclared.                   | Optional     | -                                   |
 | policies.halt_on_failure   | Halt check on policy failure. If set to false checks will not fail.                                  | Optional     | `true`                              |
 | api.url                    | SCANOSS API URL                                                                                      | Optional     | `https://osskb.org/api/scan/direct` |

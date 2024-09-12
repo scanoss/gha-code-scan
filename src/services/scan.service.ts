@@ -61,6 +61,21 @@ export interface Options {
   dependenciesEnabled?: boolean;
 
   /**
+   * Gets dependencies with production scopes. optional
+   */
+  dependencyScope?: string;
+
+  /**
+   * List of custom dependency scopes to be included. optional
+   */
+  dependencyScopeInclude?: string;
+
+  /**
+   * List of custom dependency scopes to be excluded. optional
+   */
+  dependencyScopeExclude?: string;
+
+  /**
    * Credentials for SCANOSS, enabling unlimited scans. Optional.
    */
   apiKey?: string;
@@ -92,7 +107,10 @@ export class ScanService {
       apiUrl: inputs.API_URL,
       dependenciesEnabled: inputs.DEPENDENCIES_ENABLED,
       outputFilepath: inputs.OUTPUT_FILEPATH,
-      inputFilepath: inputs.REPO_DIR
+      inputFilepath: inputs.REPO_DIR,
+      dependencyScope: inputs.DEPENDENCIES_SCOPE,
+      dependencyScopeInclude: inputs.DEPENDENCY_SCOPE_INCLUDE,
+      dependencyScopeExclude: inputs.DEPENDENCY_SCOPE_EXCLUDE
     };
   }
   async scan(): Promise<{ scan: ScannerResults; stdout: string; stderr: string }> {
@@ -102,12 +120,42 @@ export class ScanService {
     return { scan, stdout, stderr };
   }
 
+  private dependencyScopeCommand(): string {
+    const { dependencyScopeInclude, dependencyScopeExclude, dependencyScope } = this.options;
+
+    core.info(`INCLUDE: ${dependencyScopeInclude}`);
+    core.info(`EXCLUDE: ${dependencyScopeExclude}`);
+    core.info(`SCOPE: ${dependencyScope}`);
+
+    // Count the number of non-empty values
+    const setScopes = [dependencyScopeInclude, dependencyScopeExclude, dependencyScope].filter(
+      scope => scope !== '' && scope !== undefined
+    );
+
+    core.info(`SCOPES SET: ${setScopes}`);
+
+    if (setScopes.length > 1) {
+      core.setFailed('Only one dependency scope filter can be set');
+    }
+
+    if (dependencyScopeExclude !== '') return `--dep-scope-exc ${this.options.dependencyScopeExclude}`;
+
+    if (dependencyScopeInclude !== '') return `--dep-scope-inc ${this.options.dependencyScopeInclude}`;
+
+    if (dependencyScope === 'prod') return '--dep-scope prod';
+
+    if (dependencyScope === 'dev') return '--dep-scope dev';
+
+    return '';
+  }
+
   private async buildCommand(): Promise<string> {
-    return `docker run -v "${this.options.inputFilepath}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.13.0 scan . 
+    return `docker run -v "${this.options.inputFilepath}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.15.0 scan . 
                     --output ${this.options.outputFilepath}  
-                    ${this.options.dependenciesEnabled ? `--dependencies` : ''}  
+                    ${this.options.dependenciesEnabled ? `--dependencies` : ''}
+                    ${this.dependencyScopeCommand()}  
                     ${await this.detectSBOM()} 
-                    ${this.options.apiUrl ? `--apiurl ${this.options.apiUrl}` : ''} 
+                    ${this.options.apiUrl ? `--apiurl ${this.options.apiUrl}` : ''}                    
                     ${this.options.apiKey ? `--key ${this.options.apiKey}` : ''}`.replace(/\n/gm, ' ');
   }
 
