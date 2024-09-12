@@ -36,6 +36,18 @@ inputs:
     description: 'Scan dependencies (optional - default false)'
     required: false
     default: false
+  dependencies.scope:
+    description: 'Gets development or production dependencies (scopes - prod|dev)'
+    required: false
+    default: ''
+  dependencies.scope.include:
+    description: 'Custom list of dependency scopes to be included. Provide scopes as a comma-separated list.'
+    required: false
+    default: ''
+  dependencies.scope.exclude:
+    description: 'Custom list of dependency scopes to be excluded. Provide scopes as a comma-separated list.'
+    required: false
+    default: ''
   output.filepath:
     required: false
     default: 'results.json'
@@ -52,6 +64,7 @@ inputs:
   licenses.copyleft.explicit:
     description: 'Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.'
     required: false
+
 
 outputs:
   result-filepath:
