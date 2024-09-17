@@ -70,6 +70,7 @@ For example workflow runs, check out our
 | licenses.copyleft.include  | List of Copyleft licenses to append to the default list. Provide licenses as a comma-separated list. | Optional     | -                                   |
 | licenses.copyleft.exclude  | List of Copyleft licenses to remove from default list. Provide licenses as a comma-separated list.   | Optional     | -                                   |
 | licenses.copyleft.explicit | Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.          | Optional     | -                                   |
+| runtimeContainer         | Runtime URL                                                                        | Optional     | `ghcr.io/scanoss/scanoss-py:v1.15.0` |
 
 ### Action Output Parameters
 
