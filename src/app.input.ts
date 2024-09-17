@@ -40,3 +40,4 @@ export const COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include
 export const COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 export const COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 export const REPO_DIR = process.env.GITHUB_WORKSPACE as string;
+export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.15.0';

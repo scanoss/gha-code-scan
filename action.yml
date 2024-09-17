@@ -64,6 +64,11 @@ inputs:
   licenses.copyleft.explicit:
     description: 'Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.'
     required: false
+  runtimeContainer:
+    description: 'Specify runtime container to perform the scan.'
+    default: 'ghcr.io/scanoss/scanoss-py:v1.15.0'
+    required: false
+
 
 
 outputs:

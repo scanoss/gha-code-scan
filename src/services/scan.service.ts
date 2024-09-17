@@ -90,6 +90,11 @@ export interface Options {
    * Absolute path of the folder or file to scan. Required.
    */
   inputFilepath: string;
+
+  /**
+   * Runtime container to perform scan. Default [ghcr.io/scanoss/scanoss-py:v1.15.0]
+   */
+  runtimeContainer: string;
 }
 
 /**
@@ -110,7 +115,8 @@ export class ScanService {
       inputFilepath: inputs.REPO_DIR,
       dependencyScope: inputs.DEPENDENCIES_SCOPE,
       dependencyScopeInclude: inputs.DEPENDENCY_SCOPE_INCLUDE,
-      dependencyScopeExclude: inputs.DEPENDENCY_SCOPE_EXCLUDE
+      dependencyScopeExclude: inputs.DEPENDENCY_SCOPE_EXCLUDE,
+      runtimeContainer: inputs.RUNTIME_CONTAINER
     };
   }
   async scan(): Promise<{ scan: ScannerResults; stdout: string; stderr: string }> {
@@ -123,16 +129,10 @@ export class ScanService {
   private dependencyScopeCommand(): string {
     const { dependencyScopeInclude, dependencyScopeExclude, dependencyScope } = this.options;
 
-    core.info(`INCLUDE: ${dependencyScopeInclude}`);
-    core.info(`EXCLUDE: ${dependencyScopeExclude}`);
-    core.info(`SCOPE: ${dependencyScope}`);
-
     // Count the number of non-empty values
     const setScopes = [dependencyScopeInclude, dependencyScopeExclude, dependencyScope].filter(
       scope => scope !== '' && scope !== undefined
     );
-
-    core.info(`SCOPES SET: ${setScopes}`);
 
     if (setScopes.length > 1) {
       core.setFailed('Only one dependency scope filter can be set');
@@ -150,7 +150,7 @@ export class ScanService {
   }
 
   private async buildCommand(): Promise<string> {
-    return `docker run -v "${this.options.inputFilepath}":"/scanoss" ghcr.io/scanoss/scanoss-py:v1.15.0 scan . 
+    return `docker run -v "${this.options.inputFilepath}":"/scanoss" ${this.options.runtimeContainer} scan . 
                     --output ${this.options.outputFilepath}  
                     ${this.options.dependenciesEnabled ? `--dependencies` : ''}
                     ${this.dependencyScopeCommand()}  
