@@ -24,9 +24,14 @@
 import { context, getOctokit } from '@actions/github';
 import * as core from '@actions/core';
 import * as inputs from '../app.input';
+import type { Endpoints } from '@octokit/types';
 
 const prEvents = ['pull_request', 'pull_request_review', 'pull_request_review_comment'];
 const FIND_FIRST_RUN_EVENT = 'workflow_dispatch';
+
+// Use the types from @octokit/types
+type WorkflowRunsResponse = Endpoints['GET /repos/{owner}/{repo}/actions/runs']['response'];
+type WorkflowRun = WorkflowRunsResponse['data']['workflow_runs'][number];
 
 export function isPullRequest(): boolean {
   return prEvents.includes(context.eventName);
@@ -68,7 +73,7 @@ export async function getFirstRunId(): Promise<number> {
   return firstRunId;
 }
 
-async function loadFirstRun(owner: string, repo: string): Promise<any | null> {
+async function loadFirstRun(owner: string, repo: string): Promise<WorkflowRun | null> {
   const octokit = getOctokit(inputs.GITHUB_TOKEN);
   const sha = getSHA();
 

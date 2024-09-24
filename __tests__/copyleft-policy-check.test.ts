@@ -26,13 +26,13 @@ describe('CopyleftPolicyCheck', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    policyCheck = new CopyleftPolicyCheck();
     jest.spyOn(PolicyCheck.prototype, 'uploadArtifact').mockImplementation(async () => {
       return Promise.resolve({ id: 123456 });
     });
-    jest.spyOn(PolicyCheck.prototype, 'run').mockImplementation();
+    jest.spyOn(PolicyCheck.prototype, 'initStatus').mockImplementation();
     jest.spyOn(PolicyCheck.prototype, 'finish').mockImplementation();
-
-    policyCheck = new CopyleftPolicyCheck();
   });
 
   it('should pass the policy check when no copyleft components are found', async () => {

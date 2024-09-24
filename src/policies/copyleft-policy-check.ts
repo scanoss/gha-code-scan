@@ -66,7 +66,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
   }
 
   async run(scannerResults: ScannerResults): Promise<void> {
-    super.run(scannerResults);
+    super.initStatus();
     const components = getComponents(scannerResults);
 
     // Filter copyleft components

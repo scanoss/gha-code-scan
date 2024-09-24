@@ -98,7 +98,10 @@ export interface ScannerComponent extends CommonComponent {
     score: string;
     source: string;
   }[];
-  cryptography: any[];
+  cryptography: {
+    algorithm: string;
+    strength: string;
+  }[];
   health: {
     creation_date: string;
     issues: number;
