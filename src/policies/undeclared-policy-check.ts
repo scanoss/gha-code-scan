@@ -44,7 +44,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
   }
 
   async run(scannerResults: ScannerResults): Promise<void> {
-    super.run(scannerResults);
+    super.initStatus();
 
     const nonDeclaredComponents: Component[] = [];
     let declaredComponents: Partial<Component>[] = [];

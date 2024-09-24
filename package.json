@@ -1,7 +1,7 @@
 {
   "name": "scanoss-code-scan-action",
   "description": "SCANOSS Code Scan Action",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": "SCANOSS",
   "private": true,
   "homepage": "https://github.com/scanoss/code-scan-action/",
@@ -74,6 +74,7 @@
     "@actions/github": "^6.0.0"
   },
   "devDependencies": {
+    "@octokit/types": "^13.5.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.20",
     "@typescript-eslint/eslint-plugin": "^6.19.1",

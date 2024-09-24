@@ -28,11 +28,11 @@ describe('UndeclaredPolicyCheck', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(PolicyCheck.prototype, 'uploadArtifact').mockImplementation(async () => {
+    jest.spyOn(UndeclaredPolicyCheck.prototype, 'uploadArtifact').mockImplementation(async () => {
       return Promise.resolve({ id: 123456 });
     });
-    jest.spyOn(PolicyCheck.prototype, 'run').mockImplementation();
-    jest.spyOn(PolicyCheck.prototype, 'updateCheck').mockImplementation();
+    jest.spyOn(PolicyCheck.prototype, 'initStatus').mockImplementation();
+    jest.spyOn(UndeclaredPolicyCheck.prototype, 'updateCheck').mockImplementation();
 
     scannerResults = JSON.parse(resultsMock[3].content);
 

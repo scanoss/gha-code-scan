@@ -30,6 +30,10 @@ import { GitHub } from '@actions/github/lib/utils';
 import * as inputs from '../app.input';
 import { DefaultArtifactClient, UploadArtifactResponse } from '@actions/artifact';
 import path from 'path';
+import type { Endpoints } from '@octokit/types';
+
+type ChecksCreateResponse = Endpoints['POST /repos/{owner}/{repo}/check-runs']['response'];
+type CheckRun = ChecksCreateResponse['data'];
 
 export enum CONCLUSION {
   ActionRequired = 'action_required',
@@ -58,7 +62,7 @@ export abstract class PolicyCheck {
 
   private checkRunId: number;
 
-  private _raw: any;
+  private _raw?: CheckRun;
 
   private _status: STATUS;
 
@@ -78,7 +82,9 @@ export abstract class PolicyCheck {
 
   abstract getPolicyName(): string;
 
-  async start(runId: number): Promise<any> {
+  abstract run(scannerResults: ScannerResults): Promise<void>;
+
+  async start(runId: number): Promise<CheckRun> {
     const result = await this.octokit.rest.checks.create({
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -103,15 +109,15 @@ export abstract class PolicyCheck {
     return this._conclusion;
   }
 
-  get raw(): any {
+  get raw(): CheckRun | undefined {
     return this._raw;
   }
 
   get url(): string {
-    return `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${this._firstRunId}/job/${this.raw.id}`;
+    return `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${this._firstRunId}/job/${this.raw?.id}`;
   }
 
-  async run(scannerResults: ScannerResults): Promise<void> {
+  initStatus(): void {
     if (this._status === STATUS.UNINITIALIZED)
       throw new Error(`Error on finish. Policy "${this.checkName}" is not created.`);
 
