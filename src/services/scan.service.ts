@@ -85,7 +85,7 @@ export interface Options {
   inputFilepath: string;
 
   /**
-   * Runtime container to perform scan. Default [ghcr.io/scanoss/scanoss-py:v1.19.0]
+   * Runtime container to perform scan. Default [ghcr.io/scanoss/scanoss-py:v1.20.4]
    */
   runtimeContainer: string;
 
@@ -291,7 +291,7 @@ export class ScanService {
       ...(await this.detectSBOM()),
       ...this.buildSnippetArgs(),
       ...(this.options.apiUrl ? ['--apiurl', this.options.apiUrl] : []),
-      ...(this.options.apiKey ? ['--apiKey', this.options.apiKey.replace(/\n/gm, ' ')] : [])
+      ...(this.options.apiKey ? ['--key', this.options.apiKey.replace(/\n/gm, ' ')] : [])
     ];
   }
 
