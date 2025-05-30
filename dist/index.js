@@ -33456,7 +33456,7 @@ async function run() {
         }
         // run scan
         const { scan, stdout } = await scan_service_1.scanService.scan();
-        // await uploadResults();
+        await (0, scan_service_1.uploadResults)();
         // run policies
         for (const policy of policies) {
             await policy.run();
@@ -34537,12 +34537,15 @@ const artifact = __importStar(__nccwpck_require__(2605));
 const inputs = __importStar(__nccwpck_require__(483));
 const fs_1 = __importDefault(__nccwpck_require__(7147));
 const core = __importStar(__nccwpck_require__(2186));
-const path = __importStar(__nccwpck_require__(1017));
 const app_input_1 = __nccwpck_require__(483);
 const artifactClient = artifact.create();
 async function uploadResults() {
-    await artifactClient.uploadArtifact('results', // Just use the string directly
-    [inputs.OUTPUT_FILEPATH], path.dirname(inputs.OUTPUT_FILEPATH) || '.');
+    try {
+        await artifactClient.uploadArtifact('results', [inputs.OUTPUT_FILEPATH], '.');
+    }
+    catch (e) {
+        core.error(`Ubale to upload ${inputs.OUTPUT_FILEPATH}: ${e}`);
+    }
 }
 exports.uploadResults = uploadResults;
 /**

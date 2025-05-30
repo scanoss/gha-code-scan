@@ -40,11 +40,11 @@ import {
 const artifactClient = artifact.create();
 
 export async function uploadResults(): Promise<void> {
-  await artifactClient.uploadArtifact(
-    'results',  // Just use the string directly
-    [inputs.OUTPUT_FILEPATH],
-    path.dirname(inputs.OUTPUT_FILEPATH) || '.'
-  );
+  try {
+    await artifactClient.uploadArtifact('results', [inputs.OUTPUT_FILEPATH], '.');
+  }catch (e){
+    core.error(`Ubale to upload ${inputs.OUTPUT_FILEPATH}: ${e}`);
+  }
 }
 
 export interface Options {
