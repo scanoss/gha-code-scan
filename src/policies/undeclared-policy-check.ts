@@ -67,9 +67,9 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       return;
     }
 
-    const { id } = await this.uploadArtifact(details);
-    core.debug(`Undeclared Artifact ID: ${id}`);
-    if (id) details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);
+    //await this.uploadArtifact(details);
+    // core.debug(`Undeclared Artifact ID: ${id}`);
+    // if (id) details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);
 
     return this.reject(summary, details);
   }

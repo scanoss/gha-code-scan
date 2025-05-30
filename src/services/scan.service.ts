@@ -21,8 +21,8 @@
    THE SOFTWARE.
  */
 
-import { DefaultArtifactClient } from '@actions/artifact';
 import * as exec from '@actions/exec';
+import * as artifact from '@actions/artifact';
 import * as inputs from '../app.input';
 import { ScannerResults } from './result.interfaces';
 import fs from 'fs';
@@ -37,13 +37,13 @@ import {
   SKIP_SNIPPETS
 } from '../app.input';
 
-const artifact = new DefaultArtifactClient();
+const artifactClient = artifact.create();
 
 export async function uploadResults(): Promise<void> {
-  await artifact.uploadArtifact(
-    path.basename(inputs.OUTPUT_FILEPATH),
+  await artifactClient.uploadArtifact(
+    'results',  // Just use the string directly
     [inputs.OUTPUT_FILEPATH],
-    path.dirname(inputs.OUTPUT_FILEPATH)
+    path.dirname(inputs.OUTPUT_FILEPATH) || '.'
   );
 }
 

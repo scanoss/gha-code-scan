@@ -27,7 +27,8 @@ import * as core from '@actions/core';
 import { getSHA } from '../utils/github.utils';
 import { GitHub } from '@actions/github/lib/utils';
 import * as inputs from '../app.input';
-import { DefaultArtifactClient, UploadArtifactResponse } from '@actions/artifact';
+import * as artifact from '@actions/artifact';
+import { UploadResponse } from '@actions/artifact';
 import path from 'path';
 import type { Endpoints } from '@octokit/types';
 
@@ -185,10 +186,10 @@ export abstract class PolicyCheck {
     return text;
   }
 
-  async uploadArtifact(file: string): Promise<UploadArtifactResponse> {
+  async uploadArtifact(file: string): Promise<UploadResponse> {
     await fs.writeFile(this.artifactPolicyFileName(), file);
-    const artifact = new DefaultArtifactClient();
-    return await artifact.uploadArtifact(
+    const artifactClient = artifact.create();
+    return await artifactClient.uploadArtifact(
       path.basename(this.artifactPolicyFileName()),
       [this.artifactPolicyFileName()],
       path.dirname(this.artifactPolicyFileName())

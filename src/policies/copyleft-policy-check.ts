@@ -60,11 +60,11 @@ export class CopyleftPolicyCheck extends PolicyCheck {
       return;
     }
 
-    const { id } = await this.uploadArtifact(stdout);
-    core.debug(`Copyleft Artifact ID: ${id}`);
+   // await this.uploadArtifact(stdout);
+  /*  core.debug(`Copyleft Artifact ID: ${id}`);
     if (id) {
       details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
-    }
+    }*/
 
     return this.reject(summary, details);
   }

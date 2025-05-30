@@ -1,6 +1,7 @@
 import { CONCLUSION, PolicyCheck } from '../src/policies/policy-check';
 import { UndeclaredPolicyCheck } from '../src/policies/undeclared-policy-check';
 import path from 'path';
+import { UploadResponse } from '@actions/artifact';
 
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
@@ -35,7 +36,12 @@ describe('UndeclaredPolicyCheck', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(UndeclaredPolicyCheck.prototype, 'uploadArtifact').mockImplementation(async () => {
-      return Promise.resolve({ id: 123456 });
+      return Promise.resolve<UploadResponse>({
+        artifactName: 'test-artifact',
+        artifactItems: ['test-file.json'],
+        size: 1024,
+        failedItems: []
+      });
     });
     jest.spyOn(PolicyCheck.prototype, 'initStatus').mockImplementation();
     jest.spyOn(UndeclaredPolicyCheck.prototype, 'updateCheck').mockImplementation();

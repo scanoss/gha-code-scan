@@ -1,6 +1,7 @@
 import path from 'path';
 import { CopyleftPolicyCheck } from '../src/policies/copyleft-policy-check';
 import { CONCLUSION } from '../src/policies/policy-check';
+import { UploadResponse } from '@actions/artifact';
 
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
@@ -51,7 +52,12 @@ describe('CopyleftPolicyCheck', () => {
     appInput.OUTPUT_FILEPATH = TEST_RESULTS_FILE;
 
     jest.spyOn(CopyleftPolicyCheck.prototype, 'uploadArtifact').mockImplementation(async () => {
-      return Promise.resolve({ id: 123456 });
+      return Promise.resolve<UploadResponse>({
+        artifactName: 'test-artifact',
+        artifactItems: ['test-file.json'],
+        size: 1024,
+        failedItems: []
+      });
     });
     jest.spyOn(CopyleftPolicyCheck.prototype, 'initStatus').mockImplementation();
     jest.spyOn(CopyleftPolicyCheck.prototype, 'updateCheck').mockImplementation();
@@ -72,7 +78,12 @@ describe('CopyleftPolicyCheck', () => {
     appInput.COPYLEFT_LICENSE_EXCLUDE = 'GPL-2.0-only';
 
     jest.spyOn(CopyleftPolicyCheck.prototype, 'uploadArtifact').mockImplementation(async () => {
-      return Promise.resolve({ id: 123456 });
+      return Promise.resolve<UploadResponse>({
+        artifactName: 'test-artifact',
+        artifactItems: ['test-file.json'],
+        size: 1024,
+        failedItems: []
+      });
     });
     jest.spyOn(CopyleftPolicyCheck.prototype, 'initStatus').mockImplementation();
     jest.spyOn(CopyleftPolicyCheck.prototype, 'updateCheck').mockImplementation();
@@ -93,7 +104,12 @@ describe('CopyleftPolicyCheck', () => {
     appInput.COPYLEFT_LICENSE_EXPLICIT = 'MIT,Apache-2.0';
 
     jest.spyOn(CopyleftPolicyCheck.prototype, 'uploadArtifact').mockImplementation(async () => {
-      return Promise.resolve({ id: 123456 });
+      return Promise.resolve<UploadResponse>({
+        artifactName: 'test-artifact',
+        artifactItems: ['test-file.json'],
+        size: 1024,
+        failedItems: []
+      });
     });
     jest.spyOn(CopyleftPolicyCheck.prototype, 'initStatus').mockImplementation();
     jest.spyOn(CopyleftPolicyCheck.prototype, 'updateCheck').mockImplementation();

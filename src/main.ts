@@ -50,7 +50,7 @@ export async function run(): Promise<void> {
 
     // run scan
     const { scan, stdout } = await scanService.scan();
-    await uploadResults();
+    // await uploadResults();
 
     // run policies
     for (const policy of policies) {
