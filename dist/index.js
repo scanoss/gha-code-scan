@@ -33747,11 +33747,9 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
             await this.success('### :white_check_mark: Policy Pass \n #### Not copyleft Licenses were found', undefined);
             return;
         }
-        // await this.uploadArtifact(stdout);
-        /*  core.debug(`Copyleft Artifact ID: ${id}`);
-          if (id) {
-            details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
-          }*/
+        await this.uploadArtifact(stdout);
+        // core.debug(`Copyleft Artifact ID: ${id}`);
+        details = await this.concatPolicyArtifactURLToPolicyCheck(stderr);
         return this.reject(summary, details);
     }
     artifactPolicyFileName() {
@@ -33816,9 +33814,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PolicyCheck = exports.STATUS = exports.CONCLUSION = void 0;
 const github_1 = __nccwpck_require__(5438);
@@ -33827,7 +33822,6 @@ const core = __importStar(__nccwpck_require__(2186));
 const github_utils_1 = __nccwpck_require__(7889);
 const inputs = __importStar(__nccwpck_require__(483));
 const artifact = __importStar(__nccwpck_require__(2605));
-const path_1 = __importDefault(__nccwpck_require__(1017));
 var CONCLUSION;
 (function (CONCLUSION) {
     CONCLUSION["ActionRequired"] = "action_required";
@@ -33926,28 +33920,22 @@ class PolicyCheck {
     exceedMaxGiHubApiLimit(text) {
         return text.length > this.MAX_GH_API_CONTENT_SIZE;
     }
-    async concatPolicyArtifactURLToPolicyCheck(details, artifactId) {
-        const link = `\n\nDownload the ` +
-            `[${this.getPolicyName()} Result](${github_1.context.serverUrl}/` +
-            `${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/` +
-            `${github_1.context.runId}/artifacts/${artifactId})`;
+    async concatPolicyArtifactURLToPolicyCheck(details) {
+        const link = `\n\nView artifacts at: ${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId}`;
         let text = details + link;
         if (this.exceedMaxGiHubApiLimit(text)) {
-            //core.warning(`Details of ${text.length} surpass limit of ${this.MAX_GH_API_CONTENT_SIZE}`);
             core.info(`Policy check results: ${details}`);
             text =
-                `Policy check details omitted from GitHub UI due to length.` +
-                    `See console logs for details or download the ` +
-                    `[${this.getPolicyName()} Result](${github_1.context.serverUrl}/` +
-                    `${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/` +
-                    `${github_1.context.runId}/artifacts/${artifactId})`;
+                `Policy check details omitted from GitHub UI due to length. ` +
+                    `See console logs for details or view artifacts at: ` +
+                    `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId}`;
         }
         return text;
     }
     async uploadArtifact(file) {
         await fs_1.promises.writeFile(this.artifactPolicyFileName(), file);
         const artifactClient = artifact.create();
-        return await artifactClient.uploadArtifact(path_1.default.basename(this.artifactPolicyFileName()), [this.artifactPolicyFileName()], path_1.default.dirname(this.artifactPolicyFileName()));
+        return await artifactClient.uploadArtifact(this.artifactPolicyFileName().split('.')[0], [this.artifactPolicyFileName()], '.');
     }
 }
 exports.PolicyCheck = PolicyCheck;
@@ -34125,9 +34113,9 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             await this.success('### :white_check_mark: Policy Pass \n #### Not undeclared components were found', undefined);
             return;
         }
-        //await this.uploadArtifact(details);
+        await this.uploadArtifact(details);
         // core.debug(`Undeclared Artifact ID: ${id}`);
-        // if (id) details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);
+        details = await this.concatPolicyArtifactURLToPolicyCheck(details);
         return this.reject(summary, details);
     }
     artifactPolicyFileName() {
