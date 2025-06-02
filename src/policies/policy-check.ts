@@ -162,25 +162,18 @@ export abstract class PolicyCheck {
     return text.length > this.MAX_GH_API_CONTENT_SIZE;
   }
 
-  protected async concatPolicyArtifactURLToPolicyCheck(details: string, artifactId: number): Promise<string> {
-    const link =
-      `\n\nDownload the ` +
-      `[${this.getPolicyName()} Result](${context.serverUrl}/` +
-      `${context.repo.owner}/${context.repo.repo}/actions/runs/` +
-      `${context.runId}/artifacts/${artifactId})`;
+  protected async concatPolicyArtifactURLToPolicyCheck(details: string): Promise<string> {
+    const link = `\n\nView artifacts at: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
     let text = details + link;
 
     if (this.exceedMaxGiHubApiLimit(text)) {
-      //core.warning(`Details of ${text.length} surpass limit of ${this.MAX_GH_API_CONTENT_SIZE}`);
       core.info(`Policy check results: ${details}`);
 
       text =
-        `Policy check details omitted from GitHub UI due to length.` +
-        `See console logs for details or download the ` +
-        `[${this.getPolicyName()} Result](${context.serverUrl}/` +
-        `${context.repo.owner}/${context.repo.repo}/actions/runs/` +
-        `${context.runId}/artifacts/${artifactId})`;
+        `Policy check details omitted from GitHub UI due to length. ` +
+        `See console logs for details or view artifacts at: ` +
+        `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
     }
 
     return text;
@@ -189,10 +182,6 @@ export abstract class PolicyCheck {
   async uploadArtifact(file: string): Promise<UploadResponse> {
     await fs.writeFile(this.artifactPolicyFileName(), file);
     const artifactClient = artifact.create();
-    return await artifactClient.uploadArtifact(
-      path.basename(this.artifactPolicyFileName()),
-      [this.artifactPolicyFileName()],
-      path.dirname(this.artifactPolicyFileName())
-    );
+    return await artifactClient.uploadArtifact(this.artifactPolicyFileName().split('.')[0], [this.artifactPolicyFileName()], '.');
   }
 }
