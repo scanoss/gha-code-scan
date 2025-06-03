@@ -33720,6 +33720,7 @@ const policy_check_1 = __nccwpck_require__(3702);
 const app_input_1 = __nccwpck_require__(483);
 const exec = __importStar(__nccwpck_require__(1514));
 const copyleft_argument_builder_1 = __nccwpck_require__(4156);
+const github_service_1 = __nccwpck_require__(3123);
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
  * It filters components based on their licenses and looks for those with copyleft obligations.
@@ -33741,7 +33742,7 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
             ignoreReturnCode: true
         };
         const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
-        const summary = stdout;
+        let summary = stdout;
         let details = stderr;
         if (exitCode === 1) {
             await this.success('### :white_check_mark: Policy Pass \n #### Not copyleft Licenses were found', undefined);
@@ -33749,7 +33750,10 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
         }
         await this.uploadArtifact(stdout);
         // core.debug(`Copyleft Artifact ID: ${id}`);
-        details = await this.concatPolicyArtifactURLToPolicyCheck(stderr);
+        if ((0, github_service_1.isOverMaxCharacterLimitAPI)(summary)) {
+            summary = '';
+        }
+        details = await this.concatPolicyArtifactURLToPolicyCheck(details);
         return this.reject(summary, details);
     }
     artifactPolicyFileName() {
@@ -33822,6 +33826,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const github_utils_1 = __nccwpck_require__(7889);
 const inputs = __importStar(__nccwpck_require__(483));
 const artifact = __importStar(__nccwpck_require__(2605));
+const github_service_1 = __nccwpck_require__(3123);
 var CONCLUSION;
 (function (CONCLUSION) {
     CONCLUSION["ActionRequired"] = "action_required";
@@ -33841,7 +33846,7 @@ var STATUS;
     STATUS["FINISHED"] = "FINISHED";
 })(STATUS || (exports.STATUS = STATUS = {}));
 class PolicyCheck {
-    MAX_GH_API_CONTENT_SIZE = 65534;
+    MAX_GH_API_CONTENT_SIZE = 5;
     octokit;
     checkName;
     checkRunId;
@@ -33918,12 +33923,12 @@ class PolicyCheck {
         });
     }
     exceedMaxGiHubApiLimit(text) {
-        return text.length > this.MAX_GH_API_CONTENT_SIZE;
+        return text.length >= this.MAX_GH_API_CONTENT_SIZE;
     }
     async concatPolicyArtifactURLToPolicyCheck(details) {
         const link = `\n\nView artifacts at: ${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId}`;
         let text = details + link;
-        if (this.exceedMaxGiHubApiLimit(text)) {
+        if ((0, github_service_1.isOverMaxCharacterLimitAPI)(text)) {
             core.info(`Policy check results: ${details}`);
             text =
                 `Policy check details omitted from GitHub UI due to length. ` +
@@ -33933,9 +33938,14 @@ class PolicyCheck {
         return text;
     }
     async uploadArtifact(file) {
-        await fs_1.promises.writeFile(this.artifactPolicyFileName(), file);
-        const artifactClient = artifact.create();
-        return await artifactClient.uploadArtifact(this.artifactPolicyFileName().split('.')[0], [this.artifactPolicyFileName()], '.');
+        try {
+            await fs_1.promises.writeFile(this.artifactPolicyFileName(), file);
+            const artifactClient = artifact.create();
+            await artifactClient.uploadArtifact(this.artifactPolicyFileName().split('.')[0], [this.artifactPolicyFileName()], '.');
+        }
+        catch (e) {
+            core.error(`Unable to upload ${this.artifactPolicyFileName()}: ${e}`);
+        }
     }
 }
 exports.PolicyCheck = PolicyCheck;
@@ -34080,6 +34090,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const app_input_1 = __nccwpck_require__(483);
 const exec = __importStar(__nccwpck_require__(1514));
 const undeclared_argument_builder_1 = __nccwpck_require__(5001);
+const github_service_1 = __nccwpck_require__(3123);
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
  * The run method compares components found by the scanner against those declared in the SBOM.
@@ -34104,7 +34115,7 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             ignoreReturnCode: true
         };
         const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
-        const summary = stdout;
+        let summary = stdout;
         let details = stderr;
         if (!app_input_1.SCANOSS_SETTINGS) {
             core.warning('Undeclared policy is being used with SCANOSS settings disabled');
@@ -34115,6 +34126,9 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         }
         await this.uploadArtifact(details);
         // core.debug(`Undeclared Artifact ID: ${id}`);
+        if ((0, github_service_1.isOverMaxCharacterLimitAPI)(summary)) {
+            summary = '';
+        }
         details = await this.concatPolicyArtifactURLToPolicyCheck(details);
         return this.reject(summary, details);
     }
@@ -34126,6 +34140,23 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
     }
 }
 exports.UndeclaredPolicyCheck = UndeclaredPolicyCheck;
+
+
+/***/ }),
+
+/***/ 3123:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isOverMaxCharacterLimitAPI = void 0;
+const MAX_GH_API_CONTENT_SIZE = 65535;
+const CHARACTERS_BUFFER = 50;
+function isOverMaxCharacterLimitAPI(content) {
+    return content.length >= MAX_GH_API_CONTENT_SIZE - CHARACTERS_BUFFER;
+}
+exports.isOverMaxCharacterLimitAPI = isOverMaxCharacterLimitAPI;
 
 
 /***/ }),
@@ -34188,6 +34219,7 @@ const policy_check_1 = __nccwpck_require__(3702);
 const markdown_utils_1 = __nccwpck_require__(6011);
 const github_1 = __nccwpck_require__(5438);
 const license_utils_1 = __nccwpck_require__(2210);
+const github_service_1 = __nccwpck_require__(3123);
 function generatePRSummary(scannerResults, policies) {
     const components = (0, result_service_1.getComponents)(scannerResults);
     const licenses = (0, result_service_1.getLicenses)(scannerResults);
@@ -34248,11 +34280,15 @@ async function generateJobSummary(scannerResults, policies) {
         });
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
+    let licenseTable = LicensesTable(licenses);
+    if ((0, github_service_1.isOverMaxCharacterLimitAPI)(licenseTable)) {
+        licenseTable = "License table too large to display, omitted from GitHub UI due to length";
+    }
     await core.summary
         .addHeading('Scan Report Section', 2)
         .addHeading('Licenses', 3)
         .addCodeBlock(LicensesPie(licenses), 'mermaid')
-        .addRaw(LicensesTable(licenses))
+        .addRaw(licenseTable)
         .addSeparator()
         .addHeading('Policies', 3)
         .addRaw(PoliciesTable(policies))

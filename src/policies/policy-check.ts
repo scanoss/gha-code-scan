@@ -30,6 +30,7 @@ import * as inputs from '../app.input';
 import * as artifact from '@actions/artifact';
 import { UploadResponse } from '@actions/artifact';
 import type { Endpoints } from '@octokit/types';
+import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 
 type ChecksCreateResponse = Endpoints['POST /repos/{owner}/{repo}/check-runs']['response'];
 type CheckRun = ChecksCreateResponse['data'];
@@ -53,7 +54,7 @@ export enum STATUS {
 }
 
 export abstract class PolicyCheck {
-  private readonly MAX_GH_API_CONTENT_SIZE = 65534;
+  private readonly MAX_GH_API_CONTENT_SIZE = 5;
 
   private octokit: InstanceType<typeof GitHub>;
 
@@ -158,7 +159,7 @@ export abstract class PolicyCheck {
   }
 
   protected exceedMaxGiHubApiLimit(text: string): boolean {
-    return text.length > this.MAX_GH_API_CONTENT_SIZE;
+    return text.length >= this.MAX_GH_API_CONTENT_SIZE;
   }
 
   protected async concatPolicyArtifactURLToPolicyCheck(details: string): Promise<string> {
@@ -166,7 +167,7 @@ export abstract class PolicyCheck {
 
     let text = details + link;
 
-    if (this.exceedMaxGiHubApiLimit(text)) {
+    if (isOverMaxCharacterLimitAPI(text)) {
       core.info(`Policy check results: ${details}`);
 
       text =
@@ -178,13 +179,17 @@ export abstract class PolicyCheck {
     return text;
   }
 
-  async uploadArtifact(file: string): Promise<UploadResponse> {
-    await fs.writeFile(this.artifactPolicyFileName(), file);
-    const artifactClient = artifact.create();
-    return await artifactClient.uploadArtifact(
-      this.artifactPolicyFileName().split('.')[0],
-      [this.artifactPolicyFileName()],
-      '.'
-    );
+  async uploadArtifact(file: string): Promise<void> {
+    try{
+      await fs.writeFile(this.artifactPolicyFileName(), file);
+      const artifactClient = artifact.create();
+      await artifactClient.uploadArtifact(
+        this.artifactPolicyFileName().split('.')[0],
+        [this.artifactPolicyFileName()],
+        '.'
+      );
+    } catch(e) {
+      core.error(`Unable to upload ${this.artifactPolicyFileName()}: ${e}`);
+    }
   }
 }
