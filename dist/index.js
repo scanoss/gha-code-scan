@@ -34532,7 +34532,7 @@ async function uploadResults() {
         await artifactClient.uploadArtifact('results', [inputs.OUTPUT_FILEPATH], '.');
     }
     catch (e) {
-        core.error(`Ubale to upload ${inputs.OUTPUT_FILEPATH}: ${e}`);
+        core.error(`Unable to upload ${inputs.OUTPUT_FILEPATH}: ${e}`);
     }
 }
 exports.uploadResults = uploadResults;

@@ -27,7 +27,6 @@ import * as inputs from '../app.input';
 import { ScannerResults } from './result.interfaces';
 import fs from 'fs';
 import * as core from '@actions/core';
-import * as path from 'path';
 import {
   EXECUTABLE,
   OUTPUT_FILEPATH,
@@ -42,8 +41,8 @@ const artifactClient = artifact.create();
 export async function uploadResults(): Promise<void> {
   try {
     await artifactClient.uploadArtifact('results', [inputs.OUTPUT_FILEPATH], '.');
-  }catch (e){
-    core.error(`Ubale to upload ${inputs.OUTPUT_FILEPATH}: ${e}`);
+  } catch (e) {
+    core.error(`Unable to upload ${inputs.OUTPUT_FILEPATH}: ${e}`);
   }
 }
 
