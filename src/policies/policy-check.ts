@@ -29,7 +29,6 @@ import { GitHub } from '@actions/github/lib/utils';
 import * as inputs from '../app.input';
 import * as artifact from '@actions/artifact';
 import { UploadResponse } from '@actions/artifact';
-import path from 'path';
 import type { Endpoints } from '@octokit/types';
 
 type ChecksCreateResponse = Endpoints['POST /repos/{owner}/{repo}/check-runs']['response'];
@@ -182,6 +181,10 @@ export abstract class PolicyCheck {
   async uploadArtifact(file: string): Promise<UploadResponse> {
     await fs.writeFile(this.artifactPolicyFileName(), file);
     const artifactClient = artifact.create();
-    return await artifactClient.uploadArtifact(this.artifactPolicyFileName().split('.')[0], [this.artifactPolicyFileName()], '.');
+    return await artifactClient.uploadArtifact(
+      this.artifactPolicyFileName().split('.')[0],
+      [this.artifactPolicyFileName()],
+      '.'
+    );
   }
 }
