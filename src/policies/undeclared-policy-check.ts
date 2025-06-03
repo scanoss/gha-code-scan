@@ -28,6 +28,7 @@ import { EXECUTABLE, SCANOSS_SETTINGS } from '../app.input';
 import * as exec from '@actions/exec';
 import { UndeclaredArgumentBuilder } from './argument_builders/undeclared-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
+import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
@@ -55,7 +56,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     };
 
     const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
-    const summary = stdout;
+    let summary = stdout;
     let details = stderr;
 
     if (!SCANOSS_SETTINGS) {
@@ -69,6 +70,9 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
 
     await this.uploadArtifact(details);
     // core.debug(`Undeclared Artifact ID: ${id}`);
+    if(isOverMaxCharacterLimitAPI(summary)){
+      summary = ''
+    }
     details = await this.concatPolicyArtifactURLToPolicyCheck(details);
 
     return this.reject(summary, details);

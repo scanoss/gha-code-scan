@@ -28,6 +28,7 @@ import { CONCLUSION, PolicyCheck } from '../policies/policy-check';
 import { generateTable } from '../utils/markdown.utils';
 import { context } from '@actions/github';
 import { licenseUtil } from '../utils/license.utils';
+import { isOverMaxCharacterLimitAPI } from './github.service';
 
 export function generatePRSummary(scannerResults: ScannerResults, policies: PolicyCheck[]): string {
   const components = getComponents(scannerResults);
@@ -101,11 +102,15 @@ export async function generateJobSummary(scannerResults: ScannerResults, policie
     return generateTable(HEADERS, ROWS);
   };
 
+  let licenseTable = LicensesTable(licenses);
+  if (isOverMaxCharacterLimitAPI(licenseTable)) {
+    licenseTable = "License table too large to display, omitted from GitHub UI due to length"
+  }
   await core.summary
     .addHeading('Scan Report Section', 2)
     .addHeading('Licenses', 3)
     .addCodeBlock(LicensesPie(licenses), 'mermaid')
-    .addRaw(LicensesTable(licenses))
+    .addRaw(licenseTable)
     .addSeparator()
     .addHeading('Policies', 3)
     .addRaw(PoliciesTable(policies))
