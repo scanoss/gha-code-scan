@@ -72,6 +72,10 @@ inputs:
     description: 'SCANOSS settings file path.'
     default: 'scanoss.json'
     required: false
+  debug:
+    description: 'Enable debugging on scanoss.py'
+    default: false
+    required: false
 
 
 

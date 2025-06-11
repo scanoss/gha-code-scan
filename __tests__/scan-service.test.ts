@@ -25,7 +25,8 @@ describe('ScanService', () => {
       scanFiles: true,
       skipSnippets: false,
       settingsFilePath: '',
-      scanossSettings: false
+      scanossSettings: false,
+      debug: false
     });
 
     // Accessing the private method by bypassing TypeScript type checks
@@ -46,7 +47,8 @@ describe('ScanService', () => {
       scanFiles: false,
       skipSnippets: false,
       settingsFilePath: '',
-      scanossSettings: false
+      scanossSettings: false,
+      debug: false
     });
 
     const command = (service as any).buildDependenciesArgs();
@@ -65,7 +67,8 @@ describe('ScanService', () => {
       scanFiles: true,
       skipSnippets: false,
       settingsFilePath: '',
-      scanossSettings: false
+      scanossSettings: false,
+      debug: false
     });
 
     const command = (service as any).buildDependenciesArgs();
@@ -84,7 +87,8 @@ describe('ScanService', () => {
       scanFiles: true,
       skipSnippets: true,
       settingsFilePath: '',
-      scanossSettings: false
+      scanossSettings: false,
+      debug: false
     });
 
     const command = (service as any).buildSnippetArgs();
@@ -103,7 +107,8 @@ describe('ScanService', () => {
       scanFiles: true,
       skipSnippets: true,
       settingsFilePath: '',
-      scanossSettings: false
+      scanossSettings: false,
+      debug: false
     });
 
     const command = await (service as any).buildArgs();
@@ -125,7 +130,8 @@ describe('ScanService', () => {
       scanFiles: true,
       skipSnippets: false,
       settingsFilePath: 'scanoss.json',
-      scanossSettings: false
+      scanossSettings: false,
+      debug: false
     });
 
     const { scan } = await service.scan();

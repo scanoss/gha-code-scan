@@ -1,5 +1,6 @@
 import { CopyLeftArgumentBuilder } from '../src/policies/argument_builders/copyleft-argument-builder';
 import { RUNTIME_CONTAINER } from '../src/app.input';
+import * as core from '@actions/core';
 
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
@@ -111,6 +112,29 @@ describe('CopyleftArgumentBuilder', () => {
       'results.json',
       '--format',
       'md'
+    ]);
+  });
+
+  it('should include --debug paramter', async () => {
+    appInput.COPYLEFT_LICENSE_EXCLUDE = 'MIT,Apache-2.0';
+    appInput.DEBUG = true;
+    const builder = new CopyLeftArgumentBuilder();
+    const cmd = await builder.build();
+    core.debug(`CMD: ${cmd}`);
+    expect(cmd).toEqual([
+      'run',
+      '-v',
+      'scanoss:/scanoss',
+      RUNTIME_CONTAINER,
+      'inspect',
+      'copyleft',
+      '--input',
+      'results.json',
+      '--format',
+      'md',
+      '--exclude',
+      'MIT,Apache-2.0',
+      '--debug'
     ]);
   });
 });

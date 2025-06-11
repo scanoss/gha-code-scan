@@ -108,6 +108,7 @@ For example workflow runs, check out our
 | scanFiles                  | Enable or disable file and snippet scanning                                                                                                              | Optional     | `true`                               |
 | scanossSettings            | Settings file to use for scanning. See the SCANOSS settings [documentation](https://scanoss.readthedocs.io/projects/scanoss-py/en/latest/#settings-file) | Optional     | `true`                               |
 | settingsFilepath           | Filepath of the SCANOSS settings to be used for scanning                                                                                                 | Optional     | `scanoss.json`                       |
+| debug                      | Enable debugging                                                                                                                                         | Optional     | `false`                              |
 
 ### Action Output Parameters
 

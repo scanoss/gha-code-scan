@@ -108,6 +108,11 @@ export interface Options {
    * SCANOSS Settings file path. Default [scanoss.json]
    */
   settingsFilePath: string;
+
+  /**
+   * Enable debugging
+   */
+  debug: boolean;
 }
 
 /**
@@ -136,6 +141,7 @@ export interface Options {
  * @property {boolean} options.scanFiles - Flag to enable file scanning
  * @property {boolean} options.scanossSettings - Flag to enable SCANOSS Settings
  * @property {boolean} options.settingsFilePath - Path to settings file
+ * @property {boolean} options.debug - Enables debugging
  *
  * @throws {Error} When required configuration options are missing or invalid
  *
@@ -158,7 +164,8 @@ export class ScanService {
       skipSnippets: SKIP_SNIPPETS,
       scanFiles: SCAN_FILES,
       scanossSettings: SCANOSS_SETTINGS,
-      settingsFilePath: SETTINGS_FILE_PATH
+      settingsFilePath: SETTINGS_FILE_PATH,
+      debug: inputs.DEBUG
     };
   }
 
@@ -291,7 +298,8 @@ export class ScanService {
       ...(await this.detectSBOM()),
       ...this.buildSnippetArgs(),
       ...(this.options.apiUrl ? ['--apiurl', this.options.apiUrl] : []),
-      ...(this.options.apiKey ? ['--key', this.options.apiKey.replace(/\n/gm, ' ')] : [])
+      ...(this.options.apiKey ? ['--key', this.options.apiKey.replace(/\n/gm, ' ')] : []),
+      ...(this.options.debug ? ['--debug'] : [])
     ];
   }
 

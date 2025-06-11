@@ -43,3 +43,4 @@ export const SCAN_FILES = core.getInput('scanFiles') === 'true';
 export const SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
 export const SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
 export const EXECUTABLE = 'docker';
+export const DEBUG = core.getInput('debug') === 'true';
