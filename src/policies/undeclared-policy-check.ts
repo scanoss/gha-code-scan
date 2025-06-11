@@ -72,8 +72,8 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     core.debug(`Undeclared Artifact ID: ${id}`);
     if (id) details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);
 
-    if(isOverMaxCharacterLimitAPI(summary)){
-      summary = ''
+    if (isOverMaxCharacterLimitAPI(summary)) {
+      summary = '';
     }
 
     return this.reject(summary, details);

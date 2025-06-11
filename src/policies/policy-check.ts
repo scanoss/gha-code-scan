@@ -54,7 +54,6 @@ export enum STATUS {
 }
 
 export abstract class PolicyCheck {
-
   private octokit: InstanceType<typeof GitHub>;
 
   protected checkName: string;

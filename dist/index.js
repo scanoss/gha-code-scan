@@ -123729,7 +123729,7 @@ exports.COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
 exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 exports.REPO_DIR = process.env.GITHUB_WORKSPACE;
-exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.25.0';
+exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.25.1';
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 exports.SCAN_FILES = core.getInput('scanFiles') === 'true';
 exports.SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
@@ -123997,7 +123997,7 @@ class CopyLeftArgumentBuilder extends argument_builder_1.ArgumentBuilder {
             '--format',
             'md',
             ...this.buildCopyleftArgs(),
-            ...(app_input_1.DEBUG) ? ['--debug'] : [],
+            ...(app_input_1.DEBUG ? ['--debug'] : [])
         ];
     }
 }
@@ -124050,7 +124050,7 @@ class UndeclaredArgumentBuilder extends argument_builder_1.ArgumentBuilder {
             app_input_1.OUTPUT_FILEPATH,
             '--format',
             'md',
-            ...(app_input_1.DEBUG) ? ['--debug'] : [],
+            ...(app_input_1.DEBUG ? ['--debug'] : [])
         ];
     }
 }
@@ -124117,6 +124117,7 @@ const policy_check_1 = __nccwpck_require__(63702);
 const app_input_1 = __nccwpck_require__(483);
 const exec = __importStar(__nccwpck_require__(71514));
 const copyleft_argument_builder_1 = __nccwpck_require__(84156);
+const github_service_1 = __nccwpck_require__(43123);
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
  * It filters components based on their licenses and looks for those with copyleft obligations.
@@ -124138,7 +124139,7 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
             ignoreReturnCode: true
         };
         const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
-        const summary = stdout;
+        let summary = stdout;
         let details = stderr;
         if (exitCode === 1) {
             await this.success('### :white_check_mark: Policy Pass \n #### Not copyleft Licenses were found', undefined);
@@ -124148,6 +124149,9 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
         core.debug(`Copyleft Artifact ID: ${id}`);
         if (id) {
             details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
+        }
+        if ((0, github_service_1.isOverMaxCharacterLimitAPI)(summary)) {
+            summary = '';
         }
         return this.reject(summary, details);
     }
@@ -124225,6 +124229,7 @@ const github_utils_1 = __nccwpck_require__(17889);
 const inputs = __importStar(__nccwpck_require__(483));
 const artifact_1 = __nccwpck_require__(79450);
 const path_1 = __importDefault(__nccwpck_require__(71017));
+const github_service_1 = __nccwpck_require__(43123);
 var CONCLUSION;
 (function (CONCLUSION) {
     CONCLUSION["ActionRequired"] = "action_required";
@@ -124244,7 +124249,6 @@ var STATUS;
     STATUS["FINISHED"] = "FINISHED";
 })(STATUS || (exports.STATUS = STATUS = {}));
 class PolicyCheck {
-    MAX_GH_API_CONTENT_SIZE = 65534;
     octokit;
     checkName;
     checkRunId;
@@ -124320,17 +124324,13 @@ class PolicyCheck {
             }
         });
     }
-    exceedMaxGiHubApiLimit(text) {
-        return text.length > this.MAX_GH_API_CONTENT_SIZE;
-    }
     async concatPolicyArtifactURLToPolicyCheck(details, artifactId) {
         const link = `\n\nDownload the ` +
             `[${this.getPolicyName()} Result](${github_1.context.serverUrl}/` +
             `${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/` +
             `${github_1.context.runId}/artifacts/${artifactId})`;
         let text = details + link;
-        if (this.exceedMaxGiHubApiLimit(text)) {
-            //core.warning(`Details of ${text.length} surpass limit of ${this.MAX_GH_API_CONTENT_SIZE}`);
+        if ((0, github_service_1.isOverMaxCharacterLimitAPI)(text)) {
             core.info(`Policy check results: ${details}`);
             text =
                 `Policy check details omitted from GitHub UI due to length.` +
@@ -124489,6 +124489,7 @@ const core = __importStar(__nccwpck_require__(42186));
 const app_input_1 = __nccwpck_require__(483);
 const exec = __importStar(__nccwpck_require__(71514));
 const undeclared_argument_builder_1 = __nccwpck_require__(48628);
+const github_service_1 = __nccwpck_require__(43123);
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
  * The run method compares components found by the scanner against those declared in the SBOM.
@@ -124513,14 +124514,11 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             ignoreReturnCode: true
         };
         const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
-        const summary = stdout;
+        let summary = stdout;
         let details = stderr;
-        core.debug(`STDOUT: ${stdout}`);
-        core.debug(`STDERR: ${stderr}`);
         if (!app_input_1.SCANOSS_SETTINGS) {
             core.warning('Undeclared policy is being used with SCANOSS settings disabled');
         }
-        core.debug(`EXIT CODE: ${exitCode}`);
         if (exitCode === 1) {
             await this.success('### :white_check_mark: Policy Pass \n #### Not undeclared components were found', undefined);
             return;
@@ -124529,6 +124527,9 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         core.debug(`Undeclared Artifact ID: ${id}`);
         if (id)
             details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);
+        if ((0, github_service_1.isOverMaxCharacterLimitAPI)(summary)) {
+            summary = '';
+        }
         return this.reject(summary, details);
     }
     artifactPolicyFileName() {
@@ -124539,6 +124540,23 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
     }
 }
 exports.UndeclaredPolicyCheck = UndeclaredPolicyCheck;
+
+
+/***/ }),
+
+/***/ 43123:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isOverMaxCharacterLimitAPI = void 0;
+const MAX_GH_API_CONTENT_SIZE = 65534;
+const CHARACTERS_BUFFER = 50;
+function isOverMaxCharacterLimitAPI(content) {
+    return content.length >= MAX_GH_API_CONTENT_SIZE - CHARACTERS_BUFFER;
+}
+exports.isOverMaxCharacterLimitAPI = isOverMaxCharacterLimitAPI;
 
 
 /***/ }),
@@ -124601,6 +124619,7 @@ const policy_check_1 = __nccwpck_require__(63702);
 const markdown_utils_1 = __nccwpck_require__(96011);
 const github_1 = __nccwpck_require__(95438);
 const license_utils_1 = __nccwpck_require__(52210);
+const github_service_1 = __nccwpck_require__(43123);
 function generatePRSummary(scannerResults, policies) {
     const components = (0, result_service_1.getComponents)(scannerResults);
     const licenses = (0, result_service_1.getLicenses)(scannerResults);
@@ -124661,11 +124680,15 @@ async function generateJobSummary(scannerResults, policies) {
         });
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
+    let licenseTable = LicensesTable(licenses);
+    if ((0, github_service_1.isOverMaxCharacterLimitAPI)(licenseTable)) {
+        licenseTable = 'License table too large to display, omitted from GitHub UI due to length';
+    }
     await core.summary
         .addHeading('Scan Report Section', 2)
         .addHeading('Licenses', 3)
         .addCodeBlock(LicensesPie(licenses), 'mermaid')
-        .addRaw(LicensesTable(licenses))
+        .addRaw(licenseTable)
         .addSeparator()
         .addHeading('Policies', 3)
         .addRaw(PoliciesTable(policies))
@@ -124995,7 +125018,7 @@ class ScanService {
             scanFiles: app_input_1.SCAN_FILES,
             scanossSettings: app_input_1.SCANOSS_SETTINGS,
             settingsFilePath: app_input_1.SETTINGS_FILE_PATH,
-            debug: inputs.DEBUG,
+            debug: inputs.DEBUG
         };
     }
     /**
@@ -125118,7 +125141,7 @@ class ScanService {
             ...this.buildSnippetArgs(),
             ...(this.options.apiUrl ? ['--apiurl', this.options.apiUrl] : []),
             ...(this.options.apiKey ? ['--key', this.options.apiKey.replace(/\n/gm, ' ')] : []),
-            ...(this.options.debug) ? ['--debug'] : []
+            ...(this.options.debug ? ['--debug'] : [])
         ];
     }
     /**

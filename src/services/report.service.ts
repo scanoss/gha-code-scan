@@ -104,7 +104,7 @@ export async function generateJobSummary(scannerResults: ScannerResults, policie
 
   let licenseTable = LicensesTable(licenses);
   if (isOverMaxCharacterLimitAPI(licenseTable)) {
-    licenseTable = "License table too large to display, omitted from GitHub UI due to length"
+    licenseTable = 'License table too large to display, omitted from GitHub UI due to length';
   }
   await core.summary
     .addHeading('Scan Report Section', 2)

@@ -67,8 +67,8 @@ export class CopyleftPolicyCheck extends PolicyCheck {
       details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
     }
 
-    if(isOverMaxCharacterLimitAPI(summary)){
-      summary = ''
+    if (isOverMaxCharacterLimitAPI(summary)) {
+      summary = '';
     }
 
     return this.reject(summary, details);
