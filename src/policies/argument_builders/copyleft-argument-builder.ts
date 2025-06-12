@@ -26,6 +26,7 @@ import {
   COPYLEFT_LICENSE_EXCLUDE,
   COPYLEFT_LICENSE_EXPLICIT,
   COPYLEFT_LICENSE_INCLUDE,
+  DEBUG,
   OUTPUT_FILEPATH,
   REPO_DIR,
   RUNTIME_CONTAINER
@@ -64,7 +65,8 @@ export class CopyLeftArgumentBuilder extends ArgumentBuilder {
       OUTPUT_FILEPATH,
       '--format',
       'md',
-      ...this.buildCopyleftArgs()
+      ...this.buildCopyleftArgs(),
+      ...(DEBUG ? ['--debug'] : [])
     ];
   }
 }

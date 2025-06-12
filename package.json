@@ -1,7 +1,7 @@
 {
   "name": "scanoss-code-scan-action",
   "description": "SCANOSS Code Scan Action",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": "SCANOSS",
   "private": true,
   "homepage": "https://github.com/scanoss/code-scan-action/",
@@ -68,7 +68,7 @@
     ]
   },
   "dependencies": {
-    "@actions/artifact": "^2.1.0",
+    "@actions/artifact": "^2.3.2",
     "@actions/core": "^1.10.1",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.0"
@@ -90,6 +90,6 @@
     "prettier": "^3.2.5",
     "prettier-eslint": "^16.3.0",
     "ts-jest": "^29.1.2",
-    "typescript": "^5.3.3"
+    "typescript": "5.3.3"
   }
 }

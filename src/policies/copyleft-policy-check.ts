@@ -28,6 +28,7 @@ import { EXECUTABLE } from '../app.input';
 import * as exec from '@actions/exec';
 import { CopyLeftArgumentBuilder } from './argument_builders/copyleft-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
+import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
@@ -53,7 +54,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     };
 
     const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
-    const summary = stdout;
+    let summary = stdout;
     let details = stderr;
     if (exitCode === 1) {
       await this.success('### :white_check_mark: Policy Pass \n #### Not copyleft Licenses were found', undefined);
@@ -64,6 +65,10 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     core.debug(`Copyleft Artifact ID: ${id}`);
     if (id) {
       details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
+    }
+
+    if (isOverMaxCharacterLimitAPI(summary)) {
+      summary = '';
     }
 
     return this.reject(summary, details);

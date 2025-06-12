@@ -30,6 +30,7 @@ import * as inputs from '../app.input';
 import { DefaultArtifactClient, UploadArtifactResponse } from '@actions/artifact';
 import path from 'path';
 import type { Endpoints } from '@octokit/types';
+import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 
 type ChecksCreateResponse = Endpoints['POST /repos/{owner}/{repo}/check-runs']['response'];
 type CheckRun = ChecksCreateResponse['data'];
@@ -53,8 +54,6 @@ export enum STATUS {
 }
 
 export abstract class PolicyCheck {
-  private readonly MAX_GH_API_CONTENT_SIZE = 65534;
-
   private octokit: InstanceType<typeof GitHub>;
 
   protected checkName: string;
@@ -157,10 +156,6 @@ export abstract class PolicyCheck {
     });
   }
 
-  protected exceedMaxGiHubApiLimit(text: string): boolean {
-    return text.length > this.MAX_GH_API_CONTENT_SIZE;
-  }
-
   protected async concatPolicyArtifactURLToPolicyCheck(details: string, artifactId: number): Promise<string> {
     const link =
       `\n\nDownload the ` +
@@ -170,8 +165,7 @@ export abstract class PolicyCheck {
 
     let text = details + link;
 
-    if (this.exceedMaxGiHubApiLimit(text)) {
-      //core.warning(`Details of ${text.length} surpass limit of ${this.MAX_GH_API_CONTENT_SIZE}`);
+    if (isOverMaxCharacterLimitAPI(text)) {
       core.info(`Policy check results: ${details}`);
 
       text =

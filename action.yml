@@ -18,7 +18,7 @@ inputs:
     description: 'SCANOSS API Key token (optional - not required for default OSSKB URL)'
     required: false
   api.url:
-    description: 'SCANOSS API URL (optional - default: https://osskb.org/api/scan/direct)'
+    description: 'SCANOSS API URL (optional - default: https://api.osskb.org/scan/direct)'
     required: false
   dependencies.enabled:
     description: 'Scan dependencies (optional - default false)'
@@ -54,7 +54,7 @@ inputs:
     required: false
   runtimeContainer:
     description: 'Specify runtime container to perform the scan.'
-    default: 'ghcr.io/scanoss/scanoss-py:v1.20.4'
+    default: 'ghcr.io/scanoss/scanoss-py:v1.25.1'
     required: false
   skipSnippets:
     description: 'Skip the generation of snippets.'
@@ -71,6 +71,10 @@ inputs:
   settingsFilepath:
     description: 'SCANOSS settings file path.'
     default: 'scanoss.json'
+    required: false
+  debug:
+    description: 'Enable debugging on scanoss.py'
+    default: false
     required: false
 
 
