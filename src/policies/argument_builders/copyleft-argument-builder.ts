@@ -28,7 +28,8 @@ import {
   COPYLEFT_LICENSE_INCLUDE,
   OUTPUT_FILEPATH,
   REPO_DIR,
-  RUNTIME_CONTAINER
+  RUNTIME_CONTAINER,
+  DEBUG
 } from '../../app.input';
 import * as core from '@actions/core';
 
@@ -64,7 +65,8 @@ export class CopyLeftArgumentBuilder extends ArgumentBuilder {
       OUTPUT_FILEPATH,
       '--format',
       'md',
-      ...this.buildCopyleftArgs()
+      ...this.buildCopyleftArgs(),
+      ...(DEBUG ? ['--debug'] : [])
     ];
   }
 }

@@ -54,4 +54,26 @@ describe('UndeclaredArgumentBuilder', () => {
       'md'
     ]);
   });
+
+  it('Should build a command with --debug parameter', async function () {
+    appInput.REPO_DIR = 'repodir';
+    appInput.OUTPUT_FILEPATH = 'results.json';
+    appInput.SCANOSS_SETTINGS = true;
+    appInput.DEBUG = true;
+    const builder = new UndeclaredArgumentBuilder();
+    const cmd = await builder.build();
+    expect(cmd).toEqual([
+      'run',
+      '-v',
+      'repodir:/scanoss',
+      RUNTIME_CONTAINER,
+      'inspect',
+      'undeclared',
+      '--input',
+      'results.json',
+      '--format',
+      'md',
+      '--debug'
+    ]);
+  });
 });

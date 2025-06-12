@@ -33319,7 +33319,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.REPO_DIR = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
+exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.REPO_DIR = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 exports.POLICIES = core.getInput('policies');
 exports.POLICIES_HALT_ON_FAILURE = core.getInput('policies.halt_on_failure') === 'true';
@@ -33335,12 +33335,13 @@ exports.COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
 exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 exports.REPO_DIR = process.env.GITHUB_WORKSPACE;
-exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.20.4';
+exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.25.1';
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 exports.SCAN_FILES = core.getInput('scanFiles') === 'true';
 exports.SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
 exports.SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
 exports.EXECUTABLE = 'docker';
+exports.DEBUG = core.getInput('debug') === 'true';
 
 
 /***/ }),
@@ -33601,7 +33602,8 @@ class CopyLeftArgumentBuilder extends argument_builder_1.ArgumentBuilder {
             app_input_1.OUTPUT_FILEPATH,
             '--format',
             'md',
-            ...this.buildCopyleftArgs()
+            ...this.buildCopyleftArgs(),
+            ...(app_input_1.DEBUG ? ['--debug'] : [])
         ];
     }
 }
@@ -33653,7 +33655,8 @@ class UndeclaredArgumentBuilder extends argument_builder_1.ArgumentBuilder {
             '--input',
             app_input_1.OUTPUT_FILEPATH,
             '--format',
-            'md'
+            'md',
+            ...(app_input_1.DEBUG ? ['--debug'] : [])
         ];
     }
 }
@@ -34598,6 +34601,7 @@ exports.uploadResults = uploadResults;
  * @property {boolean} options.scanFiles - Flag to enable file scanning
  * @property {boolean} options.scanossSettings - Flag to enable SCANOSS Settings
  * @property {boolean} options.settingsFilePath - Path to settings file
+ * @property {boolean} options.debug - Enables debugging
  *
  * @throws {Error} When required configuration options are missing or invalid
  *
@@ -34620,7 +34624,8 @@ class ScanService {
             skipSnippets: app_input_1.SKIP_SNIPPETS,
             scanFiles: app_input_1.SCAN_FILES,
             scanossSettings: app_input_1.SCANOSS_SETTINGS,
-            settingsFilePath: app_input_1.SETTINGS_FILE_PATH
+            settingsFilePath: app_input_1.SETTINGS_FILE_PATH,
+            debug: inputs.DEBUG
         };
     }
     /**
@@ -34742,7 +34747,8 @@ class ScanService {
             ...(await this.detectSBOM()),
             ...this.buildSnippetArgs(),
             ...(this.options.apiUrl ? ['--apiurl', this.options.apiUrl] : []),
-            ...(this.options.apiKey ? ['--key', this.options.apiKey.replace(/\n/gm, ' ')] : [])
+            ...(this.options.apiKey ? ['--key', this.options.apiKey.replace(/\n/gm, ' ')] : []),
+            ...(this.options.debug ? ['--debug'] : [])
         ];
     }
     /**
