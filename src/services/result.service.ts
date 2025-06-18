@@ -56,7 +56,7 @@ export function getComponents(results: ScannerResults): Component[] {
         components.push({
           purl: (c as ScannerComponent).purl[0],
           version: (c as ScannerComponent).version,
-          licenses: (c as ScannerComponent).licenses.map(l => ({
+          licenses: (c as ScannerComponent)?.licenses.map(l => ({
             spdxid: l.name,
             copyleft: licenseUtil.isCopyLeft(l.name?.trim().toLowerCase()),
             url: l?.url ? l.url : null,
@@ -71,7 +71,7 @@ export function getComponents(results: ScannerResults): Component[] {
           components.push({
             purl: d.purl,
             version: d.version,
-            licenses: d.licenses
+            licenses: d?.licenses
               .map(l => ({
                 spdxid: l.spdx_id,
                 copyleft: licenseUtil.isCopyLeft(l.spdx_id?.trim().toLowerCase()),
@@ -99,7 +99,7 @@ export function getComponents(results: ScannerResults): Component[] {
     // Remove duplicates licenses
     const spdxidSet = new Set<string>();
     const uniqueLicenses: License[] = [];
-    component.licenses.forEach(license => {
+    component?.licenses.forEach(license => {
       if (!spdxidSet.has(license.spdxid)) {
         spdxidSet.add(license.spdxid);
         uniqueLicenses.push(license);
@@ -125,7 +125,7 @@ export function getLicenses(results: ScannerResults): License[] {
   for (const component of Object.values(results)) {
     for (const c of component) {
       if (c.id === ComponentID.FILE || c.id === ComponentID.SNIPPET) {
-        for (const l of (c as ScannerComponent).licenses) {
+        for (const l of (c as ScannerComponent)?.licenses) {
           licenses.push({
             spdxid: l.name,
             copyleft: licenseUtil.isCopyLeft(l.name.trim().toLowerCase()),
@@ -138,7 +138,7 @@ export function getLicenses(results: ScannerResults): License[] {
       if (c.id === ComponentID.DEPENDENCY) {
         const dependencies = (c as DependencyComponent).dependencies;
         for (const d of dependencies) {
-          for (const l of d.licenses) {
+          for (const l of d?.licenses) {
             if (!l.spdx_id) continue;
             licenses.push({
               spdxid: l.spdx_id,

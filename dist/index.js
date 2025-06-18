@@ -33467,7 +33467,7 @@ async function run() {
             const report = (0, report_service_1.generatePRSummary)(scan, policies);
             await (0, github_utils_1.createCommentOnPR)(report);
         }
-        await (0, report_service_1.generateJobSummary)(scan, policies);
+        // await generateJobSummary(scan, policies);
         // set outputs for other workflow steps to use
         core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
         core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
@@ -34389,7 +34389,7 @@ function getComponents(results) {
                 components.push({
                     purl: c.purl[0],
                     version: c.version,
-                    licenses: c.licenses.map(l => ({
+                    licenses: c?.licenses.map(l => ({
                         spdxid: l.name,
                         copyleft: license_utils_1.licenseUtil.isCopyLeft(l.name?.trim().toLowerCase()),
                         url: l?.url ? l.url : null,
@@ -34403,7 +34403,7 @@ function getComponents(results) {
                     components.push({
                         purl: d.purl,
                         version: d.version,
-                        licenses: d.licenses
+                        licenses: d?.licenses
                             .map(l => ({
                             spdxid: l.spdx_id,
                             copyleft: license_utils_1.licenseUtil.isCopyLeft(l.spdx_id?.trim().toLowerCase()),
@@ -34430,7 +34430,7 @@ function getComponents(results) {
         // Remove duplicates licenses
         const spdxidSet = new Set();
         const uniqueLicenses = [];
-        component.licenses.forEach(license => {
+        component?.licenses.forEach(license => {
             if (!spdxidSet.has(license.spdxid)) {
                 spdxidSet.add(license.spdxid);
                 uniqueLicenses.push(license);
@@ -34453,7 +34453,7 @@ function getLicenses(results) {
     for (const component of Object.values(results)) {
         for (const c of component) {
             if (c.id === result_interfaces_1.ComponentID.FILE || c.id === result_interfaces_1.ComponentID.SNIPPET) {
-                for (const l of c.licenses) {
+                for (const l of c?.licenses) {
                     licenses.push({
                         spdxid: l.name,
                         copyleft: license_utils_1.licenseUtil.isCopyLeft(l.name.trim().toLowerCase()),
@@ -34465,7 +34465,7 @@ function getLicenses(results) {
             if (c.id === result_interfaces_1.ComponentID.DEPENDENCY) {
                 const dependencies = c.dependencies;
                 for (const d of dependencies) {
-                    for (const l of d.licenses) {
+                    for (const l of d?.licenses) {
                         if (!l.spdx_id)
                             continue;
                         licenses.push({

@@ -63,7 +63,7 @@ export async function run(): Promise<void> {
       await createCommentOnPR(report);
     }
 
-    await generateJobSummary(scan, policies);
+   // await generateJobSummary(scan, policies);
     // set outputs for other workflow steps to use
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
     core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
