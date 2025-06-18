@@ -33467,7 +33467,7 @@ async function run() {
             const report = (0, report_service_1.generatePRSummary)(scan, policies);
             await (0, github_utils_1.createCommentOnPR)(report);
         }
-        // await generateJobSummary(scan, policies);
+        await (0, report_service_1.generateJobSummary)(scan, policies);
         // set outputs for other workflow steps to use
         core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
         core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
@@ -34370,7 +34370,7 @@ var ComponentID;
    THE SOFTWARE.
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getLicenses = exports.getComponents = void 0;
+exports.getLicenses = exports.filterLicensesByPrioritySource = exports.getComponents = void 0;
 const result_interfaces_1 = __nccwpck_require__(1554);
 const license_utils_1 = __nccwpck_require__(2210);
 /**
@@ -34393,7 +34393,8 @@ function getComponents(results) {
                         spdxid: l.name,
                         copyleft: license_utils_1.licenseUtil.isCopyLeft(l.name?.trim().toLowerCase()),
                         url: l?.url ? l.url : null,
-                        count: 1
+                        count: 1,
+                        source: l.source ? l.source : 'unknown'
                     }))
                 });
             }
@@ -34408,7 +34409,8 @@ function getComponents(results) {
                             spdxid: l.spdx_id,
                             copyleft: license_utils_1.licenseUtil.isCopyLeft(l.spdx_id?.trim().toLowerCase()),
                             url: null,
-                            count: 1
+                            count: 1,
+                            source: 'unknown'
                         }))
                             .filter(l => l.spdxid)
                     });
@@ -34442,6 +34444,20 @@ function getComponents(results) {
     return unqiqueComponents;
 }
 exports.getComponents = getComponents;
+function filterLicensesByPrioritySource(licenses) {
+    const priority_sources = ['component_declared', 'license_file', 'file_header', 'scancode'];
+    // Try each priority source in order
+    for (const source of priority_sources) {
+        const filtered = licenses.filter(license => license.source === source);
+        // If we found licenses with this source, return them
+        if (filtered.length > 0) {
+            return filtered;
+        }
+    }
+    // If no licenses found with any priority source, return all licenses
+    return licenses;
+}
+exports.filterLicensesByPrioritySource = filterLicensesByPrioritySource;
 /**
  * This function generate an array of {@link License } from raw scanner results {@link ScannerResults }
  *
@@ -34458,7 +34474,8 @@ function getLicenses(results) {
                         spdxid: l.name,
                         copyleft: license_utils_1.licenseUtil.isCopyLeft(l.name.trim().toLowerCase()),
                         url: license_utils_1.licenseUtil.getOSADL(l?.name),
-                        count: 1
+                        count: 1,
+                        source: l.source ? l.source : 'unknown'
                     });
                 }
             }
@@ -34472,20 +34489,12 @@ function getLicenses(results) {
                             spdxid: l.spdx_id,
                             copyleft: license_utils_1.licenseUtil.isCopyLeft(l.spdx_id?.trim().toLowerCase()),
                             url: license_utils_1.licenseUtil.getOSADL(l?.spdx_id),
-                            count: 1
+                            count: 1,
+                            source: 'unknown'
                         });
                     }
                 }
             }
-        }
-    }
-    //Increase counter. The only counter valid is only the first occurence!
-    for (let i = 0; i < licenses.length; i++) {
-        const p = licenses[i];
-        for (let j = i + 1; j < licenses.length; j++) {
-            const q = licenses[j];
-            if (p.spdxid === q.spdxid)
-                p.count++;
         }
     }
     //Clean duplicated
@@ -34497,7 +34506,16 @@ function getLicenses(results) {
         }
         return false;
     });
-    return uniqueLicenses;
+    //Increase counter. The only counter valid is only the first occurence!
+    for (let i = 0; i < licenses.length; i++) {
+        const p = licenses[i];
+        for (let j = i + 1; j < licenses.length; j++) {
+            const q = licenses[j];
+            if (p.spdxid === q.spdxid)
+                p.count++;
+        }
+    }
+    return filterLicensesByPrioritySource(uniqueLicenses);
 }
 exports.getLicenses = getLicenses;
 
