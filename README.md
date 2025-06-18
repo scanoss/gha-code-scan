@@ -17,7 +17,7 @@ vulnerabilities and license compliance with configurable policies.
 
 ## Breaking change v1.0.1
 
-- Default runtime container updated to `ghcr.io/scanoss/scanoss-py:v1.19.0`
+- Default runtime container updated to `ghcr.io/scanoss/scanoss-py:v1.25.1`
 - Removed parameters:
    - `sbom.enabled`
    - `sbom.filepath`
