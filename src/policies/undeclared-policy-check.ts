@@ -26,7 +26,7 @@ import { CHECK_NAME } from '../app.config';
 import * as core from '@actions/core';
 import { EXECUTABLE, SCANOSS_SETTINGS } from '../app.input';
 import * as exec from '@actions/exec';
-import { UndeclaredArgumentBuilder } from './argument_builders/undeclared-argument-builder';
+import { UndeclaredArgumentBuilder } from './argument_builders/components/undeclared-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 

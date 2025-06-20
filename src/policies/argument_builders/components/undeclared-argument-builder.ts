@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /*
-   Copyright (c) 2024, SCANOSS
+   Copyright (c) 2025, SCANOSS
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,38 +21,10 @@
    THE SOFTWARE.
  */
 
-import { ArgumentBuilder } from './argument-builder';
-import {
-  COPYLEFT_LICENSE_EXCLUDE,
-  COPYLEFT_LICENSE_EXPLICIT,
-  COPYLEFT_LICENSE_INCLUDE,
-  DEBUG,
-  OUTPUT_FILEPATH,
-  REPO_DIR,
-  RUNTIME_CONTAINER
-} from '../../app.input';
-import * as core from '@actions/core';
+import { ArgumentBuilder } from '../argument-builder';
+import { OUTPUT_FILEPATH, REPO_DIR, RUNTIME_CONTAINER, DEBUG } from '../../../app.input';
 
-export class CopyLeftArgumentBuilder extends ArgumentBuilder {
-  private buildCopyleftArgs(): string[] {
-    if (COPYLEFT_LICENSE_EXPLICIT) {
-      core.info(`Explicit copyleft licenses: ${COPYLEFT_LICENSE_EXPLICIT}`);
-      return ['--explicit', COPYLEFT_LICENSE_EXPLICIT];
-    }
-
-    if (COPYLEFT_LICENSE_INCLUDE) {
-      core.info(`Included copyleft licenses: ${COPYLEFT_LICENSE_INCLUDE}`);
-      return ['--include', COPYLEFT_LICENSE_INCLUDE];
-    }
-
-    if (COPYLEFT_LICENSE_EXCLUDE) {
-      core.info(`Excluded copyleft licenses: ${COPYLEFT_LICENSE_EXCLUDE}`);
-      return ['--exclude', COPYLEFT_LICENSE_EXCLUDE];
-    }
-
-    return [];
-  }
-
+export class UndeclaredArgumentBuilder extends ArgumentBuilder {
   async build(): Promise<string[]> {
     return [
       'run',
@@ -60,12 +32,11 @@ export class CopyLeftArgumentBuilder extends ArgumentBuilder {
       `${REPO_DIR}:/scanoss`,
       RUNTIME_CONTAINER,
       'inspect',
-      'copyleft',
+      'undeclared',
       '--input',
       OUTPUT_FILEPATH,
       '--format',
       'md',
-      ...this.buildCopyleftArgs(),
       ...(DEBUG ? ['--debug'] : [])
     ];
   }
