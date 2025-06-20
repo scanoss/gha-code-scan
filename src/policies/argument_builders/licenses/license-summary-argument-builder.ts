@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /*
-   Copyright (c) 2024, SCANOSS
+   Copyright (c) 2025, SCANOSS
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,10 +21,10 @@
    THE SOFTWARE.
  */
 
-import { ArgumentBuilder } from './argument-builder';
-import { OUTPUT_FILEPATH, REPO_DIR, RUNTIME_CONTAINER, DEBUG } from '../../app.input';
+import { CopyLeftArgumentBuilder } from './copyleft-argument-builder';
+import { DEBUG, OUTPUT_FILEPATH, REPO_DIR, RUNTIME_CONTAINER } from '../../../app.input';
 
-export class UndeclaredArgumentBuilder extends ArgumentBuilder {
+export class LicenseSummaryArgumentBuilder extends CopyLeftArgumentBuilder {
   async build(): Promise<string[]> {
     return [
       'run',
@@ -32,11 +32,10 @@ export class UndeclaredArgumentBuilder extends ArgumentBuilder {
       `${REPO_DIR}:/scanoss`,
       RUNTIME_CONTAINER,
       'inspect',
-      'undeclared',
+      'license-summary',
       '--input',
       OUTPUT_FILEPATH,
-      '--format',
-      'md',
+      ...this.buildCopyleftArgs(),
       ...(DEBUG ? ['--debug'] : [])
     ];
   }

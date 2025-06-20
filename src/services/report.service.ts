@@ -21,18 +21,18 @@
    THE SOFTWARE.
  */
 
-import { ScannerResults } from './result.interfaces';
-import { License, getComponents, getLicenses } from './result.service';
 import * as core from '@actions/core';
 import { CONCLUSION, PolicyCheck } from '../policies/policy-check';
 import { generateTable } from '../utils/markdown.utils';
 import { context } from '@actions/github';
 import { licenseUtil } from '../utils/license.utils';
 import { isOverMaxCharacterLimitAPI } from './github.service';
+import { getLicenseSummary, License } from './license.service';
+import { getComponentSummary } from './component.service';
 
-export function generatePRSummary(scannerResults: ScannerResults, policies: PolicyCheck[]): string {
-  const components = getComponents(scannerResults);
-  const licenses = getLicenses(scannerResults);
+export async function generatePRSummary(policies: PolicyCheck[]): Promise<string> {
+  const componentSummary = await getComponentSummary();
+  const licenseSummary = await getLicenseSummary();
 
   const polCount = {
     total: policies.length,
@@ -48,8 +48,14 @@ export function generatePRSummary(scannerResults: ScannerResults, policies: Poli
 
   const content = `
   ### SCANOSS SCAN Completed :rocket:
-  - **Components detected:** ${components.length}
-  - **Licenses detected:** ${licenses.length}
+  - **Detected components:** ${componentSummary.totalComponents}
+  - **Undeclared components:** ${componentSummary.undeclaredComponents}
+  - **Declared components:** ${componentSummary.declaredComponents}
+  - **Detected files:** ${componentSummary.totalFilesDetected}
+  - **Detected files undeclared:** ${componentSummary.totalFilesUndeclared}
+  - **Detected files declared:** ${componentSummary.totalFilesDeclared}
+  - **Licenses detected:** ${licenseSummary.detectedLicenses}
+  - **Licenses detected with copyleft:** ${licenseSummary.detectedLicensesWithCopyleft}
   - **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
 
   View more details on [SCANOSS Action Summary](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
@@ -58,10 +64,9 @@ export function generatePRSummary(scannerResults: ScannerResults, policies: Poli
   return content;
 }
 
-export async function generateJobSummary(scannerResults: ScannerResults, policies: PolicyCheck[]): Promise<void> {
-  const licenses = getLicenses(scannerResults);
-  licenses.sort((l1, l2) => l2.count - l1.count);
-
+export async function generateJobSummary(policies: PolicyCheck[]): Promise<void> {
+  const licenseSummary = await getLicenseSummary();
+  licenseSummary.licenses.sort((l1, l2) => l2.componentCount - l1.componentCount);
   const LicensesPie = (items: License[]): string => {
     let pie = `
     %%{init: { "pie" : {"textPosition": "0.75"} ,"themeVariables": {"pieSectionTextSize": "0px", 
@@ -73,7 +78,7 @@ export async function generateJobSummary(scannerResults: ScannerResults, policie
       title Licenses chart`;
 
     items.forEach(l => {
-      pie += `\n"${l.spdxid}" : ${l.count}`;
+      pie += `\n"${l.spdxid}" : ${l.componentCount}`;
     });
     return pie;
   };
@@ -102,14 +107,14 @@ export async function generateJobSummary(scannerResults: ScannerResults, policie
     return generateTable(HEADERS, ROWS);
   };
 
-  let licenseTable = LicensesTable(licenses);
+  let licenseTable = LicensesTable(licenseSummary.licenses);
   if (isOverMaxCharacterLimitAPI(licenseTable)) {
     licenseTable = "License table too large to display, omitted from GitHub UI due to length"
   }
   await core.summary
     .addHeading('Scan Report Section', 2)
     .addHeading('Licenses', 3)
-    .addCodeBlock(LicensesPie(licenses), 'mermaid')
+    .addCodeBlock(LicensesPie(licenseSummary.licenses), 'mermaid')
     .addRaw(licenseTable)
     .addSeparator()
     .addHeading('Policies', 3)

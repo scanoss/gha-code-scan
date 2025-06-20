@@ -26,7 +26,7 @@ import { CHECK_NAME } from '../app.config';
 import { PolicyCheck } from './policy-check';
 import { EXECUTABLE } from '../app.input';
 import * as exec from '@actions/exec';
-import { CopyLeftArgumentBuilder } from './argument_builders/copyleft-argument-builder';
+import { CopyLeftArgumentBuilder } from './argument_builders/licenses/copyleft-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 
