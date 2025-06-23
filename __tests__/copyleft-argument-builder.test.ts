@@ -1,4 +1,4 @@
-import { CopyLeftArgumentBuilder } from '../src/policies/argument_builders/copyleft-argument-builder';
+import { CopyLeftArgumentBuilder } from '../src/policies/argument_builders/licenses/copyleft-argument-builder';
 import { RUNTIME_CONTAINER } from '../src/app.input';
 import * as core from '@actions/core';
 
