@@ -1,5 +1,5 @@
 import { RUNTIME_CONTAINER } from '../src/app.input';
-import { UndeclaredArgumentBuilder } from '../src/policies/argument_builders/undeclared-argument-builder';
+import { UndeclaredArgumentBuilder } from '../src/policies/argument_builders/components/undeclared-argument-builder';
 
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),

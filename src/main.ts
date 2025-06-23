@@ -49,7 +49,7 @@ export async function run(): Promise<void> {
     }
 
     // run scan
-    const { scan, stdout } = await scanService.scan();
+    const { stdout } = await scanService.scan();
     await uploadResults();
 
     // run policies
@@ -59,11 +59,11 @@ export async function run(): Promise<void> {
 
     if (isPullRequest()) {
       // create reports
-      const report = generatePRSummary(scan, policies);
+      const report = await generatePRSummary(policies);
       await createCommentOnPR(report);
     }
 
-    await generateJobSummary(scan, policies);
+    await generateJobSummary(policies);
     // set outputs for other workflow steps to use
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
     core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
