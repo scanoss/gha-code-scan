@@ -33335,7 +33335,7 @@ exports.COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
 exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 exports.REPO_DIR = process.env.GITHUB_WORKSPACE;
-exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.25.2';
+exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.26.1';
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 exports.SCAN_FILES = core.getInput('scanFiles') === 'true';
 exports.SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
@@ -33456,7 +33456,7 @@ async function run() {
             await policy.start(firstRunId);
         }
         // run scan
-        const { scan, stdout } = await scan_service_1.scanService.scan();
+        const { stdout } = await scan_service_1.scanService.scan();
         await (0, scan_service_1.uploadResults)();
         // run policies
         for (const policy of policies) {
@@ -33464,10 +33464,10 @@ async function run() {
         }
         if ((0, github_utils_1.isPullRequest)()) {
             // create reports
-            const report = (0, report_service_1.generatePRSummary)(scan, policies);
+            const report = await (0, report_service_1.generatePRSummary)(policies);
             await (0, github_utils_1.createCommentOnPR)(report);
         }
-        await (0, report_service_1.generateJobSummary)(scan, policies);
+        await (0, report_service_1.generateJobSummary)(policies);
         // set outputs for other workflow steps to use
         core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
         core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
@@ -33519,14 +33519,118 @@ exports.ArgumentBuilder = ArgumentBuilder;
 
 /***/ }),
 
-/***/ 4156:
+/***/ 3547:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ComponentSummaryArgumentBuilder = void 0;
+const argument_builder_1 = __nccwpck_require__(6658);
+const app_input_1 = __nccwpck_require__(483);
+class ComponentSummaryArgumentBuilder extends argument_builder_1.ArgumentBuilder {
+    async build() {
+        return [
+            'run',
+            '-v',
+            `${app_input_1.REPO_DIR}:/scanoss`,
+            app_input_1.RUNTIME_CONTAINER,
+            'inspect',
+            'component-summary',
+            '--input',
+            app_input_1.OUTPUT_FILEPATH,
+            ...(app_input_1.DEBUG ? ['--debug'] : [])
+        ];
+    }
+}
+exports.ComponentSummaryArgumentBuilder = ComponentSummaryArgumentBuilder;
+
+
+/***/ }),
+
+/***/ 5721:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UndeclaredArgumentBuilder = void 0;
+const argument_builder_1 = __nccwpck_require__(6658);
+const app_input_1 = __nccwpck_require__(483);
+class UndeclaredArgumentBuilder extends argument_builder_1.ArgumentBuilder {
+    async build() {
+        return [
+            'run',
+            '-v',
+            `${app_input_1.REPO_DIR}:/scanoss`,
+            app_input_1.RUNTIME_CONTAINER,
+            'inspect',
+            'undeclared',
+            '--input',
+            app_input_1.OUTPUT_FILEPATH,
+            '--format',
+            'md',
+            ...(app_input_1.DEBUG ? ['--debug'] : [])
+        ];
+    }
+}
+exports.UndeclaredArgumentBuilder = UndeclaredArgumentBuilder;
+
+
+/***/ }),
+
+/***/ 3075:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
 // SPDX-License-Identifier: MIT
 /*
-   Copyright (c) 2024, SCANOSS
+   Copyright (c) 2025, SCANOSS
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -33570,11 +33674,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CopyLeftArgumentBuilder = void 0;
+exports.BaseLicenseArgumentBuilder = void 0;
 const argument_builder_1 = __nccwpck_require__(6658);
 const app_input_1 = __nccwpck_require__(483);
 const core = __importStar(__nccwpck_require__(2186));
-class CopyLeftArgumentBuilder extends argument_builder_1.ArgumentBuilder {
+class BaseLicenseArgumentBuilder extends argument_builder_1.ArgumentBuilder {
     buildCopyleftArgs() {
         if (app_input_1.COPYLEFT_LICENSE_EXPLICIT) {
             core.info(`Explicit copyleft licenses: ${app_input_1.COPYLEFT_LICENSE_EXPLICIT}`);
@@ -33590,6 +33694,44 @@ class CopyLeftArgumentBuilder extends argument_builder_1.ArgumentBuilder {
         }
         return [];
     }
+}
+exports.BaseLicenseArgumentBuilder = BaseLicenseArgumentBuilder;
+
+
+/***/ }),
+
+/***/ 3373:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CopyLeftArgumentBuilder = void 0;
+const app_input_1 = __nccwpck_require__(483);
+const base_license_argument_builder_1 = __nccwpck_require__(3075);
+class CopyLeftArgumentBuilder extends base_license_argument_builder_1.BaseLicenseArgumentBuilder {
     async build() {
         return [
             'run',
@@ -33612,14 +33754,14 @@ exports.CopyLeftArgumentBuilder = CopyLeftArgumentBuilder;
 
 /***/ }),
 
-/***/ 5001:
+/***/ 4088:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 // SPDX-License-Identifier: MIT
 /*
-   Copyright (c) 2024, SCANOSS
+   Copyright (c) 2025, SCANOSS
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -33640,10 +33782,10 @@ exports.CopyLeftArgumentBuilder = CopyLeftArgumentBuilder;
    THE SOFTWARE.
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.UndeclaredArgumentBuilder = void 0;
-const argument_builder_1 = __nccwpck_require__(6658);
+exports.LicenseSummaryArgumentBuilder = void 0;
+const copyleft_argument_builder_1 = __nccwpck_require__(3373);
 const app_input_1 = __nccwpck_require__(483);
-class UndeclaredArgumentBuilder extends argument_builder_1.ArgumentBuilder {
+class LicenseSummaryArgumentBuilder extends copyleft_argument_builder_1.CopyLeftArgumentBuilder {
     async build() {
         return [
             'run',
@@ -33651,16 +33793,15 @@ class UndeclaredArgumentBuilder extends argument_builder_1.ArgumentBuilder {
             `${app_input_1.REPO_DIR}:/scanoss`,
             app_input_1.RUNTIME_CONTAINER,
             'inspect',
-            'undeclared',
+            'license-summary',
             '--input',
             app_input_1.OUTPUT_FILEPATH,
-            '--format',
-            'md',
+            ...this.buildCopyleftArgs(),
             ...(app_input_1.DEBUG ? ['--debug'] : [])
         ];
     }
 }
-exports.UndeclaredArgumentBuilder = UndeclaredArgumentBuilder;
+exports.LicenseSummaryArgumentBuilder = LicenseSummaryArgumentBuilder;
 
 
 /***/ }),
@@ -33722,7 +33863,7 @@ const app_config_1 = __nccwpck_require__(9014);
 const policy_check_1 = __nccwpck_require__(3702);
 const app_input_1 = __nccwpck_require__(483);
 const exec = __importStar(__nccwpck_require__(1514));
-const copyleft_argument_builder_1 = __nccwpck_require__(4156);
+const copyleft_argument_builder_1 = __nccwpck_require__(3373);
 const github_service_1 = __nccwpck_require__(3123);
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
@@ -34092,7 +34233,7 @@ const app_config_1 = __nccwpck_require__(9014);
 const core = __importStar(__nccwpck_require__(2186));
 const app_input_1 = __nccwpck_require__(483);
 const exec = __importStar(__nccwpck_require__(1514));
-const undeclared_argument_builder_1 = __nccwpck_require__(5001);
+const undeclared_argument_builder_1 = __nccwpck_require__(5721);
 const github_service_1 = __nccwpck_require__(3123);
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
@@ -34147,6 +34288,67 @@ exports.UndeclaredPolicyCheck = UndeclaredPolicyCheck;
 
 /***/ }),
 
+/***/ 4749:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getComponentSummary = void 0;
+const exec = __importStar(__nccwpck_require__(1514));
+const app_input_1 = __nccwpck_require__(483);
+const core = __importStar(__nccwpck_require__(2186));
+const component_summary_argument_builder_1 = __nccwpck_require__(3547);
+async function getComponentSummary() {
+    const componentSummaryBuilder = new component_summary_argument_builder_1.ComponentSummaryArgumentBuilder();
+    const args = await componentSummaryBuilder.build();
+    const options = {
+        failOnStdErr: false,
+        ignoreReturnCode: true
+    };
+    const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
+    if (exitCode === 1) {
+        core.warning(`Unable to extract components for job summary: ${stderr}`);
+        return {
+            components: [],
+            totalComponents: 0,
+            undeclaredComponents: 0,
+            declaredComponents: 0,
+            totalFilesDeclared: 0,
+            totalFilesDetected: 0,
+            totalFilesUndeclared: 0
+        };
+    }
+    return JSON.parse(stdout);
+}
+exports.getComponentSummary = getComponentSummary;
+
+
+/***/ }),
+
 /***/ 3123:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -34160,6 +34362,59 @@ function isOverMaxCharacterLimitAPI(content) {
     return content.length >= MAX_GH_API_CONTENT_SIZE - CHARACTERS_BUFFER;
 }
 exports.isOverMaxCharacterLimitAPI = isOverMaxCharacterLimitAPI;
+
+
+/***/ }),
+
+/***/ 4621:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getLicenseSummary = void 0;
+const license_summary_argument_builder_1 = __nccwpck_require__(4088);
+const exec = __importStar(__nccwpck_require__(1514));
+const app_input_1 = __nccwpck_require__(483);
+const core = __importStar(__nccwpck_require__(2186));
+async function getLicenseSummary() {
+    const licenseSummaryBuilder = new license_summary_argument_builder_1.LicenseSummaryArgumentBuilder();
+    const args = await licenseSummaryBuilder.build();
+    const options = {
+        failOnStdErr: false,
+        ignoreReturnCode: true
+    };
+    const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
+    if (exitCode === 1) {
+        core.warning(`Unable to extract licenses for job summary: ${stderr}`);
+        return { licenses: [], detectedLicenses: 0, detectedLicensesWithCopyleft: 0 };
+    }
+    return JSON.parse(stdout);
+}
+exports.getLicenseSummary = getLicenseSummary;
 
 
 /***/ }),
@@ -34216,16 +34471,17 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.generateJobSummary = exports.generatePRSummary = void 0;
-const result_service_1 = __nccwpck_require__(2414);
 const core = __importStar(__nccwpck_require__(2186));
 const policy_check_1 = __nccwpck_require__(3702);
 const markdown_utils_1 = __nccwpck_require__(6011);
 const github_1 = __nccwpck_require__(5438);
 const license_utils_1 = __nccwpck_require__(2210);
 const github_service_1 = __nccwpck_require__(3123);
-function generatePRSummary(scannerResults, policies) {
-    const components = (0, result_service_1.getComponents)(scannerResults);
-    const licenses = (0, result_service_1.getLicenses)(scannerResults);
+const license_service_1 = __nccwpck_require__(4621);
+const component_service_1 = __nccwpck_require__(4749);
+async function generatePRSummary(policies) {
+    const componentSummary = await (0, component_service_1.getComponentSummary)();
+    const licenseSummary = await (0, license_service_1.getLicenseSummary)();
     const polCount = {
         total: policies.length,
         success: policies.filter(p => p.conclusion === policy_check_1.CONCLUSION.Success).length,
@@ -34238,8 +34494,14 @@ function generatePRSummary(scannerResults, policies) {
     };
     const content = `
   ### SCANOSS SCAN Completed :rocket:
-  - **Components detected:** ${components.length}
-  - **Licenses detected:** ${licenses.length}
+  - **Detected components:** ${componentSummary.totalComponents}
+  - **Undeclared components:** ${componentSummary.undeclaredComponents}
+  - **Declared components:** ${componentSummary.declaredComponents}
+  - **Detected files:** ${componentSummary.totalFilesDetected}
+  - **Detected files undeclared:** ${componentSummary.totalFilesUndeclared}
+  - **Detected files declared:** ${componentSummary.totalFilesDeclared}
+  - **Licenses detected:** ${licenseSummary.detectedLicenses}
+  - **Licenses detected with copyleft:** ${licenseSummary.detectedLicensesWithCopyleft}
   - **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
 
   View more details on [SCANOSS Action Summary](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId})
@@ -34247,9 +34509,9 @@ function generatePRSummary(scannerResults, policies) {
     return content;
 }
 exports.generatePRSummary = generatePRSummary;
-async function generateJobSummary(scannerResults, policies) {
-    const licenses = (0, result_service_1.getLicenses)(scannerResults);
-    licenses.sort((l1, l2) => l2.count - l1.count);
+async function generateJobSummary(policies) {
+    const licenseSummary = await (0, license_service_1.getLicenseSummary)();
+    licenseSummary.licenses.sort((l1, l2) => l2.componentCount - l1.componentCount);
     const LicensesPie = (items) => {
         let pie = `
     %%{init: { "pie" : {"textPosition": "0.75"} ,"themeVariables": {"pieSectionTextSize": "0px", 
@@ -34260,7 +34522,7 @@ async function generateJobSummary(scannerResults, policies) {
     pie showData
       title Licenses chart`;
         items.forEach(l => {
-            pie += `\n"${l.spdxid}" : ${l.count}`;
+            pie += `\n"${l.spdxid}" : ${l.componentCount}`;
         });
         return pie;
     };
@@ -34283,14 +34545,14 @@ async function generateJobSummary(scannerResults, policies) {
         });
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
-    let licenseTable = LicensesTable(licenses);
+    let licenseTable = LicensesTable(licenseSummary.licenses);
     if ((0, github_service_1.isOverMaxCharacterLimitAPI)(licenseTable)) {
         licenseTable = "License table too large to display, omitted from GitHub UI due to length";
     }
     await core.summary
         .addHeading('Scan Report Section', 2)
         .addHeading('Licenses', 3)
-        .addCodeBlock(LicensesPie(licenses), 'mermaid')
+        .addCodeBlock(LicensesPie(licenseSummary.licenses), 'mermaid')
         .addRaw(licenseTable)
         .addSeparator()
         .addHeading('Policies', 3)
@@ -34298,226 +34560,6 @@ async function generateJobSummary(scannerResults, policies) {
         .write();
 }
 exports.generateJobSummary = generateJobSummary;
-
-
-/***/ }),
-
-/***/ 1554:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-// SPDX-License-Identifier: MIT
-/*
-   Copyright (c) 2024, SCANOSS
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in
-   all copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   THE SOFTWARE.
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ComponentID = void 0;
-var ComponentID;
-(function (ComponentID) {
-    ComponentID["NONE"] = "none";
-    ComponentID["FILE"] = "file";
-    ComponentID["SNIPPET"] = "snippet";
-    ComponentID["DEPENDENCY"] = "dependency";
-})(ComponentID || (exports.ComponentID = ComponentID = {}));
-
-
-/***/ }),
-
-/***/ 2414:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-// SPDX-License-Identifier: MIT
-/*
-   Copyright (c) 2024, SCANOSS
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in
-   all copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   THE SOFTWARE.
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getLicenses = exports.filterLicensesByPrioritySource = exports.getComponents = void 0;
-const result_interfaces_1 = __nccwpck_require__(1554);
-const license_utils_1 = __nccwpck_require__(2210);
-/**
- * This function groups components by their `purl` and aggregates their licenses,
- * ensuring that each unique `purl` is represented once with a comprehensive list of licenses.
- *
- * @param results - The raw scanner results to be processed of type {@link ScannerResults}
- * @returns An array of {@link Component} objects, each representing a unique component
- *          with an aggregated list of licenses.
- */
-function getComponents(results) {
-    const components = new Array();
-    for (const component of Object.values(results)) {
-        for (const c of component) {
-            if (c.id === result_interfaces_1.ComponentID.FILE || c.id === result_interfaces_1.ComponentID.SNIPPET) {
-                components.push({
-                    purl: c.purl[0],
-                    version: c.version,
-                    licenses: c?.licenses.map(l => ({
-                        spdxid: l.name,
-                        copyleft: license_utils_1.licenseUtil.isCopyLeft(l.name?.trim().toLowerCase()),
-                        url: l?.url ? l.url : null,
-                        count: 1,
-                        source: l.source ? l.source : 'unknown'
-                    }))
-                });
-            }
-            if (c.id === result_interfaces_1.ComponentID.DEPENDENCY) {
-                const dependencies = c.dependencies;
-                for (const d of dependencies) {
-                    components.push({
-                        purl: d.purl,
-                        version: d.version,
-                        licenses: d?.licenses
-                            .map(l => ({
-                            spdxid: l.spdx_id,
-                            copyleft: license_utils_1.licenseUtil.isCopyLeft(l.spdx_id?.trim().toLowerCase()),
-                            url: null,
-                            count: 1,
-                            source: 'unknown'
-                        }))
-                            .filter(l => l.spdxid)
-                    });
-                }
-            }
-        }
-    }
-    // Merge duplicates
-    const componentMap = new Map();
-    components.forEach((component) => {
-        const key = `${component.purl}-${component.version}`;
-        const existingComponent = componentMap.get(key);
-        if (existingComponent) {
-            component.licenses = [...existingComponent.licenses, ...component.licenses];
-        }
-        else {
-            componentMap.set(key, component);
-        }
-        // Remove duplicates licenses
-        const spdxidSet = new Set();
-        const uniqueLicenses = [];
-        component?.licenses.forEach(license => {
-            if (!spdxidSet.has(license.spdxid)) {
-                spdxidSet.add(license.spdxid);
-                uniqueLicenses.push(license);
-            }
-        });
-        component.licenses = uniqueLicenses;
-    });
-    const unqiqueComponents = [...componentMap.values()];
-    return unqiqueComponents;
-}
-exports.getComponents = getComponents;
-function filterLicensesByPrioritySource(licenses) {
-    const priority_sources = ['component_declared', 'license_file', 'file_header', 'scancode'];
-    // Try each priority source in order
-    for (const source of priority_sources) {
-        const filtered = licenses.filter(license => license.source === source);
-        // If we found licenses with this source, return them
-        if (filtered.length > 0) {
-            return filtered;
-        }
-    }
-    // If no licenses found with any priority source, return all licenses
-    return licenses;
-}
-exports.filterLicensesByPrioritySource = filterLicensesByPrioritySource;
-/**
- * This function generate an array of {@link License } from raw scanner results {@link ScannerResults }
- *
- * @param results - The raw scanner results to be processed of type {@link ScannerResults}
- * @returns An array of {@link License} objects
- */
-function getLicenses(results) {
-    const licenses = new Array();
-    for (const component of Object.values(results)) {
-        for (const c of component) {
-            if (c.id === result_interfaces_1.ComponentID.FILE || c.id === result_interfaces_1.ComponentID.SNIPPET) {
-                for (const l of c?.licenses) {
-                    licenses.push({
-                        spdxid: l.name,
-                        copyleft: license_utils_1.licenseUtil.isCopyLeft(l.name.trim().toLowerCase()),
-                        url: license_utils_1.licenseUtil.getOSADL(l?.name),
-                        count: 1,
-                        source: l.source ? l.source : 'unknown'
-                    });
-                }
-            }
-            if (c.id === result_interfaces_1.ComponentID.DEPENDENCY) {
-                const dependencies = c.dependencies;
-                for (const d of dependencies) {
-                    for (const l of d?.licenses) {
-                        if (!l.spdx_id)
-                            continue;
-                        licenses.push({
-                            spdxid: l.spdx_id,
-                            copyleft: license_utils_1.licenseUtil.isCopyLeft(l.spdx_id?.trim().toLowerCase()),
-                            url: license_utils_1.licenseUtil.getOSADL(l?.spdx_id),
-                            count: 1,
-                            source: 'unknown'
-                        });
-                    }
-                }
-            }
-        }
-    }
-    //Clean duplicated
-    const seenSpdxIds = new Set();
-    const uniqueLicenses = licenses.filter(license => {
-        if (!seenSpdxIds.has(license.spdxid)) {
-            seenSpdxIds.add(license.spdxid);
-            return true;
-        }
-        return false;
-    });
-    //Increase counter. The only counter valid is only the first occurence!
-    for (let i = 0; i < licenses.length; i++) {
-        const p = licenses[i];
-        for (let j = i + 1; j < licenses.length; j++) {
-            const q = licenses[j];
-            if (p.spdxid === q.spdxid)
-                p.count++;
-        }
-    }
-    return filterLicensesByPrioritySource(uniqueLicenses);
-}
-exports.getLicenses = getLicenses;
 
 
 /***/ }),
