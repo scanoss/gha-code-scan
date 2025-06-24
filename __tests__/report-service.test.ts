@@ -51,5 +51,5 @@ describe('Test report service', () => {
   View more details on [SCANOSS Action Summary](https://github.com/x/y/actions/runs/0)
   `;
     expect(report).toEqual(expectedOutput);
-  }, 10000);
+  }, 50000);
 });

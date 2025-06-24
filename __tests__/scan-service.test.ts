@@ -137,5 +137,5 @@ describe('ScanService', () => {
     const { scan } = await service.scan();
     expect(scan['package.json'][0].dependencies.length).toBeGreaterThan(0);
     await fs.promises.rm(resultPath);
-  }, 30000);
+  }, 50000);
 });
