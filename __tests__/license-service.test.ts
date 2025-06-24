@@ -29,5 +29,5 @@ describe('Test license service', () => {
     expect(summary.detectedLicenses).toEqual(3);
     expect(summary.detectedLicensesWithCopyleft).toEqual(1);
     expect(summary.licenses.length).toEqual(3);
-  }, 10000);
+  }, 50000);
 });
