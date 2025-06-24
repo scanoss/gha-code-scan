@@ -123729,7 +123729,7 @@ exports.COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
 exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 exports.REPO_DIR = process.env.GITHUB_WORKSPACE;
-exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.26.1';
+exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.26.2';
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 exports.SCAN_FILES = core.getInput('scanFiles') === 'true';
 exports.SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
