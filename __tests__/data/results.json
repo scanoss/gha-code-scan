@@ -80,6 +80,38 @@
       "version": "6afc1f6"
     }
   ],
+  "crc32c-empty-license.c": [
+    {
+      "component": "wfp",
+      "file": "wfp-6afc1f6163d1d6c8d03ff5211a0571118e08da1f/src/external/crc32c/crc32c.c",
+      "file_hash": "0fe279946d388ef07d9c3f6e3ffb8ebe",
+      "file_url": "https://api.osskb.org/file_contents/0fe279946d388ef07d9c3f6e3ffb8ebe",
+      "id": "file",
+      "latest": "0ed473d",
+      "licenses": [],
+      "lines": "all",
+      "matched": "100%",
+      "oss_lines": "all",
+      "purl": [
+        "pkg:github/scanoss/wfp"
+      ],
+      "release_date": "2020-07-12",
+      "server": {
+        "kb_version": {
+          "daily": "24.11.12",
+          "monthly": "24.10"
+        },
+        "version": "5.4.8"
+      },
+      "source_hash": "0fe279946d388ef07d9c3f6e3ffb8ebe",
+      "status": "pending",
+      "url": "https://github.com/scanoss/wfp",
+      "url_hash": "9b36f30d422d7f77854f298f63c55256",
+      "url_stats": {},
+      "vendor": "scanoss",
+      "version": "6afc1f6"
+    }
+  ],
   "json.c": [
     {
       "component": "scanner.c",
