@@ -41,8 +41,8 @@ describe('Test report service', () => {
   - **Detected components:** 2
   - **Undeclared components:** 2
   - **Declared components:** 0
-  - **Detected files:** 3
-  - **Detected files undeclared:** 3
+  - **Detected files:** 4
+  - **Detected files undeclared:** 4
   - **Detected files declared:** 0
   - **Licenses detected:** 3
   - **Licenses detected with copyleft:** 1
