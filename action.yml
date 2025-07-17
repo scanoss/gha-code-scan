@@ -54,7 +54,7 @@ inputs:
     required: false
   runtimeContainer:
     description: 'Specify runtime container to perform the scan.'
-    default: 'ghcr.io/scanoss/scanoss-py:v1.26.3'
+    default: 'ghcr.io/scanoss/scanoss-py:v1.29.0'
     required: false
   skipSnippets:
     description: 'Skip the generation of snippets.'
@@ -76,16 +76,32 @@ inputs:
     description: 'Enable debugging on scanoss.py'
     default: false
     required: false
-
-
+  dependencytrack.enabled:
+    description: 'Enable Dependency Track upload'
+    default: false
+    required: false
+  dependencytrack.url:
+    description: 'Dependency Track base URL'
+    required: false
+  dependencytrack.apikey:
+    description: 'Dependency Track API key'
+    required: false
+  dependencytrack.projectid:
+    description: 'Dependency Track project UUID'
+    required: false
+  dependencytrack.projectname:
+    description: 'Dependency Track project name'
+    required: false
+  dependencytrack.projectversion:
+    description: 'Dependency Track project version'
+    required: false
 
 outputs:
   result-filepath:
     description: 'Scanner results filepath'
   stdout-scan-command:
     description: 'Scanner command output'
-    
+
 runs:
   using: node20
   main: dist/index.js
-

@@ -29,6 +29,7 @@ import * as outputs from './app.output';
 
 import { scanService, uploadResults } from './services/scan.service';
 import { policyManager } from './policies/policy.manager';
+import { dependencyTrackService } from './services/dependency-track.service';
 
 /**
  * The main function for the action.
@@ -37,6 +38,9 @@ import { policyManager } from './policies/policy.manager';
 export async function run(): Promise<void> {
   try {
     core.debug(`SCANOSS Scan Action started...`);
+
+    // Validate Dependency Track configuration if enabled
+    dependencyTrackService.validateConfiguration();
 
     // create policies
     core.debug(`Creating policies`);
@@ -64,6 +68,20 @@ export async function run(): Promise<void> {
     }
 
     await generateJobSummary(policies);
+
+    // Upload to Dependency Track if enabled
+    if (inputs.DEPENDENCY_TRACK_ENABLED) {
+      try {
+        const success = await dependencyTrackService.uploadToDependencyTrack();
+        if (success) {
+          core.info(`Dependency Track upload successful`);
+        }
+      } catch (error) {
+        core.error(`Failed to upload to Dependency Track: ${error}`);
+        throw error;
+      }
+    }
+
     // set outputs for other workflow steps to use
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
     core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);

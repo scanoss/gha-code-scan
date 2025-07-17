@@ -123713,7 +123713,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.REPO_DIR = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
+exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.REPO_DIR = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 exports.POLICIES = core.getInput('policies');
 exports.POLICIES_HALT_ON_FAILURE = core.getInput('policies.halt_on_failure') === 'true';
@@ -123729,13 +123729,18 @@ exports.COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
 exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 exports.REPO_DIR = process.env.GITHUB_WORKSPACE;
-exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.26.3';
+exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.29.0';
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 exports.SCAN_FILES = core.getInput('scanFiles') === 'true';
 exports.SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
 exports.SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
 exports.EXECUTABLE = 'docker';
 exports.DEBUG = core.getInput('debug') === 'true';
+exports.DEPENDENCY_TRACK_ENABLED = core.getInput('dependencytrack.enabled') === 'true';
+exports.DEPENDENCY_TRACK_URL = core.getInput('dependencytrack.url');
+exports.DEPENDENCY_TRACK_API_KEY = core.getInput('dependencytrack.apikey');
+exports.DEPENDENCY_TRACK_PROJECT_ID = core.getInput('dependencytrack.projectid');
+exports.DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('dependencytrack.projectversion');
 
 
 /***/ }),
@@ -123834,6 +123839,7 @@ const inputs = __importStar(__nccwpck_require__(483));
 const outputs = __importStar(__nccwpck_require__(22698));
 const scan_service_1 = __nccwpck_require__(87577);
 const policy_manager_1 = __nccwpck_require__(78951);
+const dependency_track_service_1 = __nccwpck_require__(57356);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -123841,6 +123847,8 @@ const policy_manager_1 = __nccwpck_require__(78951);
 async function run() {
     try {
         core.debug(`SCANOSS Scan Action started...`);
+        // Validate Dependency Track configuration if enabled
+        dependency_track_service_1.dependencyTrackService.validateConfiguration();
         // create policies
         core.debug(`Creating policies`);
         const firstRunId = await (0, github_utils_1.getFirstRunId)();
@@ -123862,6 +123870,19 @@ async function run() {
             await (0, github_utils_1.createCommentOnPR)(report);
         }
         await (0, report_service_1.generateJobSummary)(policies);
+        // Upload to Dependency Track if enabled
+        if (inputs.DEPENDENCY_TRACK_ENABLED) {
+            try {
+                const success = await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
+                if (success) {
+                    core.info(`Dependency Track upload successful`);
+                }
+            }
+            catch (error) {
+                core.error(`Failed to upload to Dependency Track: ${error}`);
+                throw error;
+            }
+        }
         // set outputs for other workflow steps to use
         core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
         core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
@@ -124742,6 +124763,194 @@ async function getComponentSummary() {
     return JSON.parse(stdout);
 }
 exports.getComponentSummary = getComponentSummary;
+
+
+/***/ }),
+
+/***/ 57356:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2024, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.dependencyTrackService = exports.DependencyTrackService = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const exec = __importStar(__nccwpck_require__(71514));
+const fs = __importStar(__nccwpck_require__(57147));
+const path = __importStar(__nccwpck_require__(71017));
+const https = __importStar(__nccwpck_require__(95687));
+const http = __importStar(__nccwpck_require__(13685));
+const inputs = __importStar(__nccwpck_require__(483));
+class DependencyTrackService {
+    options;
+    constructor(options) {
+        this.options = options || {
+            enabled: inputs.DEPENDENCY_TRACK_ENABLED,
+            url: inputs.DEPENDENCY_TRACK_URL,
+            apiKey: inputs.DEPENDENCY_TRACK_API_KEY,
+            projectId: inputs.DEPENDENCY_TRACK_PROJECT_ID,
+            projectVersion: inputs.DEPENDENCY_TRACK_PROJECT_VERSION
+        };
+    }
+    /**
+     * Validates that all required Dependency Track parameters are provided
+     */
+    validateConfiguration() {
+        if (!this.options.enabled) {
+            return;
+        }
+        const missingParams = [];
+        if (!this.options.url)
+            missingParams.push('dependencytrack.url');
+        if (!this.options.apiKey)
+            missingParams.push('dependencytrack.apikey');
+        if (!this.options.projectId)
+            missingParams.push('dependencytrack.projectid');
+        if (missingParams.length > 0) {
+            throw new Error(`Dependency Track is enabled but required parameters are missing: ${missingParams.join(', ')}`);
+        }
+    }
+    /**
+     * Converts SCANOSS results to CycloneDX format and uploads to Dependency Track
+     */
+    async uploadToDependencyTrack() {
+        if (!this.options.enabled) {
+            core.debug('Dependency Track upload is disabled');
+            return false;
+        }
+        core.info('Starting Dependency Track upload process...');
+        // Generate CycloneDX from results
+        const cycloneDxPath = await this.convertToCycloneDx();
+        // Read and encode the CycloneDX file
+        const cycloneDxContent = fs.readFileSync(cycloneDxPath, 'utf8');
+        const base64Bom = Buffer.from(cycloneDxContent).toString('base64');
+        // Upload to Dependency Track
+        const success = await this.uploadBom(base64Bom);
+        // Clean up temporary file
+        fs.unlinkSync(cycloneDxPath);
+        return success;
+    }
+    /**
+     * Converts SCANOSS results to CycloneDX format using scanoss-py
+     */
+    async convertToCycloneDx() {
+        const outputPath = path.join(path.dirname(inputs.OUTPUT_FILEPATH), 'cyclonedx.json');
+        const args = [
+            'run',
+            '-v',
+            `${inputs.REPO_DIR}:/scanoss`,
+            inputs.RUNTIME_CONTAINER,
+            'convert',
+            '--input',
+            `./${inputs.OUTPUT_FILEPATH}`,
+            '--format',
+            'cyclonedx',
+            '--output',
+            `./${path.basename(outputPath)}`
+        ];
+        core.debug(`Converting to CycloneDX: ${inputs.EXECUTABLE} ${args.join(' ')}`);
+        const options = {
+            failOnStdErr: false,
+            ignoreReturnCode: false
+        };
+        await exec.exec(inputs.EXECUTABLE, args, options);
+        core.info('Successfully converted results to CycloneDX format');
+        return outputPath;
+    }
+    /**
+     * Uploads the BOM to Dependency Track
+     */
+    async uploadBom(base64Bom) {
+        return new Promise((resolve, reject) => {
+            const payload = JSON.stringify({
+                project: this.options.projectId,
+                bom: base64Bom
+            });
+            const url = new URL(this.options.url);
+            const bomPath = '/api/v1/bom';
+            const options = {
+                hostname: url.hostname,
+                port: url.port || (url.protocol === 'https:' ? 443 : 80),
+                path: bomPath,
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': payload.length,
+                    'X-Api-Key': this.options.apiKey
+                }
+            };
+            core.debug(`Uploading BOM to: ${url.protocol}//${url.hostname}${bomPath}`);
+            const protocol = url.protocol === 'https:' ? https : http;
+            const req = protocol.request(options, res => {
+                let data = '';
+                res.on('data', chunk => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                        core.info('Successfully uploaded BOM to Dependency Track');
+                        resolve(true);
+                    }
+                    else {
+                        reject(new Error(`Failed to upload BOM: ${res.statusCode} - ${data}`));
+                    }
+                });
+            });
+            req.on('error', error => {
+                reject(new Error(`Failed to upload BOM: ${error.message}`));
+            });
+            req.write(payload);
+            req.end();
+        });
+    }
+}
+exports.DependencyTrackService = DependencyTrackService;
+exports.dependencyTrackService = new DependencyTrackService();
 
 
 /***/ }),
