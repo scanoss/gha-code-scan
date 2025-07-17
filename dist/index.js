@@ -123713,7 +123713,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.REPO_DIR = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
+exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.REPO_DIR = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 exports.POLICIES = core.getInput('policies');
 exports.POLICIES_HALT_ON_FAILURE = core.getInput('policies.halt_on_failure') === 'true';
@@ -123740,6 +123740,7 @@ exports.DEPENDENCY_TRACK_ENABLED = core.getInput('dependencytrack.enabled') === 
 exports.DEPENDENCY_TRACK_URL = core.getInput('dependencytrack.url');
 exports.DEPENDENCY_TRACK_API_KEY = core.getInput('dependencytrack.apikey');
 exports.DEPENDENCY_TRACK_PROJECT_ID = core.getInput('dependencytrack.projectid');
+exports.DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('dependencytrack.projectname');
 exports.DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('dependencytrack.projectversion');
 
 
@@ -124774,7 +124775,7 @@ exports.getComponentSummary = getComponentSummary;
 
 // SPDX-License-Identifier: MIT
 /*
-   Copyright (c) 2024, SCANOSS
+   Copyright (c) 2025, SCANOSS
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -124834,6 +124835,7 @@ class DependencyTrackService {
             url: inputs.DEPENDENCY_TRACK_URL,
             apiKey: inputs.DEPENDENCY_TRACK_API_KEY,
             projectId: inputs.DEPENDENCY_TRACK_PROJECT_ID,
+            projectName: inputs.DEPENDENCY_TRACK_PROJECT_NAME,
             projectVersion: inputs.DEPENDENCY_TRACK_PROJECT_VERSION
         };
     }
@@ -124844,13 +124846,17 @@ class DependencyTrackService {
         if (!this.options.enabled) {
             return;
         }
+        if (!this.options.projectId && !this.options.projectName && !this.options.projectVersion) {
+            throw new Error('Dependency Track is enabled but you must specify a project ID or a project name and version');
+        }
+        if (this.options.projectName && !this.options.projectVersion) {
+            throw new Error('Dependency Track is enabled but you must specify a project version');
+        }
         const missingParams = [];
         if (!this.options.url)
             missingParams.push('dependencytrack.url');
         if (!this.options.apiKey)
             missingParams.push('dependencytrack.apikey');
-        if (!this.options.projectId)
-            missingParams.push('dependencytrack.projectid');
         if (missingParams.length > 0) {
             throw new Error(`Dependency Track is enabled but required parameters are missing: ${missingParams.join(', ')}`);
         }
@@ -124864,14 +124870,10 @@ class DependencyTrackService {
             return false;
         }
         core.info('Starting Dependency Track upload process...');
-        // Generate CycloneDX from results
         const cycloneDxPath = await this.convertToCycloneDx();
-        // Read and encode the CycloneDX file
         const cycloneDxContent = fs.readFileSync(cycloneDxPath, 'utf8');
         const base64Bom = Buffer.from(cycloneDxContent).toString('base64');
-        // Upload to Dependency Track
         const success = await this.uploadBom(base64Bom);
-        // Clean up temporary file
         fs.unlinkSync(cycloneDxPath);
         return success;
     }
@@ -124907,10 +124909,20 @@ class DependencyTrackService {
      */
     async uploadBom(base64Bom) {
         return new Promise((resolve, reject) => {
-            const payload = JSON.stringify({
-                project: this.options.projectId,
+            const payload = {
                 bom: base64Bom
-            });
+            };
+            if (this.options.projectId) {
+                payload.project = this.options.projectId;
+            }
+            else {
+                if (!this.options.projectName || !this.options.projectVersion) {
+                    throw new Error('Dependency Track is enabled but you must specify a project name and version');
+                }
+                payload.projectName = this.options.projectName;
+                payload.projectVersion = this.options.projectVersion;
+            }
+            const stringifiedPayload = JSON.stringify(payload);
             const url = new URL(this.options.url);
             const bomPath = '/api/v1/bom';
             const options = {
@@ -124920,7 +124932,7 @@ class DependencyTrackService {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Content-Length': payload.length,
+                    'Content-Length': stringifiedPayload.length,
                     'X-Api-Key': this.options.apiKey
                 }
             };
@@ -124944,7 +124956,7 @@ class DependencyTrackService {
             req.on('error', error => {
                 reject(new Error(`Failed to upload BOM: ${error.message}`));
             });
-            req.write(payload);
+            req.write(stringifiedPayload);
             req.end();
         });
     }
