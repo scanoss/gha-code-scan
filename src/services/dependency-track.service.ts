@@ -62,7 +62,7 @@ export class DependencyTrackService {
   /**
    * Validates that all required Dependency Track parameters are provided
    */
-  public validateConfiguration(): void {
+  validateConfiguration(): void {
     if (!this.options.enabled) {
       return;
     }
@@ -88,7 +88,7 @@ export class DependencyTrackService {
   /**
    * Converts SCANOSS results to CycloneDX format and uploads to Dependency Track
    */
-  public async uploadToDependencyTrack(): Promise<boolean> {
+  async uploadToDependencyTrack(): Promise<boolean> {
     if (!this.options.enabled) {
       core.debug('Dependency Track upload is disabled');
       return false;
