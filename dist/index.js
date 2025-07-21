@@ -124810,6 +124810,7 @@ exports.dependencyTrackService = exports.DependencyTrackService = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const exec = __importStar(__nccwpck_require__(71514));
 const inputs = __importStar(__nccwpck_require__(483));
+const github_service_1 = __nccwpck_require__(43123);
 class DependencyTrackService {
     options;
     cycloneDXFileName = 'cyclonedx.json';
@@ -124827,22 +124828,27 @@ class DependencyTrackService {
      * Validates that all required Dependency Track parameters are provided
      */
     validateConfiguration() {
-        if (!this.options.projectId && !this.options.projectName && !this.options.projectVersion) {
-            throw new Error('Dependency Track is enabled but you must specify a project ID or a project name and version');
-        }
-        if (!this.options.projectId && this.options.projectName && !this.options.projectVersion) {
-            throw new Error('Dependency Track is enabled but you must specify a project version or project id');
-        }
-        if (!this.options.projectId && !this.options.projectName && this.options.projectVersion) {
-            throw new Error('Dependency Track is enabled but you must specify a project name or project id');
-        }
         const missingParams = [];
+        // Check required parameters
         if (!this.options.url)
             missingParams.push('dependencytrack.url');
         if (!this.options.apiKey)
             missingParams.push('dependencytrack.apikey');
         if (missingParams.length > 0) {
             throw new Error(`Dependency Track is enabled but required parameters are missing: ${missingParams.join(', ')}`);
+        }
+        // Check project identification - must have either projectId OR (projectName + projectVersion)
+        if (!this.options.projectId) {
+            const missingProjectParams = [];
+            if (!this.options.projectName)
+                missingProjectParams.push('dependencytrack.projectName');
+            if (!this.options.projectVersion)
+                missingProjectParams.push('dependencytrack.projectVersion');
+            if (missingProjectParams.length > 0) {
+                throw new Error(`Dependency Track is enabled but project identification is incomplete. ` +
+                    `Either provide 'dependencytrack.projectId' OR both 'dependencytrack.projectName' and 'dependencytrack.projectVersion'. ` +
+                    `Missing: ${missingProjectParams.join(', ')}`);
+            }
         }
     }
     /**
@@ -124857,6 +124863,7 @@ class DependencyTrackService {
             core.info('Starting Dependency Track upload process...');
             await this.convertToCycloneDx();
             await this.uploadCycloneDXToDependencyTrack();
+            await (0, github_service_1.uploadToArtifacts)(this.cycloneDXFileName);
         }
         catch (e) {
             core.error(e.message);
@@ -124935,18 +124942,28 @@ exports.dependencyTrackService = new DependencyTrackService();
 /***/ }),
 
 /***/ 43123:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isOverMaxCharacterLimitAPI = void 0;
+exports.uploadToArtifacts = exports.isOverMaxCharacterLimitAPI = void 0;
+const artifact_1 = __nccwpck_require__(79450);
+const path_1 = __importDefault(__nccwpck_require__(71017));
 const MAX_GH_API_CONTENT_SIZE = 65534;
 const CHARACTERS_BUFFER = 50;
 function isOverMaxCharacterLimitAPI(content) {
     return content.length >= MAX_GH_API_CONTENT_SIZE - CHARACTERS_BUFFER;
 }
 exports.isOverMaxCharacterLimitAPI = isOverMaxCharacterLimitAPI;
+async function uploadToArtifacts(artifactName) {
+    const artifact = new artifact_1.DefaultArtifactClient();
+    return await artifact.uploadArtifact(path_1.default.basename(artifactName), [artifactName], path_1.default.dirname(artifactName));
+}
+exports.uploadToArtifacts = uploadToArtifacts;
 
 
 /***/ }),

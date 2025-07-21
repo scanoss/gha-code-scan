@@ -24,6 +24,7 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as inputs from '../app.input';
+import { uploadToArtifacts } from './github.service';
 
 export interface DependencyTrackOptions {
   enabled: boolean;
@@ -53,25 +54,30 @@ export class DependencyTrackService {
    * Validates that all required Dependency Track parameters are provided
    */
   private validateConfiguration(): void {
-    if (!this.options.projectId && !this.options.projectName && !this.options.projectVersion) {
-      throw new Error('Dependency Track is enabled but you must specify a project ID or a project name and version');
-    }
-
-    if (!this.options.projectId && this.options.projectName && !this.options.projectVersion) {
-      throw new Error('Dependency Track is enabled but you must specify a project version or project id');
-    }
-
-    if (!this.options.projectId && !this.options.projectName && this.options.projectVersion) {
-      throw new Error('Dependency Track is enabled but you must specify a project name or project id');
-    }
-
     const missingParams: string[] = [];
 
+    // Check required parameters
     if (!this.options.url) missingParams.push('dependencytrack.url');
     if (!this.options.apiKey) missingParams.push('dependencytrack.apikey');
 
     if (missingParams.length > 0) {
       throw new Error(`Dependency Track is enabled but required parameters are missing: ${missingParams.join(', ')}`);
+    }
+
+    // Check project identification - must have either projectId OR (projectName + projectVersion)
+    if (!this.options.projectId) {
+      const missingProjectParams: string[] = [];
+
+      if (!this.options.projectName) missingProjectParams.push('dependencytrack.projectName');
+      if (!this.options.projectVersion) missingProjectParams.push('dependencytrack.projectVersion');
+
+      if (missingProjectParams.length > 0) {
+        throw new Error(
+          `Dependency Track is enabled but project identification is incomplete. ` +
+            `Either provide 'dependencytrack.projectId' OR both 'dependencytrack.projectName' and 'dependencytrack.projectVersion'. ` +
+            `Missing: ${missingProjectParams.join(', ')}`
+        );
+      }
     }
   }
 
@@ -88,6 +94,8 @@ export class DependencyTrackService {
       core.info('Starting Dependency Track upload process...');
       await this.convertToCycloneDx();
       await this.uploadCycloneDXToDependencyTrack();
+
+      await uploadToArtifacts(this.cycloneDXFileName);
     } catch (e: any) {
       core.error(e.message);
     }

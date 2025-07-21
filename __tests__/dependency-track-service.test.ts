@@ -83,7 +83,11 @@ describe('Dependency track service', () => {
 
     expect(() => {
       (service as any).validateConfiguration();
-    }).toThrow('Dependency Track is enabled but you must specify a project version or project id');
+    }).toThrow(
+      `Dependency Track is enabled but project identification is incomplete. ` +
+        `Either provide 'dependencytrack.projectId' OR both 'dependencytrack.projectName' and 'dependencytrack.projectVersion'. ` +
+        `Missing: dependencytrack.projectVersion`
+    );
   });
 
   it('should fail due to missing project name', () => {
@@ -102,7 +106,11 @@ describe('Dependency track service', () => {
 
     expect(() => {
       (service as any).validateConfiguration();
-    }).toThrow('Dependency Track is enabled but you must specify a project name or project id');
+    }).toThrow(
+      `Dependency Track is enabled but project identification is incomplete. ` +
+        `Either provide 'dependencytrack.projectId' OR both 'dependencytrack.projectName' and 'dependencytrack.projectVersion'. ` +
+        `Missing: dependencytrack.projectName`
+    );
   });
 
   it('should fail due to missing dependency track URL', () => {
