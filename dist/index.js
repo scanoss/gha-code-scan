@@ -123848,8 +123848,6 @@ const dependency_track_service_1 = __nccwpck_require__(57356);
 async function run() {
     try {
         core.debug(`SCANOSS Scan Action started...`);
-        // Validate Dependency Track configuration if enabled
-        dependency_track_service_1.dependencyTrackService.validateConfiguration();
         // create policies
         core.debug(`Creating policies`);
         const firstRunId = await (0, github_utils_1.getFirstRunId)();
@@ -123861,6 +123859,8 @@ async function run() {
         // run scan
         const { stdout } = await scan_service_1.scanService.scan();
         await (0, scan_service_1.uploadResults)();
+        // Dependency Track
+        await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
         // run policies
         for (const policy of policies) {
             await policy.run();
@@ -123871,19 +123871,6 @@ async function run() {
             await (0, github_utils_1.createCommentOnPR)(report);
         }
         await (0, report_service_1.generateJobSummary)(policies);
-        // Upload to Dependency Track if enabled
-        if (inputs.DEPENDENCY_TRACK_ENABLED) {
-            try {
-                const success = await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
-                if (success) {
-                    core.info(`Dependency Track upload successful`);
-                }
-            }
-            catch (error) {
-                core.error(`Failed to upload to Dependency Track: ${error}`);
-                throw error;
-            }
-        }
         // set outputs for other workflow steps to use
         core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
         core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
@@ -124822,13 +124809,10 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.dependencyTrackService = exports.DependencyTrackService = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const exec = __importStar(__nccwpck_require__(71514));
-const fs = __importStar(__nccwpck_require__(57147));
-const path = __importStar(__nccwpck_require__(71017));
-const https = __importStar(__nccwpck_require__(95687));
-const http = __importStar(__nccwpck_require__(13685));
 const inputs = __importStar(__nccwpck_require__(483));
 class DependencyTrackService {
     options;
+    cycloneDXFileName = 'cyclonedx.json';
     constructor(options) {
         this.options = options || {
             enabled: inputs.DEPENDENCY_TRACK_ENABLED,
@@ -124843,14 +124827,14 @@ class DependencyTrackService {
      * Validates that all required Dependency Track parameters are provided
      */
     validateConfiguration() {
-        if (!this.options.enabled) {
-            return;
-        }
         if (!this.options.projectId && !this.options.projectName && !this.options.projectVersion) {
             throw new Error('Dependency Track is enabled but you must specify a project ID or a project name and version');
         }
-        if (this.options.projectName && !this.options.projectVersion) {
-            throw new Error('Dependency Track is enabled but you must specify a project version');
+        if (!this.options.projectId && this.options.projectName && !this.options.projectVersion) {
+            throw new Error('Dependency Track is enabled but you must specify a project version or project id');
+        }
+        if (!this.options.projectId && !this.options.projectName && this.options.projectVersion) {
+            throw new Error('Dependency Track is enabled but you must specify a project name or project id');
         }
         const missingParams = [];
         if (!this.options.url)
@@ -124865,23 +124849,22 @@ class DependencyTrackService {
      * Converts SCANOSS results to CycloneDX format and uploads to Dependency Track
      */
     async uploadToDependencyTrack() {
-        if (!this.options.enabled) {
-            core.debug('Dependency Track upload is disabled');
-            return false;
+        try {
+            if (!this.options.enabled) {
+                core.debug('Dependency Track upload is disabled');
+            }
+            this.validateConfiguration();
+            core.info('Starting Dependency Track upload process...');
+            await this.convertToCycloneDx();
+            await this.uploadCycloneDXToDependencyTrack();
         }
-        core.info('Starting Dependency Track upload process...');
-        const cycloneDxPath = await this.convertToCycloneDx();
-        const cycloneDxContent = fs.readFileSync(cycloneDxPath, 'utf8');
-        const base64Bom = Buffer.from(cycloneDxContent).toString('base64');
-        const success = await this.uploadBom(base64Bom);
-        fs.unlinkSync(cycloneDxPath);
-        return success;
+        catch (e) {
+            core.error(e.message);
+        }
     }
     /**
-     * Converts SCANOSS results to CycloneDX format using scanoss-py
-     */
-    async convertToCycloneDx() {
-        const outputPath = path.join(path.dirname(inputs.OUTPUT_FILEPATH), 'cyclonedx.json');
+     * Build scanoss-py CycloneDX conversion parameters */
+    buildCycloneDXParameters() {
         const args = [
             'run',
             '-v',
@@ -124893,72 +124876,56 @@ class DependencyTrackService {
             '--format',
             'cyclonedx',
             '--output',
-            `./${path.basename(outputPath)}`
+            `./${this.cycloneDXFileName}`
         ];
-        core.debug(`Converting to CycloneDX: ${inputs.EXECUTABLE} ${args.join(' ')}`);
+        return args;
+    }
+    /**
+     * Build scanoss-py dependency track upload parameters */
+    buildDependencyTrackUploadParameters() {
+        const args = [
+            'run',
+            '-v',
+            `${inputs.REPO_DIR}:/scanoss`,
+            inputs.RUNTIME_CONTAINER,
+            'export',
+            '--input',
+            `./${this.cycloneDXFileName}`,
+            ...(this.options.apiKey ? ['--dt-apikey', this.options.apiKey] : []),
+            ...(this.options.url ? ['--dt-url', this.options.url] : []),
+            ...(this.options.projectId ? ['--dt-projectid', this.options.projectId] : []),
+            ...(this.options.projectName ? ['--dt-projectname', this.options.projectName] : []),
+            ...(this.options.projectVersion ? ['--dt-projectversion', this.options.projectVersion] : [])
+        ];
+        return args;
+    }
+    /**
+     * Converts SCANOSS results to CycloneDX format using scanoss-py
+     */
+    async convertToCycloneDx() {
         const options = {
             failOnStdErr: false,
             ignoreReturnCode: false
         };
-        await exec.exec(inputs.EXECUTABLE, args, options);
+        const { stderr } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildCycloneDXParameters(), options);
+        if (stderr) {
+            return new Error(`Error converting scan results into CycloneDX format: ${stderr}`);
+        }
         core.info('Successfully converted results to CycloneDX format');
-        return outputPath;
     }
     /**
-     * Uploads the BOM to Dependency Track
+     * Upload CycloneDX file to Dependency Track using scanoss-py
      */
-    async uploadBom(base64Bom) {
-        return new Promise((resolve, reject) => {
-            const payload = {
-                bom: base64Bom
-            };
-            if (this.options.projectId) {
-                payload.project = this.options.projectId;
-            }
-            else {
-                if (!this.options.projectName || !this.options.projectVersion) {
-                    throw new Error('Dependency Track is enabled but you must specify a project name and version');
-                }
-                payload.projectName = this.options.projectName;
-                payload.projectVersion = this.options.projectVersion;
-            }
-            const stringifiedPayload = JSON.stringify(payload);
-            const url = new URL(this.options.url);
-            const bomPath = '/api/v1/bom';
-            const options = {
-                hostname: url.hostname,
-                port: url.port || (url.protocol === 'https:' ? 443 : 80),
-                path: bomPath,
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Content-Length': stringifiedPayload.length,
-                    'X-Api-Key': this.options.apiKey
-                }
-            };
-            core.debug(`Uploading BOM to: ${url.protocol}//${url.hostname}${bomPath}`);
-            const protocol = url.protocol === 'https:' ? https : http;
-            const req = protocol.request(options, res => {
-                let data = '';
-                res.on('data', chunk => {
-                    data += chunk;
-                });
-                res.on('end', () => {
-                    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-                        core.info('Successfully uploaded BOM to Dependency Track');
-                        resolve(true);
-                    }
-                    else {
-                        reject(new Error(`Failed to upload BOM: ${res.statusCode} - ${data}`));
-                    }
-                });
-            });
-            req.on('error', error => {
-                reject(new Error(`Failed to upload BOM: ${error.message}`));
-            });
-            req.write(stringifiedPayload);
-            req.end();
-        });
+    async uploadCycloneDXToDependencyTrack() {
+        const options = {
+            failOnStdErr: false,
+            ignoreReturnCode: false
+        };
+        const { stderr } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildDependencyTrackUploadParameters(), options);
+        if (stderr) {
+            return new Error(`Error uploading CycloneDX to Dependency Track: ${stderr}`);
+        }
+        core.info('CycloneDX successfully uploaded to Dependency Track');
     }
 }
 exports.DependencyTrackService = DependencyTrackService;

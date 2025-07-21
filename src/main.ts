@@ -39,9 +39,6 @@ export async function run(): Promise<void> {
   try {
     core.debug(`SCANOSS Scan Action started...`);
 
-    // Validate Dependency Track configuration if enabled
-    dependencyTrackService.validateConfiguration();
-
     // create policies
     core.debug(`Creating policies`);
     const firstRunId = await getFirstRunId();
@@ -56,6 +53,9 @@ export async function run(): Promise<void> {
     const { stdout } = await scanService.scan();
     await uploadResults();
 
+    // Dependency Track
+    await dependencyTrackService.uploadToDependencyTrack();
+
     // run policies
     for (const policy of policies) {
       await policy.run();
@@ -68,19 +68,6 @@ export async function run(): Promise<void> {
     }
 
     await generateJobSummary(policies);
-
-    // Upload to Dependency Track if enabled
-    if (inputs.DEPENDENCY_TRACK_ENABLED) {
-      try {
-        const success = await dependencyTrackService.uploadToDependencyTrack();
-        if (success) {
-          core.info(`Dependency Track upload successful`);
-        }
-      } catch (error) {
-        core.error(`Failed to upload to Dependency Track: ${error}`);
-        throw error;
-      }
-    }
 
     // set outputs for other workflow steps to use
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
