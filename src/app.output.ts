@@ -23,3 +23,4 @@
 
 export const RESULT_FILEPATH = 'result-filepath';
 export const STDOUT_SCAN_COMMAND = 'stdout-scan-command';
+export const CYCLONEDX_FILE_NAME = 'cyclonedx.json';

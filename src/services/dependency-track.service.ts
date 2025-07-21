@@ -24,7 +24,8 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as inputs from '../app.input';
-import { uploadToArtifacts } from './github.service';
+import fs from 'fs';
+import { CYCLONEDX_FILE_NAME } from '../app.output';
 
 export interface DependencyTrackOptions {
   enabled: boolean;
@@ -37,7 +38,6 @@ export interface DependencyTrackOptions {
 
 export class DependencyTrackService {
   private options: DependencyTrackOptions;
-  private cycloneDXFileName = 'cyclonedx.json';
 
   constructor(options?: DependencyTrackOptions) {
     this.options = options || {
@@ -88,36 +88,18 @@ export class DependencyTrackService {
     try {
       if (!this.options.enabled) {
         core.debug('Dependency Track upload is disabled');
+        return;
       }
       this.validateConfiguration();
 
-      core.info('Starting Dependency Track upload process...');
-      await this.convertToCycloneDx();
-      await this.uploadCycloneDXToDependencyTrack();
+      // Check if CycloneDX file exists
+      await fs.promises.readFile(CYCLONEDX_FILE_NAME, 'utf8');
 
-      await uploadToArtifacts(this.cycloneDXFileName);
+      core.info('Starting Dependency Track upload process...');
+      await this.uploadCycloneDXToDependencyTrack();
     } catch (e: any) {
       core.error(e.message);
     }
-  }
-
-  /**
-   * Build scanoss-py CycloneDX conversion parameters */
-  private buildCycloneDXParameters(): string[] {
-    const args = [
-      'run',
-      '-v',
-      `${inputs.REPO_DIR}:/scanoss`,
-      inputs.RUNTIME_CONTAINER,
-      'convert',
-      '--input',
-      `./${inputs.OUTPUT_FILEPATH}`,
-      '--format',
-      'cyclonedx',
-      '--output',
-      `./${this.cycloneDXFileName}`
-    ];
-    return args;
   }
 
   /**
@@ -130,7 +112,7 @@ export class DependencyTrackService {
       inputs.RUNTIME_CONTAINER,
       'export',
       '--input',
-      `./${this.cycloneDXFileName}`,
+      `./${CYCLONEDX_FILE_NAME}`,
       ...(this.options.apiKey ? ['--dt-apikey', this.options.apiKey] : []),
       ...(this.options.url ? ['--dt-url', this.options.url] : []),
       ...(this.options.projectId ? ['--dt-projectid', this.options.projectId] : []),
@@ -138,22 +120,6 @@ export class DependencyTrackService {
       ...(this.options.projectVersion ? ['--dt-projectversion', this.options.projectVersion] : [])
     ];
     return args;
-  }
-
-  /**
-   * Converts SCANOSS results to CycloneDX format using scanoss-py
-   */
-  private async convertToCycloneDx(): Promise<Error | undefined> {
-    const options = {
-      failOnStdErr: false,
-      ignoreReturnCode: false
-    };
-
-    const { stderr } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildCycloneDXParameters(), options);
-    if (stderr) {
-      return new Error(`Error converting scan results into CycloneDX format: ${stderr}`);
-    }
-    core.info('Successfully converted results to CycloneDX format');
   }
 
   /**

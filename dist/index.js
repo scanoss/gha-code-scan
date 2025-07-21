@@ -123774,9 +123774,10 @@ exports.DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('dependencytrack.projec
    THE SOFTWARE.
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
+exports.CYCLONEDX_FILE_NAME = exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
 exports.RESULT_FILEPATH = 'result-filepath';
 exports.STDOUT_SCAN_COMMAND = 'stdout-scan-command';
+exports.CYCLONEDX_FILE_NAME = 'cyclonedx.json';
 
 
 /***/ }),
@@ -123841,6 +123842,7 @@ const outputs = __importStar(__nccwpck_require__(22698));
 const scan_service_1 = __nccwpck_require__(87577);
 const policy_manager_1 = __nccwpck_require__(78951);
 const dependency_track_service_1 = __nccwpck_require__(57356);
+const scanoss_service_1 = __nccwpck_require__(73406);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -123859,6 +123861,8 @@ async function run() {
         // run scan
         const { stdout } = await scan_service_1.scanService.scan();
         await (0, scan_service_1.uploadResults)();
+        // Convert scan results to CycloneDX
+        await scanoss_service_1.scanossService.scanResultsToCycloneDX();
         // Dependency Track
         await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
         // run policies
@@ -124805,15 +124809,18 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.dependencyTrackService = exports.DependencyTrackService = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const exec = __importStar(__nccwpck_require__(71514));
 const inputs = __importStar(__nccwpck_require__(483));
-const github_service_1 = __nccwpck_require__(43123);
+const fs_1 = __importDefault(__nccwpck_require__(57147));
+const app_output_1 = __nccwpck_require__(22698);
 class DependencyTrackService {
     options;
-    cycloneDXFileName = 'cyclonedx.json';
     constructor(options) {
         this.options = options || {
             enabled: inputs.DEPENDENCY_TRACK_ENABLED,
@@ -124858,34 +124865,17 @@ class DependencyTrackService {
         try {
             if (!this.options.enabled) {
                 core.debug('Dependency Track upload is disabled');
+                return;
             }
             this.validateConfiguration();
+            // Check if CycloneDX file exists
+            await fs_1.default.promises.readFile(app_output_1.CYCLONEDX_FILE_NAME, 'utf8');
             core.info('Starting Dependency Track upload process...');
-            await this.convertToCycloneDx();
             await this.uploadCycloneDXToDependencyTrack();
-            await (0, github_service_1.uploadToArtifacts)(this.cycloneDXFileName);
         }
         catch (e) {
             core.error(e.message);
         }
-    }
-    /**
-     * Build scanoss-py CycloneDX conversion parameters */
-    buildCycloneDXParameters() {
-        const args = [
-            'run',
-            '-v',
-            `${inputs.REPO_DIR}:/scanoss`,
-            inputs.RUNTIME_CONTAINER,
-            'convert',
-            '--input',
-            `./${inputs.OUTPUT_FILEPATH}`,
-            '--format',
-            'cyclonedx',
-            '--output',
-            `./${this.cycloneDXFileName}`
-        ];
-        return args;
     }
     /**
      * Build scanoss-py dependency track upload parameters */
@@ -124897,7 +124887,7 @@ class DependencyTrackService {
             inputs.RUNTIME_CONTAINER,
             'export',
             '--input',
-            `./${this.cycloneDXFileName}`,
+            `./${app_output_1.CYCLONEDX_FILE_NAME}`,
             ...(this.options.apiKey ? ['--dt-apikey', this.options.apiKey] : []),
             ...(this.options.url ? ['--dt-url', this.options.url] : []),
             ...(this.options.projectId ? ['--dt-projectid', this.options.projectId] : []),
@@ -124905,20 +124895,6 @@ class DependencyTrackService {
             ...(this.options.projectVersion ? ['--dt-projectversion', this.options.projectVersion] : [])
         ];
         return args;
-    }
-    /**
-     * Converts SCANOSS results to CycloneDX format using scanoss-py
-     */
-    async convertToCycloneDx() {
-        const options = {
-            failOnStdErr: false,
-            ignoreReturnCode: false
-        };
-        const { stderr } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildCycloneDXParameters(), options);
-        if (stderr) {
-            return new Error(`Error converting scan results into CycloneDX format: ${stderr}`);
-        }
-        core.info('Successfully converted results to CycloneDX format');
     }
     /**
      * Upload CycloneDX file to Dependency Track using scanoss-py
@@ -125463,6 +125439,88 @@ class ScanService {
 }
 exports.ScanService = ScanService;
 exports.scanService = new ScanService();
+
+
+/***/ }),
+
+/***/ 73406:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.scanossService = exports.ScanOssService = void 0;
+const exec = __importStar(__nccwpck_require__(71514));
+const inputs = __importStar(__nccwpck_require__(483));
+const core = __importStar(__nccwpck_require__(42186));
+const github_service_1 = __nccwpck_require__(43123);
+const app_output_1 = __nccwpck_require__(22698);
+class ScanOssService {
+    /**
+     * Build scanoss-py CycloneDX conversion parameters */
+    buildCycloneDXParameters() {
+        const args = [
+            'run',
+            '-v',
+            `${inputs.REPO_DIR}:/scanoss`,
+            inputs.RUNTIME_CONTAINER,
+            'convert',
+            '--input',
+            `./${inputs.OUTPUT_FILEPATH}`,
+            '--format',
+            'cyclonedx',
+            '--output',
+            `./${app_output_1.CYCLONEDX_FILE_NAME}`
+        ];
+        return args;
+    }
+    /**
+     * Converts SCANOSS results to CycloneDX format using scanoss-py
+     */
+    async scanResultsToCycloneDX() {
+        try {
+            core.info('Converting SCANOSS results to CycloneDX format...');
+            const options = {
+                failOnStdErr: false,
+                ignoreReturnCode: false
+            };
+            const { exitCode } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildCycloneDXParameters(), options);
+            if (exitCode !== 0) {
+                return new Error(`Error converting scan results into CycloneDX format`);
+            }
+            await (0, github_service_1.uploadToArtifacts)(app_output_1.CYCLONEDX_FILE_NAME);
+            core.info('Successfully converted results into CycloneDX format');
+        }
+        catch (e) {
+            core.error(e.message);
+        }
+    }
+}
+exports.ScanOssService = ScanOssService;
+exports.scanossService = new ScanOssService();
 
 
 /***/ }),

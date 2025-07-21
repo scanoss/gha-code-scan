@@ -26,10 +26,10 @@ import { generateJobSummary, generatePRSummary } from './services/report.service
 import * as core from '@actions/core';
 import * as inputs from './app.input';
 import * as outputs from './app.output';
-
 import { scanService, uploadResults } from './services/scan.service';
 import { policyManager } from './policies/policy.manager';
 import { dependencyTrackService } from './services/dependency-track.service';
+import { scanossService } from './services/scanoss.service';
 
 /**
  * The main function for the action.
@@ -52,6 +52,9 @@ export async function run(): Promise<void> {
     // run scan
     const { stdout } = await scanService.scan();
     await uploadResults();
+
+    // Convert scan results to CycloneDX
+    await scanossService.scanResultsToCycloneDX();
 
     // Dependency Track
     await dependencyTrackService.uploadToDependencyTrack();

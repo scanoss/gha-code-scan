@@ -24,33 +24,6 @@ describe('Dependency track service', () => {
     dependencyTrackAPIKey = 'tgtresetryokjgvcb';
   });
 
-  // ************************** CycloneDX conversion tests ************************** /
-  it('should correctly return the scanoss-py CycloneDX conversion command', () => {
-    const service = new DependencyTrackService({
-      enabled: true,
-      url: dependencyTrackURL,
-      apiKey: dependencyTrackAPIKey,
-      projectId: dependencyTrackProjectID,
-      projectName: dependencyTrackProjectName,
-      projectVersion: dependencyTrackProjectVersion
-    });
-
-    const command = (service as any).buildCycloneDXParameters();
-    expect(command).toEqual([
-      'run',
-      '-v',
-      ':/scanoss',
-      RUNTIME_CONTAINER,
-      'convert',
-      '--input',
-      './results.json',
-      '--format',
-      'cyclonedx',
-      '--output',
-      './cyclonedx.json'
-    ]);
-  });
-
   it('should fail due to missing Dependency Track API Key', () => {
     dependencyTrackAPIKey = '';
     const service = new DependencyTrackService({
@@ -127,9 +100,7 @@ describe('Dependency track service', () => {
       (service as any).validateConfiguration();
     }).toThrow('Dependency Track is enabled but required parameters are missing: dependencytrack.url');
   });
-  // ************************** CycloneDX conversion tests ************************** /
 
-  // ************************** Dependency Track upload tests ** ************************ /
   it('should correctly return the scanoss-py Dependency Track upload command', () => {
     const service = new DependencyTrackService({
       enabled: true,
