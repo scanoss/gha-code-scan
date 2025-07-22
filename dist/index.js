@@ -124886,6 +124886,7 @@ class DependencyTrackService {
             `${inputs.REPO_DIR}:/scanoss`,
             inputs.RUNTIME_CONTAINER,
             'export',
+            'dependency-track',
             '--input',
             `./${app_output_1.CYCLONEDX_FILE_NAME}`,
             ...(this.options.apiKey ? ['--dt-apikey', this.options.apiKey] : []),

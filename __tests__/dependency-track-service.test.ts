@@ -117,6 +117,7 @@ describe('Dependency track service', () => {
       ':/scanoss',
       RUNTIME_CONTAINER,
       'export',
+      'dependency-track',
       '--input',
       './cyclonedx.json',
       '--dt-apikey',
