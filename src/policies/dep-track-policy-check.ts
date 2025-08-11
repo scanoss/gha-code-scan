@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /*
-   Copyright (c) 2024, SCANOSS
+   Copyright (c) 2025, SCANOSS
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -26,26 +26,27 @@ import { CHECK_NAME } from '../app.config';
 import { PolicyCheck } from './policy-check';
 import { EXECUTABLE } from '../app.input';
 import * as exec from '@actions/exec';
-import { CopyLeftArgumentBuilder } from './argument_builders/licenses/copyleft-argument-builder';
+import { DependencyTrackArgumentBuilder } from './argument_builders/dependency_track/dep-track-argument-builder'; /* TODO DepTrackArgumentBuilder */
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 
 /**
+ * TODO Change Documentation
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
  * It filters components based on their licenses and looks for those with copyleft obligations.
  * It then generates a summary and detailed report of the findings.
  */
-export class CopyleftPolicyCheck extends PolicyCheck {
+export class DepTrackPolicyCheck extends PolicyCheck {
   static policyName = 'Copyleft Policy';
   private argumentBuilder: ArgumentBuilder;
 
-  constructor(argumentBuilder: CopyLeftArgumentBuilder = new CopyLeftArgumentBuilder()) {
-    super(`${CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`);
+  constructor(argumentBuilder: DependencyTrackArgumentBuilder = new DependencyTrackArgumentBuilder()) { /* TODO DepTrackArgumentBuilder */
+    super(`${CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
     this.argumentBuilder = argumentBuilder;
   }
 
   async run(): Promise<void> {
-    core.info(`Running Copyleft Policy Check...`);
+    core.info(`Checking Dependency Track for Project Violations...`); /* TODO Change Message */
     super.initStatus();
     const args = await this.argumentBuilder.build();
     const options = {
@@ -57,12 +58,12 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     let summary = stdout;
     let details = stderr;
     if (exitCode === 0) {
-      await this.success('### :white_check_mark: Policy Pass \n #### No copyleft licenses were found', undefined);
+      await this.success('### :white_check_mark: Policy Pass \n #### No policy violations were found', undefined); /* TODO Change*/
       return;
     }
 
     const { id } = await this.uploadArtifact(stdout);
-    core.debug(`Copyleft Artifact ID: ${id}`);
+    core.debug(`Copyleft Artifact ID: ${id}`); /* TODO Update */
     if (id) {
       details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
     }
@@ -75,10 +76,10 @@ export class CopyleftPolicyCheck extends PolicyCheck {
   }
 
   artifactPolicyFileName(): string {
-    return 'policy-check-copyleft-results.md';
+    return 'dep-track-policy-check-results.md'; /* TODO Update */
   }
 
   getPolicyName(): string {
-    return CopyleftPolicyCheck.policyName;
+    return DepTrackPolicyCheck.policyName;
   }
 }

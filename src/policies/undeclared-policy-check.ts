@@ -63,8 +63,8 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       core.warning('Undeclared policy is being used with SCANOSS settings disabled');
     }
 
-    if (exitCode === 1) {
-      await this.success('### :white_check_mark: Policy Pass \n #### Not undeclared components were found', undefined);
+    if (exitCode === 0) {
+      await this.success('### :white_check_mark: Policy Pass \n #### No undeclared components were found', undefined);
       return;
     }
 

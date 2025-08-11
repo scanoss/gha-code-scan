@@ -26,6 +26,7 @@ import * as exec from '@actions/exec';
 import * as inputs from '../app.input';
 import fs from 'fs';
 import { CYCLONEDX_FILE_NAME } from '../app.output';
+import { DEPENDENCY_TRACK_UPLOAD_TOKEN, setDependencyTrackUploadToken } from '../app.input';
 
 export interface DependencyTrackOptions {
   enabled: boolean;
@@ -114,11 +115,11 @@ export class DependencyTrackService {
       'dependency-track',
       '--input',
       `./${CYCLONEDX_FILE_NAME}`,
-      ...(this.options.apiKey ? ['--dt-apikey', this.options.apiKey] : []),
-      ...(this.options.url ? ['--dt-url', this.options.url] : []),
-      ...(this.options.projectId ? ['--dt-projectid', this.options.projectId] : []),
-      ...(this.options.projectName ? ['--dt-projectname', this.options.projectName] : []),
-      ...(this.options.projectVersion ? ['--dt-projectversion', this.options.projectVersion] : [])
+      ...(this.options.apiKey ? ['--apikey', this.options.apiKey] : []),
+      ...(this.options.url ? ['--url', this.options.url] : []),
+      ...(this.options.projectId ? ['--project-id', this.options.projectId] : []),
+      ...(this.options.projectName ? ['--project-name', this.options.projectName] : []),
+      ...(this.options.projectVersion ? ['--project-version', this.options.projectVersion] : [])
     ];
     return args;
   }
@@ -132,7 +133,7 @@ export class DependencyTrackService {
       ignoreReturnCode: false
     };
 
-    const { stderr } = await exec.getExecOutput(
+    const { stderr, stdout } = await exec.getExecOutput(
       inputs.EXECUTABLE,
       this.buildDependencyTrackUploadParameters(),
       options
@@ -140,6 +141,8 @@ export class DependencyTrackService {
     if (stderr) {
       return new Error(`Error uploading CycloneDX to Dependency Track: ${stderr}`);
     }
+    const response = JSON.parse(stdout);
+    setDependencyTrackUploadToken(response.token);
     core.info('CycloneDX successfully uploaded to Dependency Track');
   }
 }
