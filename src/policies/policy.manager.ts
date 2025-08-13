@@ -26,6 +26,7 @@ import { PolicyCheck } from './policy-check';
 import * as inputs from '../app.input';
 import { UndeclaredPolicyCheck } from './undeclared-policy-check';
 import { DepTrackPolicyCheck } from './dep-track-policy-check';
+import * as core from '@actions/core';
 
 type PolicyRegistry = Record<string, new () => PolicyCheck>;
 
@@ -53,14 +54,15 @@ export class PolicyManager {
    */
   getPolicies(policiesNames?: string[]): PolicyCheck[] {
 
-    console.log('Policy Names:', policiesNames);
+    core.info(`Policy Names: ${policiesNames}`);
 
     const pNames = policiesNames || inputs.POLICIES.split(',').map(pn => pn.trim());
 
-    console.log('Policies: ', pNames);
+    core.info(`Policies: ${pNames}`);
 
     //throw error if policy does not exist
     pNames.forEach(pName => {
+      core.info(`Policy: ${pName}`);
       if (!this.policyRegistry[pName]) throw new Error(`Policy ${pName} does not exist`);
     });
 
