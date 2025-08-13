@@ -134,6 +134,7 @@ describe('ScanService', () => {
       debug: false
     });
 
+    // TODO
     const { scan } = await service.scan();
     expect(scan['package.json'][0].dependencies.length).toBeGreaterThan(0);
     await fs.promises.rm(resultPath);

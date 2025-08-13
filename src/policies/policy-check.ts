@@ -35,6 +35,7 @@ import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 type ChecksCreateResponse = Endpoints['POST /repos/{owner}/{repo}/check-runs']['response'];
 type CheckRun = ChecksCreateResponse['data'];
 
+// TODO Review Conclusion values
 export enum CONCLUSION {
   ActionRequired = 'action_required',
   Cancelled = 'cancelled',
@@ -68,7 +69,7 @@ export abstract class PolicyCheck {
 
   private _firstRunId = -1;
 
-  constructor(checkName: string) {
+  protected constructor(checkName: string) {
     this.octokit = getOctokit(inputs.GITHUB_TOKEN);
     this.checkName = checkName;
     this._status = STATUS.UNINITIALIZED;

@@ -8,7 +8,7 @@ branding:
 
 inputs:
   policies:
-    description: 'List of policies separated by comma (e.g., copyleft, undeclared)'
+    description: 'List of policies separated by comma (e.g., copyleft, undeclared, dt)'
     required: false
   policies.halt_on_failure:
     description: 'Halt if a check fails'
@@ -54,7 +54,7 @@ inputs:
     required: false
   runtimeContainer:
     description: 'Specify runtime container to perform the scan.'
-    default: 'ghcr.io/scanoss/scanoss-py:v1.31.1'
+    default: 'ghcr.io/scanoss/scanoss-py:v1.31.2'
     required: false
   skipSnippets:
     description: 'Skip the generation of snippets.'

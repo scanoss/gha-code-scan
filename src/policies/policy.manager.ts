@@ -25,6 +25,7 @@ import { CopyleftPolicyCheck } from './copyleft-policy-check';
 import { PolicyCheck } from './policy-check';
 import * as inputs from '../app.input';
 import { UndeclaredPolicyCheck } from './undeclared-policy-check';
+import { DepTrackPolicyCheck } from './dep-track-policy-check';
 
 type PolicyRegistry = Record<string, new () => PolicyCheck>;
 
@@ -34,7 +35,9 @@ export class PolicyManager {
   constructor(policyRegistry?: PolicyRegistry) {
     this.policyRegistry = policyRegistry || {
       copyleft: CopyleftPolicyCheck,
-      undeclared: UndeclaredPolicyCheck
+      undeclared: UndeclaredPolicyCheck,
+      depTrack: DepTrackPolicyCheck
+      // TODO add DT
     };
   }
 

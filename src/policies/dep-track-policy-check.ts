@@ -26,7 +26,7 @@ import { CHECK_NAME } from '../app.config';
 import { PolicyCheck } from './policy-check';
 import { EXECUTABLE } from '../app.input';
 import * as exec from '@actions/exec';
-import { DependencyTrackArgumentBuilder } from './argument_builders/dependency_track/dep-track-argument-builder'; /* TODO DepTrackArgumentBuilder */
+import { DependencyTrackArgumentBuilder } from './argument_builders/dependency_track/dep-track-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 
@@ -37,16 +37,16 @@ import { isOverMaxCharacterLimitAPI } from '../services/github.service';
  * It then generates a summary and detailed report of the findings.
  */
 export class DepTrackPolicyCheck extends PolicyCheck {
-  static policyName = 'Copyleft Policy';
+  static policyName = 'Dependency Track Policy';
   private argumentBuilder: ArgumentBuilder;
 
-  constructor(argumentBuilder: DependencyTrackArgumentBuilder = new DependencyTrackArgumentBuilder()) { /* TODO DepTrackArgumentBuilder */
+  constructor(argumentBuilder: DependencyTrackArgumentBuilder = new DependencyTrackArgumentBuilder()) {
     super(`${CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
     this.argumentBuilder = argumentBuilder;
   }
 
   async run(): Promise<void> {
-    core.info(`Checking Dependency Track for Project Violations...`); /* TODO Change Message */
+    core.info(`Checking Dependency Track for Project Violations...`);
     super.initStatus();
     const args = await this.argumentBuilder.build();
     const options = {
@@ -57,16 +57,15 @@ export class DepTrackPolicyCheck extends PolicyCheck {
     const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
     let summary = stdout;
     let details = stderr;
+    core.info(`stdout: ${stdout}, stderr: ${stderr}, exitCode: ${exitCode}`);
     if (exitCode === 0) {
-      await this.success('### :white_check_mark: Policy Pass \n #### No policy violations were found', undefined); /* TODO Change*/
+      await this.success('### :white_check_mark: Policy Pass \n #### No policy violations were found', undefined);
       return;
     }
 
-    const { id } = await this.uploadArtifact(stdout);
-    core.debug(`Copyleft Artifact ID: ${id}`); /* TODO Update */
-    if (id) {
-      details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
-    }
+    const { id } = await this.uploadArtifact(details);
+    core.debug(`Dependency Track Artifact ID: ${id}`);
+    if (id) details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);
 
     if (isOverMaxCharacterLimitAPI(summary)) {
       summary = '';
@@ -76,7 +75,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
   }
 
   artifactPolicyFileName(): string {
-    return 'dep-track-policy-check-results.md'; /* TODO Update */
+    return 'dep-track-policy-check-results.md';
   }
 
   getPolicyName(): string {

@@ -24,7 +24,7 @@
 import * as core from '@actions/core';
 
 export const POLICIES = core.getInput('policies');
-export const POLICIES_HALT_ON_FAILURE = core.getInput('policies.halt_on_failure') === 'true';
+export const POLICIES_HALT_ON_FAILURE = ! (core.getInput('policies.halt_on_failure') === 'false');
 export const DEPENDENCIES_ENABLED = core.getInput('dependencies.enabled') === 'true';
 export const DEPENDENCIES_SCOPE = core.getInput('dependencies.scope');
 export const DEPENDENCY_SCOPE_EXCLUDE = core.getInput('dependencies.scope.exclude');
@@ -37,7 +37,7 @@ export const COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include
 export const COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 export const COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 export const REPO_DIR = process.env.GITHUB_WORKSPACE as string;
-export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.31.1';
+export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:latest';
 export const SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 export const SCAN_FILES = core.getInput('scanFiles') === 'true';
 export const SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
@@ -47,8 +47,9 @@ export const DEBUG = core.getInput('debug') === 'true';
 export const DEPENDENCY_TRACK_ENABLED = core.getInput('dependencytrack.enabled') === 'true';
 export const DEPENDENCY_TRACK_URL = core.getInput('dependencytrack.url');
 export const DEPENDENCY_TRACK_API_KEY = core.getInput('dependencytrack.apikey');
-export const DEPENDENCY_TRACK_PROJECT_ID = core.getInput('dependencytrack.projectid');
+export let DEPENDENCY_TRACK_PROJECT_ID = core.getInput('dependencytrack.projectid');
 export const DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('dependencytrack.projectname');
 export const DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('dependencytrack.projectversion');
 export let DEPENDENCY_TRACK_UPLOAD_TOKEN = '';
 export const setDependencyTrackUploadToken = (version: string) => {   DEPENDENCY_TRACK_UPLOAD_TOKEN = version; };
+export const setDependencyTrackProjectId = (id: string) => {   DEPENDENCY_TRACK_PROJECT_ID = id; };

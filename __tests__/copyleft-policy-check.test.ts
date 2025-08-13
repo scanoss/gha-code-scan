@@ -81,7 +81,6 @@ describe('CopyleftPolicyCheck', () => {
     const copyleftPolicyCheck = new CopyleftPolicyCheck();
     await copyleftPolicyCheck.start(1);
     await copyleftPolicyCheck.run();
-    //neutral cause policy policy halt on failure is not set
     expect(copyleftPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
   }, 50000);
 
@@ -102,7 +101,6 @@ describe('CopyleftPolicyCheck', () => {
     const copyleftPolicyCheck = new CopyleftPolicyCheck();
     await copyleftPolicyCheck.start(1);
     await copyleftPolicyCheck.run();
-    //neutral cause policy policy halt on failure is not set
     expect(copyleftPolicyCheck.conclusion).toEqual(CONCLUSION.Success);
   }, 50000);
 
@@ -123,7 +121,6 @@ describe('CopyleftPolicyCheck', () => {
     const copyleftPolicyCheck = new CopyleftPolicyCheck();
     await copyleftPolicyCheck.start(1);
     await copyleftPolicyCheck.run();
-    //neutral cause policy policy halt on failure is not set
-    expect(copyleftPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
+    expect(copyleftPolicyCheck.conclusion).toEqual(CONCLUSION.Failure);
   }, 30000);
 });

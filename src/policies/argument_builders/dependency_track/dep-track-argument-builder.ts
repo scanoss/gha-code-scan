@@ -31,7 +31,8 @@ import {
   DEPENDENCY_TRACK_PROJECT_ID,
   DEPENDENCY_TRACK_PROJECT_NAME,
   DEPENDENCY_TRACK_UPLOAD_TOKEN,
-  DEPENDENCY_TRACK_PROJECT_VERSION
+  DEPENDENCY_TRACK_PROJECT_VERSION,
+  OUTPUT_FILEPATH
 } from '../../../app.input';
 
 export class DependencyTrackArgumentBuilder extends ArgumentBuilder {
@@ -52,6 +53,7 @@ export class DependencyTrackArgumentBuilder extends ArgumentBuilder {
       ...(DEPENDENCY_TRACK_UPLOAD_TOKEN ? ['--upload-token', DEPENDENCY_TRACK_UPLOAD_TOKEN] : []),
       ...(DEPENDENCY_TRACK_PROJECT_NAME ? ['--project-name', DEPENDENCY_TRACK_PROJECT_NAME] : []),
       ...(DEPENDENCY_TRACK_PROJECT_VERSION ? ['--project-version', DEPENDENCY_TRACK_PROJECT_VERSION] : []),
+      ...(OUTPUT_FILEPATH ? ['--output', OUTPUT_FILEPATH] : []),
       '--format',
       'md',
       ...(DEBUG ? ['--debug'] : [])

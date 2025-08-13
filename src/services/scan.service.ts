@@ -85,7 +85,7 @@ export interface Options {
   inputFilepath: string;
 
   /**
-   * Runtime container to perform scan. Default [ghcr.io/scanoss/scanoss-py:v1.30.0]
+   * Runtime container to perform scan. default [defined in app.inputs]
    */
   runtimeContainer: string;
 
@@ -194,6 +194,7 @@ export class ScanService {
 
     const args = await this.buildArgs();
     const { stdout, stderr } = await exec.getExecOutput(EXECUTABLE, args, options);
+    // TODO add error checking
 
     const scan = await this.parseResult();
     return { scan, stdout, stderr };

@@ -51,6 +51,7 @@ export class ScanOssService {
    * Converts SCANOSS results to CycloneDX format using scanoss-py
    */
   async scanResultsToCycloneDX(): Promise<Error | undefined> {
+    // TODO only currently required if DT is enabled. Or do we produce a CDX file regardless and add it beside results.json
     try {
       core.info('Converting SCANOSS results to CycloneDX format...');
       const options = {

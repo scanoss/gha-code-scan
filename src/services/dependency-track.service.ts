@@ -24,9 +24,9 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as inputs from '../app.input';
+import { setDependencyTrackProjectId, setDependencyTrackUploadToken } from '../app.input';
 import fs from 'fs';
 import { CYCLONEDX_FILE_NAME } from '../app.output';
-import { DEPENDENCY_TRACK_UPLOAD_TOKEN, setDependencyTrackUploadToken } from '../app.input';
 
 export interface DependencyTrackOptions {
   enabled: boolean;
@@ -94,6 +94,7 @@ export class DependencyTrackService {
       this.validateConfiguration();
 
       // Check if CycloneDX file exists
+      // TODO change to `access` instead?
       await fs.promises.readFile(CYCLONEDX_FILE_NAME, 'utf8');
 
       core.info('Starting Dependency Track upload process...');
@@ -104,9 +105,10 @@ export class DependencyTrackService {
   }
 
   /**
-   * Build scanoss-py dependency track upload parameters */
+   * Build scanoss-py dependency track upload parameters
+   */
   private buildDependencyTrackUploadParameters(): string[] {
-    const args = [
+    return [
       'run',
       '-v',
       `${inputs.REPO_DIR}:/scanoss`,
@@ -121,7 +123,6 @@ export class DependencyTrackService {
       ...(this.options.projectName ? ['--project-name', this.options.projectName] : []),
       ...(this.options.projectVersion ? ['--project-version', this.options.projectVersion] : [])
     ];
-    return args;
   }
 
   /**
@@ -143,6 +144,7 @@ export class DependencyTrackService {
     }
     const response = JSON.parse(stdout);
     setDependencyTrackUploadToken(response.token);
+    setDependencyTrackProjectId(response.project_uuid);
     core.info('CycloneDX successfully uploaded to Dependency Track');
   }
 }

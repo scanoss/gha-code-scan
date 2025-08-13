@@ -49,17 +49,17 @@ export async function run(): Promise<void> {
       await policy.start(firstRunId);
     }
 
-    // run scan
+    // 1: run scan
     const { stdout } = await scanService.scan();
     await uploadResults();
 
-    // Convert scan results to CycloneDX
+    // 2: Convert scan results to CycloneDX
     await scanossService.scanResultsToCycloneDX();
 
-    // Dependency Track
+    // 3: Dependency Track
     await dependencyTrackService.uploadToDependencyTrack();
 
-    // run policies
+    // 4: run policies
     for (const policy of policies) {
       await policy.run();
     }

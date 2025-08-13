@@ -142,16 +142,16 @@ describe('Dependency track service', () => {
       'export',
       'dependency-track',
       '--input',
-      './cyclonedx.json',
-      '--dt-apikey',
+      './scanoss-cyclonedx.json',
+      '--apikey',
       dependencyTrackAPIKey,
-      '--dt-url',
+      '--url',
       dependencyTrackURL,
-      '--dt-projectid',
+      '--project-id',
       dependencyTrackProjectID,
-      '--dt-projectname',
+      '--project-name',
       dependencyTrackProjectName,
-      '--dt-projectversion',
+      '--project-version',
       dependencyTrackProjectVersion
     ]);
   });
