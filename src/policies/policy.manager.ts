@@ -29,6 +29,10 @@ import { DepTrackPolicyCheck } from './dep-track-policy-check';
 
 type PolicyRegistry = Record<string, new () => PolicyCheck>;
 
+/**
+ * Manages policy check instances and execution.
+ * Provides access to registered policy checks and handles policy instantiation.
+ */
 export class PolicyManager {
   private policyRegistry: PolicyRegistry;
 
@@ -37,16 +41,19 @@ export class PolicyManager {
       copyleft: CopyleftPolicyCheck,
       undeclared: UndeclaredPolicyCheck,
       depTrack: DepTrackPolicyCheck
-      // TODO add DT
     };
   }
 
+  /**
+   * Gets instances of the specified policy checks.
+   * @param policiesNames - Array of policy names to instantiate. If not provided, uses POLICIES from app input.
+   */
   getPolicies(policiesNames?: string[]): PolicyCheck[] {
     const pNames = policiesNames || inputs.POLICIES.split(',').map(pn => pn.trim());
 
     //throw error if policy does not exist
     pNames.forEach(pName => {
-      if (!this.policyRegistry[pName]) throw new Error(`Policy ${pNames} does not exist`);
+      if (!this.policyRegistry[pName]) throw new Error(`Policy ${pName} does not exist`);
     });
 
     return pNames.map(pName => new this.policyRegistry[pName]());
