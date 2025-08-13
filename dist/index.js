@@ -124163,7 +124163,6 @@ class DependencyTrackArgumentBuilder extends argument_builder_1.ArgumentBuilder 
             ...(app_input_1.DEPENDENCY_TRACK_UPLOAD_TOKEN ? ['--upload-token', app_input_1.DEPENDENCY_TRACK_UPLOAD_TOKEN] : []),
             ...(app_input_1.DEPENDENCY_TRACK_PROJECT_NAME ? ['--project-name', app_input_1.DEPENDENCY_TRACK_PROJECT_NAME] : []),
             ...(app_input_1.DEPENDENCY_TRACK_PROJECT_VERSION ? ['--project-version', app_input_1.DEPENDENCY_TRACK_PROJECT_VERSION] : []),
-            ...(app_input_1.OUTPUT_FILEPATH ? ['--output', app_input_1.OUTPUT_FILEPATH] : []),
             '--format',
             'md',
             ...(app_input_1.DEBUG ? ['--debug'] : [])

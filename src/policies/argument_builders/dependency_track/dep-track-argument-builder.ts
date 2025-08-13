@@ -35,7 +35,13 @@ import {
   OUTPUT_FILEPATH
 } from '../../../app.input';
 
+/**
+ * Builds arguments for Dependency Track policy violation checks using scanoss-py.
+ */
 export class DependencyTrackArgumentBuilder extends ArgumentBuilder {
+  /**
+   * Builds command arguments for Dependency Track policy checks.
+   */
   async build(): Promise<string[]> {
     return [
       'run',
@@ -53,7 +59,6 @@ export class DependencyTrackArgumentBuilder extends ArgumentBuilder {
       ...(DEPENDENCY_TRACK_UPLOAD_TOKEN ? ['--upload-token', DEPENDENCY_TRACK_UPLOAD_TOKEN] : []),
       ...(DEPENDENCY_TRACK_PROJECT_NAME ? ['--project-name', DEPENDENCY_TRACK_PROJECT_NAME] : []),
       ...(DEPENDENCY_TRACK_PROJECT_VERSION ? ['--project-version', DEPENDENCY_TRACK_PROJECT_VERSION] : []),
-      ...(OUTPUT_FILEPATH ? ['--output', OUTPUT_FILEPATH] : []),
       '--format',
       'md',
       ...(DEBUG ? ['--debug'] : [])
