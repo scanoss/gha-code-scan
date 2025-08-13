@@ -39,8 +39,11 @@ export class PolicyManager {
   constructor(policyRegistry?: PolicyRegistry) {
     this.policyRegistry = policyRegistry || {
       copyleft: CopyleftPolicyCheck,
+      cpl: CopyleftPolicyCheck,
       undeclared: UndeclaredPolicyCheck,
-      depTrack: DepTrackPolicyCheck
+      und: UndeclaredPolicyCheck,
+      depTrack: DepTrackPolicyCheck,
+      dt: DepTrackPolicyCheck
     };
   }
 
@@ -49,7 +52,12 @@ export class PolicyManager {
    * @param policiesNames - Array of policy names to instantiate. If not provided, uses POLICIES from app input.
    */
   getPolicies(policiesNames?: string[]): PolicyCheck[] {
+
+    console.log('Policy Names:', policiesNames);
+
     const pNames = policiesNames || inputs.POLICIES.split(',').map(pn => pn.trim());
+
+    console.log('Policies: ', pNames);
 
     //throw error if policy does not exist
     pNames.forEach(pName => {
