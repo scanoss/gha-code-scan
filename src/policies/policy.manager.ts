@@ -55,6 +55,7 @@ export class PolicyManager {
   getPolicies(policiesNames?: string[]): PolicyCheck[] {
 
     core.info(`Policy Names: ${policiesNames}`);
+    core.debug(`Policy Registry: ${this.policyRegistry}`);
 
     const pNames = policiesNames || inputs.POLICIES.split(',').map(pn => pn.trim());
 
