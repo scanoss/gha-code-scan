@@ -30,6 +30,10 @@ import { isOverMaxCharacterLimitAPI } from './github.service';
 import { getLicenseSummary, License } from './license.service';
 import { getComponentSummary } from './component.service';
 
+/**
+ * Generates a summary report for pull request comments.
+ * Includes policy check results, component counts, and license statistics.
+ */
 export async function generatePRSummary(policies: PolicyCheck[]): Promise<string> {
   const componentSummary = await getComponentSummary();
   const licenseSummary = await getLicenseSummary();
@@ -45,7 +49,7 @@ export async function generatePRSummary(policies: PolicyCheck[]): Promise<string
     success: polCount.success ? `:white_check_mark: ${polCount.success} pass` : '',
     fail: polCount.fail ? `:x: ${polCount.fail} fail` : ''
   };
-
+ // TODO Fix
   const content = `
   ### SCANOSS SCAN Completed :rocket:
   - **Detected components:** ${componentSummary.totalComponents}
@@ -64,6 +68,10 @@ export async function generatePRSummary(policies: PolicyCheck[]): Promise<string
   return content;
 }
 
+/**
+ * Generates and publishes a detailed job summary to GitHub Actions.
+ * Creates visual reports with license distributions, component summaries, and policy results.
+ */
 export async function generateJobSummary(policies: PolicyCheck[]): Promise<void> {
   const licenseSummary = await getLicenseSummary();
   licenseSummary.licenses.sort((l1, l2) => l2.componentCount - l1.componentCount);

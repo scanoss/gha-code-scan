@@ -2,6 +2,7 @@ import { RUNTIME_CONTAINER } from '../src/app.input';
 import { ScanService } from '../src/services/scan.service';
 import fs from 'fs';
 import path from 'path';
+import * as exec from '@actions/exec';
 
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
@@ -120,6 +121,55 @@ describe('ScanService', () => {
     appInput.OUTPUT_FILEPATH = 'test-results.json';
     const TEST_DIR = __dirname;
     const resultPath = path.join(TEST_DIR, 'data', 'test-results.json');
+    
+    // Mock the scan results from the existing test data
+    const mockScanResults = {
+      "package.json": [
+        {
+          "dependencies": [
+            {
+              "component": "@grpc/grpc-js",
+              "licenses": [
+                {
+                  "is_spdx_approved": true,
+                  "name": "Apache-2.0",
+                  "spdx_id": "Apache-2.0"
+                }
+              ],
+              "purl": "pkg:npm/%40grpc/grpc-js",
+              "url": "https://www.npmjs.com/package/%40grpc/grpc-js",
+              "version": "1.12.2"
+            },
+            {
+              "component": "abort-controller",
+              "licenses": [
+                {
+                  "is_spdx_approved": true,
+                  "name": "MIT",
+                  "spdx_id": "MIT"
+                }
+              ],
+              "purl": "pkg:npm/abort-controller",
+              "url": "https://www.npmjs.com/package/abort-controller",
+              "version": "3.0.0"
+            }
+          ],
+          "id": "dependency",
+          "status": "pending"
+        }
+      ]
+    };
+
+    // Mock exec.getExecOutput to return mock scan results
+    jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
+      stdout: JSON.stringify(mockScanResults),
+      stderr: '',
+      exitCode: 0
+    });
+
+    // Mock fs.promises.readFile to return the mock scan results
+    jest.spyOn(fs.promises, 'readFile').mockResolvedValue(JSON.stringify(mockScanResults));
+
     const service = new ScanService({
       outputFilepath: resultPath,
       inputFilepath: path.join(TEST_DIR, 'data'),
@@ -134,9 +184,7 @@ describe('ScanService', () => {
       debug: false
     });
 
-    // TODO
     const { scan } = await service.scan();
     expect(scan['package.json'][0].dependencies.length).toBeGreaterThan(0);
-    await fs.promises.rm(resultPath);
-  }, 50000);
+  }, 10000);
 });

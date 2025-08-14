@@ -7,13 +7,17 @@ branding:
   color: 'gray-dark'
 
 inputs:
+  halt_on_error:
+    description: 'Stop the pipeline if an error is encountered as opposed to a policy failure'
+    required: false
+    default: 'true'
   policies:
     description: 'List of policies separated by comma (e.g., copyleft, undeclared, dt)'
     required: false
   policies.halt_on_failure:
     description: 'Halt if a check fails'
     required: false
-    default: true
+    default: 'true'
   api.key:
     description: 'SCANOSS API Key token (optional - not required for default OSSKB URL)'
     required: false
@@ -23,7 +27,7 @@ inputs:
   dependencies.enabled:
     description: 'Scan dependencies (optional - default false)'
     required: false
-    default: false
+    default: 'false'
   dependencies.scope:
     description: 'Gets development or production dependencies (scopes - prod|dev)'
     required: false
@@ -58,15 +62,15 @@ inputs:
     required: false
   skipSnippets:
     description: 'Skip the generation of snippets.'
-    default: false
+    default: 'false'
     required: false
   scanFiles:
     description: 'Enable or disable file and snippet scanning.'
-    default: true
+    default: 'true'
     required: false
   scanossSettings:
     description: 'Settings file to use for scanning.'
-    default: true
+    default: 'true'
     required: false
   settingsFilepath:
     description: 'SCANOSS settings file path.'
@@ -74,11 +78,11 @@ inputs:
     required: false
   debug:
     description: 'Enable debugging on scanoss.py'
-    default: false
+    default: 'false'
     required: false
   dependencytrack.enabled:
     description: 'Enable Dependency Track upload'
-    default: false
+    default: 'false'
     required: false
   dependencytrack.url:
     description: 'Dependency Track base URL'

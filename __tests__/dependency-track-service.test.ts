@@ -60,7 +60,7 @@ describe('Dependency track service', () => {
 
     expect(() => {
       (service as any).validateConfiguration();
-    }).toThrow('Dependency Track is enabled but required parameters are missing: dependencytrack.apikey');
+    }).toThrow('Dependency Track Upload Failed: Required parameters are missing.');
   });
 
   it('should fail due to missing project version', () => {
@@ -79,11 +79,7 @@ describe('Dependency track service', () => {
 
     expect(() => {
       (service as any).validateConfiguration();
-    }).toThrow(
-      `Dependency Track is enabled but project identification is incomplete. ` +
-        `Either provide 'dependencytrack.projectId' OR both 'dependencytrack.projectName' and 'dependencytrack.projectVersion'. ` +
-        `Missing: dependencytrack.projectVersion`
-    );
+    }).toThrow('Dependency Track Upload Failed: Project identification is incomplete.');
   });
 
   it('should fail due to missing project name', () => {
@@ -102,11 +98,7 @@ describe('Dependency track service', () => {
 
     expect(() => {
       (service as any).validateConfiguration();
-    }).toThrow(
-      `Dependency Track is enabled but project identification is incomplete. ` +
-        `Either provide 'dependencytrack.projectId' OR both 'dependencytrack.projectName' and 'dependencytrack.projectVersion'. ` +
-        `Missing: dependencytrack.projectName`
-    );
+    }).toThrow('Dependency Track Upload Failed: Project identification is incomplete.');
   });
 
   it('should fail due to missing dependency track URL', () => {
@@ -121,7 +113,7 @@ describe('Dependency track service', () => {
     });
     expect(() => {
       (service as any).validateConfiguration();
-    }).toThrow('Dependency Track is enabled but required parameters are missing: dependencytrack.url');
+    }).toThrow('Dependency Track Upload Failed: Required parameters are missing.');
   });
 
   it('should correctly return the scanoss-py Dependency Track upload command', () => {

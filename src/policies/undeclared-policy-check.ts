@@ -45,6 +45,9 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     this.argumentBuilder = argumentBuilder;
   }
 
+  /**
+   * Executes the undeclared components policy check.
+   */
   async run(): Promise<void> {
     core.info(`Running Undeclared Components Policy Check...`);
     super.initStatus();
@@ -68,6 +71,17 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       return;
     }
 
+    if (exitCode === 1) {
+      // Technical error occurred
+      core.warning(`Undeclared policy check encountered an error: ${stderr}`);
+      const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete undeclared component check';
+      const errorDetails = `Error details: ${stderr}`;
+      
+      await this.technicalError(errorSummary, errorDetails);
+      return;
+    }
+
+    // exitCode === 2 means policy violations found
     const { id } = await this.uploadArtifact(details);
     core.debug(`Undeclared Artifact ID: ${id}`);
     if (id) details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);
@@ -79,10 +93,16 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     return this.reject(summary, details);
   }
 
+  /**
+   * Returns the filename for undeclared policy check artifact results.
+   */
   artifactPolicyFileName(): string {
     return 'policy-check-undeclared-results.md';
   }
 
+  /**
+   * Returns the name of the undeclared components policy.
+   */
   getPolicyName(): string {
     return UndeclaredPolicyCheck.policyName;
   }

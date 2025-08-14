@@ -27,10 +27,15 @@ import * as core from '@actions/core';
 import { uploadToArtifacts } from './github.service';
 import { CYCLONEDX_FILE_NAME } from '../app.output';
 
+/**
+ * Service for converting SCANOSS scan results to different formats using scanoss-py.
+ * Currently supports CycloneDX format conversion for integration with other tools.
+ */
 export class ScanOssService {
   /**
    * Build scanoss-py CycloneDX conversion parameters */
   private buildCycloneDXParameters(): string[] {
+    // TODO fix
     const args = [
       'run',
       '-v',

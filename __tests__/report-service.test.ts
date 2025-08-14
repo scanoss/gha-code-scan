@@ -23,6 +23,7 @@
 
 import * as github from '@actions/github';
 import * as core from '@actions/core';
+import * as exec from '@actions/exec';
 
 import { generateJobSummary, generatePRSummary } from '../src/services/report.service';
 import path from 'path';
@@ -40,9 +41,12 @@ jest.mock('../src/app.input', () => ({
 
 describe('Test report service', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
+    
     jest.spyOn(github.context, 'repo', 'get').mockReturnValue({ owner: 'x', repo: 'y' });
     jest.spyOn(core.summary, 'write').mockImplementation();
     github.context.runId = 0;
+    
     const appInput = jest.requireMock('../src/app.input');
     const TEST_DIR = __dirname;
     const TEST_REPO_DIR = path.join(TEST_DIR, 'data');
@@ -51,6 +55,37 @@ describe('Test report service', () => {
     // Set the required environment variables
     appInput.REPO_DIR = TEST_REPO_DIR;
     appInput.OUTPUT_FILEPATH = TEST_RESULTS_FILE;
+
+    // Mock the exec.getExecOutput calls that these services will make
+    jest.spyOn(exec, 'getExecOutput')
+      // First call for license summary
+      .mockResolvedValueOnce({
+        stdout: JSON.stringify({
+          licenses: [
+            { spdxid: "MIT", copyleft: false, url: "https://spdx.org/licenses/MIT.html", componentCount: 1 },
+            { spdxid: "Apache-2.0", copyleft: false, url: "https://spdx.org/licenses/Apache-2.0.html", componentCount: 1 },
+            { spdxid: "GPL-2.0-only", copyleft: true, url: "https://spdx.org/licenses/GPL-2.0-only.html", componentCount: 1 }
+          ],
+          detectedLicenses: 3,
+          detectedLicensesWithCopyleft: 1
+        }),
+        stderr: '',
+        exitCode: 0
+      })
+      // Second call for component summary  
+      .mockResolvedValueOnce({
+        stdout: JSON.stringify({
+          components: [],
+          totalComponents: 2,
+          undeclaredComponents: 2,
+          declaredComponents: 0,
+          totalFilesDetected: 4,
+          totalFilesUndeclared: 4,
+          totalFilesDeclared: 0
+        }),
+        stderr: '',
+        exitCode: 0
+      });
   });
 
   it('Should generate job summary', async () => {

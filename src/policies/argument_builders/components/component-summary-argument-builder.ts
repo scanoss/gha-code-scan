@@ -24,7 +24,13 @@
 import { ArgumentBuilder } from '../argument-builder';
 import { DEBUG, OUTPUT_FILEPATH, REPO_DIR, RUNTIME_CONTAINER } from '../../../app.input';
 
+/**
+ * Builds arguments for component summary inspection using scanoss-py.
+ */
 export class ComponentSummaryArgumentBuilder extends ArgumentBuilder {
+  /**
+   * Builds command arguments for generating component summaries.
+   */
   async build(): Promise<string[]> {
     return [
       'run',

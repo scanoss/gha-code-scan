@@ -25,7 +25,13 @@ import { ArgumentBuilder } from '../argument-builder';
 import { COPYLEFT_LICENSE_EXCLUDE, COPYLEFT_LICENSE_EXPLICIT, COPYLEFT_LICENSE_INCLUDE } from '../../../app.input';
 import * as core from '@actions/core';
 
+/**
+ * Base class for building license-related command arguments.
+ */
 export abstract class BaseLicenseArgumentBuilder extends ArgumentBuilder {
+  /**
+   * Builds copyleft license filtering arguments based on configuration.
+   */
   protected buildCopyleftArgs(): string[] {
     if (COPYLEFT_LICENSE_EXPLICIT) {
       core.info(`Explicit copyleft licenses: ${COPYLEFT_LICENSE_EXPLICIT}`);

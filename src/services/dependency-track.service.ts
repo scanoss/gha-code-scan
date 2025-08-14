@@ -37,7 +37,12 @@ export interface DependencyTrackOptions {
   projectVersion: string | undefined;
 }
 
+/**
+ * Service for integrating with Dependency Track for vulnerability and policy management.
+ * Handles SBOM upload and project management within Dependency Track instances.
+ */
 export class DependencyTrackService {
+  private readonly MINIMUM_APIKEY_LENGTH = 10
   private options: DependencyTrackOptions;
 
   constructor(options?: DependencyTrackOptions) {
@@ -56,13 +61,44 @@ export class DependencyTrackService {
    */
   private validateConfiguration(): void {
     const missingParams: string[] = [];
+    const invalidParams: string[] = [];
 
     // Check required parameters
-    if (!this.options.url) missingParams.push('dependencytrack.url');
-    if (!this.options.apiKey) missingParams.push('dependencytrack.apikey');
+    if (!this.options.url) {
+      missingParams.push('dependencytrack.url');
+    } else {
+      // Validate URL format
+      try {
+        const url = new URL(this.options.url);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          invalidParams.push('dependencytrack.url (must use http:// or https://)');
+        }
+      } catch (error) {
+        invalidParams.push('dependencytrack.url (invalid URL format)');
+      }
+    }
+
+    if (!this.options.apiKey) {
+      missingParams.push('dependencytrack.apikey');
+    } else if (this.options.apiKey.length < this.MINIMUM_APIKEY_LENGTH) {
+      // Basic API key validation - Dependency Track API keys are typically longer
+      invalidParams.push('dependencytrack.apikey (appears to be too short)');
+    }
 
     if (missingParams.length > 0) {
-      throw new Error(`Dependency Track is enabled but required parameters are missing: ${missingParams.join(', ')}`);
+      throw new Error(
+        `Dependency Track Upload Failed: Required parameters are missing.\n` +
+        `Missing: ${missingParams.join(', ')}\n` +
+        `Please set these parameters in your workflow configuration.`
+      );
+    }
+
+    if (invalidParams.length > 0) {
+      throw new Error(
+        `Dependency Track Upload Failed: Invalid parameter values.\n` +
+        `Invalid: ${invalidParams.join(', ')}\n` +
+        `Please check your parameter values and try again.`
+      );
     }
 
     // Check project identification - must have either projectId OR (projectName + projectVersion)
@@ -74,9 +110,11 @@ export class DependencyTrackService {
 
       if (missingProjectParams.length > 0) {
         throw new Error(
-          `Dependency Track is enabled but project identification is incomplete. ` +
-            `Either provide 'dependencytrack.projectId' OR both 'dependencytrack.projectName' and 'dependencytrack.projectVersion'. ` +
-            `Missing: ${missingProjectParams.join(', ')}`
+          `Dependency Track Upload Failed: Project identification is incomplete.\n` +
+          `You must provide EITHER:\n` +
+          `  • dependencytrack.projectId (for existing projects), OR\n` +
+          `  • Both dependencytrack.projectName AND dependencytrack.projectVersion (to create/find projects)\n\n` +
+          `Missing: ${missingProjectParams.join(', ')}`
         );
       }
     }
@@ -131,14 +169,74 @@ export class DependencyTrackService {
   private async uploadCycloneDXToDependencyTrack(): Promise<Error | undefined> {
     const options = {
       failOnStdErr: false,
-      ignoreReturnCode: false
+      ignoreReturnCode: true
     };
 
-    const { stderr, stdout } = await exec.getExecOutput(
+    const { stderr, stdout, exitCode } = await exec.getExecOutput(
       inputs.EXECUTABLE,
       this.buildDependencyTrackUploadParameters(),
       options
     );
+    
+    if (exitCode !== 0) {
+      let errorMessage;
+      
+      if (stderr) {
+        const lowerStderr = stderr.toLowerCase();
+
+        // TODO Use switch instead
+        // Parse common error patterns to provide more helpful messages
+        if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
+          errorMessage = `Cannot connect to Dependency Track server.\n` +
+            `• URL: ${this.options.url}\n` +
+            `• Issue: Server is not reachable\n` +
+            `• Solutions: Verify the URL, check network connectivity, ensure server is running`;
+        } else if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized') || lowerStderr.includes('invalid api key')) {
+          errorMessage = `Authentication failed with Dependency Track server.\n` +
+            `• URL: ${this.options.url}\n` +
+            `• Issue: Invalid or missing API key\n` +
+            `• Solutions: Verify your API key, check user permissions in Dependency Track`;
+        } else if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
+          errorMessage = `Dependency Track server endpoint not found.\n` +
+            `• URL: ${this.options.url}\n` +
+            `• Issue: Server endpoint does not exist\n` +
+            `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`;
+        } else if (lowerStderr.includes('timeout') || lowerStderr.includes('timed out')) {
+          errorMessage = `Connection to Dependency Track server timed out.\n` +
+            `• URL: ${this.options.url}\n` +
+            `• Issue: Server is too slow to respond\n` +
+            `• Solutions: Check network connectivity, verify server performance, try again later`;
+        } else if (lowerStderr.includes('ssl') || lowerStderr.includes('certificate') || lowerStderr.includes('tls')) {
+          errorMessage = `SSL/TLS connection error with Dependency Track server.\n` +
+            `• URL: ${this.options.url}\n` +
+            `• Issue: SSL certificate validation failed\n` +
+            `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`;
+        } else if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
+          errorMessage = `Project not found in Dependency Track.\n` +
+            `• Project ID: ${this.options.projectId || 'Not specified'}\n` +
+            `• Project Name: ${this.options.projectName || 'Not specified'}\n` +
+            `• Solutions: Verify project exists, check project ID/name, create project first`;
+        } else if (lowerStderr.includes('forbidden') || lowerStderr.includes('403')) {
+          errorMessage = `Access forbidden to Dependency Track resource.\n` +
+            `• URL: ${this.options.url}\n` +
+            `• Issue: Insufficient permissions\n` +
+            `• Solutions: Check API key permissions, verify user role in Dependency Track`;
+        } else {
+          errorMessage = `Dependency Track upload failed with error:\n${stderr}\n\n` +
+            `Troubleshooting:\n` +
+            `• Verify URL: ${this.options.url}\n` +
+            `• Check API key validity\n` +
+            `• Ensure project exists in Dependency Track`;
+        }
+      } else {
+        errorMessage = `Dependency Track upload failed (exit code ${exitCode}).\n` +
+          `• URL: ${this.options.url}\n` +
+          `• Check server connectivity and configuration`;
+      }
+      
+      return new Error(errorMessage);
+    }
+    
     if (stderr) {
       return new Error(`Error uploading CycloneDX to Dependency Track: ${stderr}`);
     }

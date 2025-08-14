@@ -34,7 +34,9 @@ jest.mock('../src/app.input', () => ({
   OUTPUT_FILEPATH: 'results.json',
   DEPENDENCY_TRACK_URL: 'https://dep-track.example.com',
   DEPENDENCY_TRACK_API_KEY: 'test-api-key',
-  DEPENDENCY_TRACK_PROJECT_ID: 'test-project-id'
+  DEPENDENCY_TRACK_PROJECT_ID: 'test-project-id',
+  POLICIES_HALT_ON_FAILURE: true,
+  HALT_ON_ERROR: true
 }));
 
 // Mock the @actions/github module
@@ -120,16 +122,33 @@ describe('DepTrackPolicyCheck', () => {
 - License violation: GPL-3.0 not allowed
 - Outdated dependency: package-old v1.0.0
     `;
-    // Mock execution with violations (non-zero exit code)
+    // Mock execution with violations (exit code 2 for policy violations)
     jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
       stdout: violationsOutput,
       stderr: 'Policy violations detected',
-      exitCode: 1
+      exitCode: 2
     });
     await depTrackPolicyCheck.start(1)
     await depTrackPolicyCheck.run();
-    expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Failure);
+    expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.ActionRequired);
 
+  }, 10000);
+
+  it('should return neutral when policy violations occur and halt on failure is false', async () => {
+    appInput.POLICIES_HALT_ON_FAILURE = false;
+    const violationsOutput = `## Policy Violations Found
+| Component | Version | License | Risk |
+|-----------|---------|---------|------|
+| example-lib | 1.0.0 | GPL-3.0 | HIGH |`;
+
+    jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
+      stdout: violationsOutput,
+      stderr: 'Policy violations detected',
+      exitCode: 2
+    });
+    await depTrackPolicyCheck.start(1)
+    await depTrackPolicyCheck.run();
+    expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Neutral);
   }, 10000);
 
   // Test: Make sure we're testing the right class
@@ -141,17 +160,31 @@ describe('DepTrackPolicyCheck', () => {
     expect(depTrackPolicyCheck.artifactPolicyFileName()).toBe('dep-track-policy-check-results.md');
   });
 
-  it('should handle execution errors gracefully', async () => {
-    appInput.POLICIES_HALT_ON_FAILURE = false
+  it('should handle execution errors gracefully when halt on error is false', async () => {
+    appInput.HALT_ON_ERROR = false
     const mockExecOutput = jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
       stdout: '',
       stderr: 'Connection to Dependency Track failed',
-      exitCode: 2
+      exitCode: 1
     });
     await depTrackPolicyCheck.start(1)
     await depTrackPolicyCheck.run();
     
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Neutral);
+    expect(mockExecOutput).toHaveBeenCalled();
+  }, 10000);
+
+  it('should fail when technical error occurs and halt on error is true', async () => {
+    appInput.HALT_ON_ERROR = true
+    const mockExecOutput = jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
+      stdout: '',
+      stderr: 'Connection to Dependency Track failed',
+      exitCode: 1
+    });
+    await depTrackPolicyCheck.start(1)
+    await depTrackPolicyCheck.run();
+    
+    expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Failure);
     expect(mockExecOutput).toHaveBeenCalled();
   }, 10000);
 
@@ -167,13 +200,13 @@ describe('DepTrackPolicyCheck', () => {
     jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
       stdout: 'Very long summary that exceeds limits',
       stderr: 'Error details',
-      exitCode: 1
+      exitCode: 2
     });
 
     await depTrackPolicyCheck.start(1)
     await depTrackPolicyCheck.run();
     
     expect(mockIsOverLimit).toHaveBeenCalledWith('Very long summary that exceeds limits');
-    expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Failure);
+    expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.ActionRequired);
   }, 10000);
 });

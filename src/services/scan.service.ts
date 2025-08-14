@@ -39,6 +39,9 @@ import {
 
 const artifact = new DefaultArtifactClient();
 
+/**
+ * Uploads scan results to GitHub Actions artifacts for later retrieval.
+ */
 export async function uploadResults(): Promise<void> {
   await artifact.uploadArtifact(
     path.basename(inputs.OUTPUT_FILEPATH),
@@ -127,9 +130,6 @@ export interface Options {
  * @property {Options} options - Configuration options for the scanner
  * @property {string} options.apiKey - API key for SCANOSS service authentication
  * @property {string} options.apiUrl - URL endpoint for the SCANOSS service
- * @property {boolean} options.sbomEnabled - Flag to enable SBOM generation
- * @property {string} options.sbomFilepath - Path to store or read SBOM files
- * @property {string} options.sbomType - Type of SBOM format to use
  * @property {boolean} options.dependenciesEnabled - Flag to enable dependency scanning
  * @property {string} options.outputFilepath - Path for scan results output
  * @property {string} options.inputFilepath - Path to the repository to scan
@@ -351,6 +351,9 @@ export class ScanService {
     return ['-stf'];
   }
 
+  /**
+   * Parses scan results from the output file.
+   */
   private async parseResult(): Promise<ScannerResults> {
     const content = await fs.promises.readFile(this.options.outputFilepath, 'utf-8');
     return JSON.parse(content) as ScannerResults;

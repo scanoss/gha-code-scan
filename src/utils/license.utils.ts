@@ -1,9 +1,39 @@
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+
 import * as inputs from '../app.input';
 import * as core from '@actions/core';
 
+/**
+ * Utility class for handling license operations and copyleft license detection.
+ */
 export class LicenseUtil {
   private BASE_OSADL_URL = 'https://spdx.org/licenses';
   private HTML = 'html';
+  
+  /**
+   * Initializes the license utility with copyleft license configurations.
+   */
   constructor() {
     this.init();
   }
@@ -36,6 +66,9 @@ export class LicenseUtil {
 
   private copyLeftLicenses = new Set<string>();
 
+  /**
+   * Initializes copyleft license sets based on configuration.
+   */
   private init(): void {
     if (inputs.COPYLEFT_LICENSE_EXPLICIT) {
       const explicitCopyleftLicenses = inputs.COPYLEFT_LICENSE_EXPLICIT.split(',').map(pn => pn.trim().toLowerCase());
@@ -60,10 +93,9 @@ export class LicenseUtil {
     }
   }
 
-  isCopyLeft(spdxid: string): boolean {
-    return this.copyLeftLicenses.has(spdxid);
-  }
-
+  /**
+   * Generates SPDX license URL for the given license identifier.
+   */
   getOSADL(spdxid: string): string {
     return `${this.BASE_OSADL_URL}/${spdxid}.${this.HTML}`;
   }
