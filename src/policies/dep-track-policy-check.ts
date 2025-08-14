@@ -51,6 +51,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
    * Validates Dependency Track policy check configuration
    */
   private validatePolicyConfiguration(): void {
+    const MINIMUM_API_KEY_LENGTH = 10;
     const missingParams: string[] = [];
     const invalidParams: string[] = [];
 
@@ -71,15 +72,18 @@ export class DepTrackPolicyCheck extends PolicyCheck {
 
     if (!inputs.DEPENDENCY_TRACK_API_KEY) {
       missingParams.push('dependencytrack.apikey');
-    } else if (inputs.DEPENDENCY_TRACK_API_KEY.length < 10) {
+    } else if (inputs.DEPENDENCY_TRACK_API_KEY.length < MINIMUM_API_KEY_LENGTH) {
       invalidParams.push('dependencytrack.apikey (appears to be too short)');
     }
 
     // Check project identification
     if (!inputs.DEPENDENCY_TRACK_PROJECT_ID && !inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN) {
       const missingProjectParams: string[] = [];
-      if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME) missingProjectParams.push('dependencytrack.projectName');
-      if (!inputs.DEPENDENCY_TRACK_PROJECT_VERSION) missingProjectParams.push('dependencytrack.projectVersion');
+      if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME && !inputs.DEPENDENCY_TRACK_PROJECT_VERSION) {
+        missingProjectParams.push('Either dependencytrack.projectid or BOTH dependencytrack.projectname AND dependencytrack.projectversion');
+      }
+      else if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME) missingProjectParams.push('dependencytrack.projectname');
+      else if (!inputs.DEPENDENCY_TRACK_PROJECT_VERSION) missingProjectParams.push('dependencytrack.projectversion');
 
       if (missingProjectParams.length > 0) {
         missingParams.push(...missingProjectParams);

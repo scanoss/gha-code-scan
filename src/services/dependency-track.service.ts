@@ -105,15 +105,15 @@ export class DependencyTrackService {
     if (!this.options.projectId) {
       const missingProjectParams: string[] = [];
 
-      if (!this.options.projectName) missingProjectParams.push('dependencytrack.projectName');
-      if (!this.options.projectVersion) missingProjectParams.push('dependencytrack.projectVersion');
+      if (!this.options.projectName) missingProjectParams.push('dependencytrack.projectname');
+      if (!this.options.projectVersion) missingProjectParams.push('dependencytrack.projectversion');
 
       if (missingProjectParams.length > 0) {
         throw new Error(
           `Dependency Track Upload Failed: Project identification is incomplete.\n` +
           `You must provide EITHER:\n` +
-          `  • dependencytrack.projectId (for existing projects), OR\n` +
-          `  • Both dependencytrack.projectName AND dependencytrack.projectVersion (to create/find projects)\n\n` +
+          `  • dependencytrack.projectid (for existing projects), OR\n` +
+          `  • Both dependencytrack.projectname AND dependencytrack.projectversion (to create/find projects)\n\n` +
           `Missing: ${missingProjectParams.join(', ')}`
         );
       }
