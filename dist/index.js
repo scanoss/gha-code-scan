@@ -124584,6 +124584,7 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
      * Validates Dependency Track policy check configuration
      */
     validatePolicyConfiguration() {
+        const MINIMUM_API_KEY_LENGTH = 10;
         const missingParams = [];
         const invalidParams = [];
         // Check required parameters from app.input
@@ -124605,16 +124606,19 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
         if (!inputs.DEPENDENCY_TRACK_API_KEY) {
             missingParams.push('dependencytrack.apikey');
         }
-        else if (inputs.DEPENDENCY_TRACK_API_KEY.length < 10) {
+        else if (inputs.DEPENDENCY_TRACK_API_KEY.length < MINIMUM_API_KEY_LENGTH) {
             invalidParams.push('dependencytrack.apikey (appears to be too short)');
         }
         // Check project identification
         if (!inputs.DEPENDENCY_TRACK_PROJECT_ID && !inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN) {
             const missingProjectParams = [];
-            if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME)
-                missingProjectParams.push('dependencytrack.projectName');
-            if (!inputs.DEPENDENCY_TRACK_PROJECT_VERSION)
-                missingProjectParams.push('dependencytrack.projectVersion');
+            if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME && !inputs.DEPENDENCY_TRACK_PROJECT_VERSION) {
+                missingProjectParams.push('Either dependencytrack.projectid or BOTH dependencytrack.projectname AND dependencytrack.projectversion');
+            }
+            else if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME)
+                missingProjectParams.push('dependencytrack.projectname');
+            else if (!inputs.DEPENDENCY_TRACK_PROJECT_VERSION)
+                missingProjectParams.push('dependencytrack.projectversion');
             if (missingProjectParams.length > 0) {
                 missingParams.push(...missingProjectParams);
             }
@@ -125173,6 +125177,7 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             await this.technicalError(errorSummary, errorDetails);
             return;
         }
+        // TODO Combine stderr and stdout
         // exitCode === 2 means policy violations found
         const { id } = await this.uploadArtifact(details);
         core.debug(`Undeclared Artifact ID: ${id}`);
@@ -125409,14 +125414,14 @@ class DependencyTrackService {
         if (!this.options.projectId) {
             const missingProjectParams = [];
             if (!this.options.projectName)
-                missingProjectParams.push('dependencytrack.projectName');
+                missingProjectParams.push('dependencytrack.projectname');
             if (!this.options.projectVersion)
-                missingProjectParams.push('dependencytrack.projectVersion');
+                missingProjectParams.push('dependencytrack.projectversion');
             if (missingProjectParams.length > 0) {
                 throw new Error(`Dependency Track Upload Failed: Project identification is incomplete.\n` +
                     `You must provide EITHER:\n` +
-                    `  • dependencytrack.projectId (for existing projects), OR\n` +
-                    `  • Both dependencytrack.projectName AND dependencytrack.projectVersion (to create/find projects)\n\n` +
+                    `  • dependencytrack.projectid (for existing projects), OR\n` +
+                    `  • Both dependencytrack.projectname AND dependencytrack.projectversion (to create/find projects)\n\n` +
                     `Missing: ${missingProjectParams.join(', ')}`);
             }
         }
