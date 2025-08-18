@@ -68,8 +68,17 @@ export class ScanOssService {
       if (exitCode !== 0) {
         return new Error(`Error converting scan results into CycloneDX format`);
       }
-      await uploadToArtifacts(CYCLONEDX_FILE_NAME);
-      core.info('Successfully converted results into CycloneDX format');
+      
+      // Check if CycloneDX file was actually created before trying to upload it
+      try {
+        const fs = await import('fs');
+        await fs.promises.access(CYCLONEDX_FILE_NAME, fs.constants.F_OK);
+        await uploadToArtifacts(CYCLONEDX_FILE_NAME);
+        core.info('Successfully converted results into CycloneDX format');
+      } catch (fileError) {
+        // File doesn't exist - this can happen with empty repos
+        core.info('CycloneDX conversion completed but no file generated (likely empty repository)');
+      }
     } catch (e: any) {
       core.error(e.message);
     }

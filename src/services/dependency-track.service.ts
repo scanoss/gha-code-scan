@@ -191,11 +191,14 @@ export class DependencyTrackService {
         ],
         component: {
           type: "application",
+          "bom-ref": this.generateUUID(),
           name: this.options.projectName || "unknown-project",
           version: this.options.projectVersion || "1.0.0"
         }
       },
-      components: []
+      components: [],
+      dependencies: [],
+      vulnerabilities: []
     };
 
     await fs.promises.writeFile(CYCLONEDX_FILE_NAME, JSON.stringify(minimalSbom, null, 2), 'utf-8');
