@@ -41,10 +41,99 @@ import * as inputs from '../app.input';
 export class DepTrackPolicyCheck extends PolicyCheck {
   static policyName = 'Dependency Track Policy';
   private argumentBuilder: ArgumentBuilder;
+  private uploadAttempted: boolean = true;
 
   constructor(argumentBuilder: DependencyTrackArgumentBuilder = new DependencyTrackArgumentBuilder()) {
     super(`${CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
     this.argumentBuilder = argumentBuilder;
+  }
+
+  /**
+   * Sets whether the upload to Dependency Track was attempted
+   */
+  setUploadAttempted(attempted: boolean): void {
+    this.uploadAttempted = attempted;
+  }
+
+  /**
+   * Parse policy check error and return appropriate error message and details
+   */
+  private parseError(stderr: string): { message: string; details: string } {
+    const lowerStderr = stderr.toLowerCase();
+    
+    // Determine error type based on stderr content
+    const getErrorType = (): string => {
+      if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
+        return 'CONNECTION_ERROR';
+      }
+      if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized')) {
+        return 'AUTH_ERROR';
+      }
+      if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
+        return 'NOT_FOUND_ERROR';
+      }
+      if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
+        return 'PROJECT_NOT_FOUND';
+      }
+      if (lowerStderr.includes('timeout')) {
+        return 'TIMEOUT_ERROR';
+      }
+      return 'GENERIC_ERROR';
+    };
+
+    switch (getErrorType()) {
+      case 'CONNECTION_ERROR':
+        return {
+          message: 'Cannot connect to Dependency Track server',
+          details: `Connection failed to: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+            `• Server may not be running\n` +
+            `• URL may be incorrect\n` +
+            `• Network connectivity issues`
+        };
+        
+      case 'AUTH_ERROR':
+        return {
+          message: 'Authentication failed with Dependency Track',
+          details: `Authentication error for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+            `• API key may be invalid\n` +
+            `• API key may be expired\n` +
+            `• Check user permissions`
+        };
+        
+      case 'NOT_FOUND_ERROR':
+        return {
+          message: 'Dependency Track endpoint not found',
+          details: `Endpoint not found: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+            `• URL may be incorrect\n` +
+            `• API endpoint may not exist\n` +
+            `• Check Dependency Track version`
+        };
+        
+      case 'PROJECT_NOT_FOUND':
+        return {
+          message: 'Project not found in Dependency Track',
+          details: `Project not found:\n` +
+            `• Project ID: ${inputs.DEPENDENCY_TRACK_PROJECT_ID || 'Not specified'}\n` +
+            `• Project Name: ${inputs.DEPENDENCY_TRACK_PROJECT_NAME || 'Not specified'}\n` +
+            `• Upload Token: ${inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN ? 'Present' : 'Not specified'}\n` +
+            `Solutions: Create project in Dependency Track first`
+        };
+        
+      case 'TIMEOUT_ERROR':
+        return {
+          message: 'Dependency Track server timeout',
+          details: `Server timeout for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+            `• Server may be overloaded\n` +
+            `• Network latency issues\n` +
+            `• Try again later`
+        };
+        
+      default:
+        return {
+          message: 'Unable to complete Dependency Track policy check',
+          details: `Error details: ${stderr}`
+        };
+    }
   }
 
   /**
@@ -129,7 +218,12 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       let details = stderr;
     
       if (exitCode === 0) {
-        await this.success('### :white_check_mark: Policy Pass \n #### No policy violations were found', undefined);
+        let successMessage = '### :white_check_mark: Policy Pass \n #### No policy violations were found';
+        if (!this.uploadAttempted) {
+          core.warning('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
+          successMessage += '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. Results may not reflect latest changes.';
+        }
+        await this.success(successMessage, undefined);
         return;
       }
 
@@ -139,41 +233,9 @@ export class DepTrackPolicyCheck extends PolicyCheck {
         let errorDetails = `Error details: ${stderr}`;
 
         if (stderr) {
-          const lowerStderr = stderr.toLowerCase();
-          
-          if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
-            errorMessage = 'Cannot connect to Dependency Track server';
-            errorDetails = `Connection failed to: ${inputs.DEPENDENCY_TRACK_URL}\n` +
-              `• Server may not be running\n` +
-              `• URL may be incorrect\n` +
-              `• Network connectivity issues`;
-            // TODO Review
-          } else if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized')) {
-            errorMessage = 'Authentication failed with Dependency Track';
-            errorDetails = `Authentication error for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
-              `• API key may be invalid\n` +
-              `• API key may be expired\n` +
-              `• Check user permissions`;
-          } else if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
-            errorMessage = 'Dependency Track endpoint not found';
-            errorDetails = `Endpoint not found: ${inputs.DEPENDENCY_TRACK_URL}\n` +
-              `• URL may be incorrect\n` +
-              `• API endpoint may not exist\n` +
-              `• Check Dependency Track version`;
-          } else if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
-            errorMessage = 'Project not found in Dependency Track';
-            errorDetails = `Project not found:\n` +
-              `• Project ID: ${inputs.DEPENDENCY_TRACK_PROJECT_ID || 'Not specified'}\n` +
-              `• Project Name: ${inputs.DEPENDENCY_TRACK_PROJECT_NAME || 'Not specified'}\n` +
-              `• Upload Token: ${inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN ? 'Present' : 'Not specified'}\n` +
-              `Solutions: Create project in Dependency Track first`;
-          } else if (lowerStderr.includes('timeout')) {
-            errorMessage = 'Dependency Track server timeout';
-            errorDetails = `Server timeout for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
-              `• Server may be overloaded\n` +
-              `• Network latency issues\n` +
-              `• Try again later`;
-          }
+          const { message, details } = this.parseError(stderr);
+          errorMessage = message;
+          errorDetails = details;
         }
 
         core.warning(`Dependency Track policy check encountered an error: ${errorMessage}`);
@@ -183,10 +245,16 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       }
 
       // exitCode === 2 means policy violations found
+      if (!this.uploadAttempted) {
+        core.warning('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
+        const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.\n';
+        details = stderr + uploadWarning;
+      }
+      
       const { id } = await this.uploadArtifact(stdout);
       core.debug(`Dependency Track Artifact ID: ${id}`);
       if (id) {
-        details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
+        details = await this.concatPolicyArtifactURLToPolicyCheck(details || stderr, id);
       }
 
       if (isOverMaxCharacterLimitAPI(summary)) {

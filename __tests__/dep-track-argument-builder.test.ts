@@ -144,8 +144,6 @@ describe('DependencyTrackArgumentBuilder', () => {
       'abcdefghijklmno',
       '--project-id',
       '01234-56789',
-      '--output',
-      'scanoss-inspect-result.json',
       '--format',
       'md'
     ]);

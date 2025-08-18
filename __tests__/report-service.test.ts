@@ -94,20 +94,18 @@ describe('Test report service', () => {
 
   it('Should generate PR summary', async () => {
     const report = await generatePRSummary([]);
-    const expectedOutput = `
-  ### SCANOSS SCAN Completed :rocket:
-  - **Detected components:** 2
-  - **Undeclared components:** 2
-  - **Declared components:** 0
-  - **Detected files:** 4
-  - **Detected files undeclared:** 4
-  - **Detected files declared:** 0
-  - **Licenses detected:** 3
-  - **Licenses detected with copyleft:** 1
-  - **Policies:**   (0 total)
+    const expectedOutput = `### SCANOSS SCAN Completed :rocket:
+- **Detected components:** 2
+- **Undeclared components:** 2
+- **Declared components:** 0
+- **Detected files:** 4
+- **Detected files undeclared:** 4
+- **Detected files declared:** 0
+- **Licenses detected:** 3
+- **Licenses detected with copyleft:** 1
+- **Policies:**   (0 total)
 
-  View more details on [SCANOSS Action Summary](https://github.com/x/y/actions/runs/0)
-  `;
+View more details on [SCANOSS Action Summary](https://github.com/x/y/actions/runs/0)`;
     expect(report).toEqual(expectedOutput);
   }, 50000);
 });

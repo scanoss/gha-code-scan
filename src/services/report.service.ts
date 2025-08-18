@@ -49,21 +49,18 @@ export async function generatePRSummary(policies: PolicyCheck[]): Promise<string
     success: polCount.success ? `:white_check_mark: ${polCount.success} pass` : '',
     fail: polCount.fail ? `:x: ${polCount.fail} fail` : ''
   };
- // TODO Fix
-  const content = `
-  ### SCANOSS SCAN Completed :rocket:
-  - **Detected components:** ${componentSummary.totalComponents}
-  - **Undeclared components:** ${componentSummary.undeclaredComponents}
-  - **Declared components:** ${componentSummary.declaredComponents}
-  - **Detected files:** ${componentSummary.totalFilesDetected}
-  - **Detected files undeclared:** ${componentSummary.totalFilesUndeclared}
-  - **Detected files declared:** ${componentSummary.totalFilesDeclared}
-  - **Licenses detected:** ${licenseSummary.detectedLicenses}
-  - **Licenses detected with copyleft:** ${licenseSummary.detectedLicensesWithCopyleft}
-  - **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
+  const content = `### SCANOSS SCAN Completed :rocket:
+- **Detected components:** ${componentSummary.totalComponents}
+- **Undeclared components:** ${componentSummary.undeclaredComponents}
+- **Declared components:** ${componentSummary.declaredComponents}
+- **Detected files:** ${componentSummary.totalFilesDetected}
+- **Detected files undeclared:** ${componentSummary.totalFilesUndeclared}
+- **Detected files declared:** ${componentSummary.totalFilesDeclared}
+- **Licenses detected:** ${licenseSummary.detectedLicenses}
+- **Licenses detected with copyleft:** ${licenseSummary.detectedLicensesWithCopyleft}
+- **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
 
-  View more details on [SCANOSS Action Summary](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
-  `;
+View more details on [SCANOSS Action Summary](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
 
   return content;
 }

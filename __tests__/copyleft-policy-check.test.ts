@@ -25,6 +25,7 @@ import path from 'path';
 import { CopyleftPolicyCheck } from '../src/policies/copyleft-policy-check';
 import { CONCLUSION } from '../src/policies/policy-check';
 import * as exec from '@actions/exec';
+import * as core from '@actions/core';
 
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
@@ -190,10 +191,13 @@ describe('CopyleftPolicyCheck', () => {
     appInput.OUTPUT_FILEPATH = TEST_RESULTS_FILE;
     appInput.HALT_ON_ERROR = false;
 
+    const debugSpy = jest.spyOn(core, 'debug').mockImplementation();
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+
     // Mock exec.getExecOutput to simulate technical error
     jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
       stdout: '',
-      stderr: 'Docker connection failed',
+      stderr: 'Docker connection failed with sensitive API details',
       exitCode: 1
     });
 
@@ -205,7 +209,14 @@ describe('CopyleftPolicyCheck', () => {
     const copyleftPolicyCheck = new CopyleftPolicyCheck();
     await copyleftPolicyCheck.start(1);
     await copyleftPolicyCheck.run();
+    
     expect(copyleftPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
+    // Verify error message sanitization
+    expect(debugSpy).toHaveBeenCalledWith('Copyleft policy check stderr: Docker connection failed with sensitive API details');
+    expect(warningSpy).toHaveBeenCalledWith('Copyleft policy check encountered an error');
+    
+    debugSpy.mockRestore();
+    warningSpy.mockRestore();
   }, 10000);
 
   it('should fail when technical error occurs and halt on error is true', async () => {

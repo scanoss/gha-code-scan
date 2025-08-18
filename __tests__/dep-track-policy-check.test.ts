@@ -27,6 +27,7 @@ import { DepTrackPolicyCheck } from '../src/policies/dep-track-policy-check';
 import { CONCLUSION } from '../src/policies/policy-check';
 import { ExecOutput } from '@actions/exec';
 import * as githubService from '../src/services/github.service';
+import * as core from '@actions/core';
 
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
@@ -68,6 +69,14 @@ jest.mock('@actions/github', () => ({
 
 const mockGetExecOutput = jest.spyOn(exec, 'getExecOutput');
 
+// Mock core.warning at the module level
+jest.mock('@actions/core', () => ({
+  ...jest.requireActual('@actions/core'),
+  warning: jest.fn()
+}));
+
+const mockCoreWarning = core.warning as jest.MockedFunction<typeof core.warning>;
+
 describe('DepTrackPolicyCheck', () => {
   let depTrackPolicyCheck: DepTrackPolicyCheck
   const appInput = jest.requireMock('../src/app.input');
@@ -82,6 +91,7 @@ describe('DepTrackPolicyCheck', () => {
     appInput.DEPENDENCY_TRACK_PROJECT_ID = 'test-project-id';
     appInput.POLICIES_HALT_ON_FAILURE = true;
     mockGetExecOutput.mockRestore();
+    mockCoreWarning.mockClear();
     // Clear all mocks before each test
     jest.clearAllMocks();
     depTrackPolicyCheck = new DepTrackPolicyCheck();
@@ -209,4 +219,99 @@ describe('DepTrackPolicyCheck', () => {
     expect(mockIsOverLimit).toHaveBeenCalledWith('Very long summary that exceeds limits');
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.ActionRequired);
   }, 10000);
+
+  // Test warning scenarios when upload not attempted
+  it('should show warning when no violations found but upload was not attempted', async () => {
+    const depTrackPolicyCheck = new DepTrackPolicyCheck();
+    depTrackPolicyCheck.setUploadAttempted(false);
+
+    // Mock updateCheck to capture the summary
+    let capturedSummary = '';
+    jest.spyOn(depTrackPolicyCheck, 'updateCheck' as any).mockImplementation(async (...args: any[]) => {
+      capturedSummary = args[0];
+    });
+
+    jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
+      stdout: 'No policy violations found',
+      stderr: 'no violations found',
+      exitCode: 0
+    });
+
+    await depTrackPolicyCheck.start(1);
+    await depTrackPolicyCheck.run();
+
+    expect(mockCoreWarning).toHaveBeenCalledWith('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
+    expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Success);
+    expect(capturedSummary).toContain(':warning: **Warning**: SBOM upload to Dependency Track was not attempted');
+  }, 10000);
+
+  it('should show warning when violations found but upload was not attempted', async () => {
+    const depTrackPolicyCheck = new DepTrackPolicyCheck();
+    depTrackPolicyCheck.setUploadAttempted(false);
+
+    // Mock isOverMaxCharacterLimitAPI to return false so details aren't truncated
+    jest.spyOn(githubService, 'isOverMaxCharacterLimitAPI').mockReturnValue(false);
+
+    // Mock updateCheck to capture the details
+    let capturedDetails = '';
+    jest.spyOn(depTrackPolicyCheck, 'updateCheck' as any).mockImplementation(async (...args: any[]) => {
+      capturedDetails = args[1] || '';
+    });
+
+    const violationsOutput = `# Dependency Track Policy Violations
+## High Risk Vulnerabilities
+- CVE-2023-1234: Critical vulnerability in package xyz`;
+
+    jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
+      stdout: violationsOutput,
+      stderr: 'Policy violations detected',
+      exitCode: 2
+    });
+
+    await depTrackPolicyCheck.start(1);
+    await depTrackPolicyCheck.run();
+
+    expect(mockCoreWarning).toHaveBeenCalledWith('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
+    expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.ActionRequired);
+    expect(capturedDetails).toContain(':warning: **Warning**: SBOM upload to Dependency Track was not attempted');
+  }, 10000);
+
+  it('should not show warning when upload was attempted successfully', async () => {
+    const depTrackPolicyCheck = new DepTrackPolicyCheck();
+    depTrackPolicyCheck.setUploadAttempted(true);
+
+    // Mock updateCheck to capture the summary
+    let capturedSummary = '';
+    jest.spyOn(depTrackPolicyCheck, 'updateCheck' as any).mockImplementation(async (...args: any[]) => {
+      capturedSummary = args[0];
+    });
+
+    jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
+      stdout: 'No policy violations found',
+      stderr: 'no violations found',
+      exitCode: 0
+    });
+
+    await depTrackPolicyCheck.start(1);
+    await depTrackPolicyCheck.run();
+
+    expect(mockCoreWarning).not.toHaveBeenCalledWith(expect.stringContaining('upload to Dependency Track was not attempted'));
+    expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Success);
+    expect(capturedSummary).not.toContain(':warning: **Warning**: SBOM upload to Dependency Track was not attempted');
+  }, 10000);
+
+  it('should test setUploadAttempted method', () => {
+    const depTrackPolicyCheck = new DepTrackPolicyCheck();
+    
+    // Default should be true
+    expect((depTrackPolicyCheck as any).uploadAttempted).toBe(true);
+    
+    // Set to false
+    depTrackPolicyCheck.setUploadAttempted(false);
+    expect((depTrackPolicyCheck as any).uploadAttempted).toBe(false);
+    
+    // Set back to true
+    depTrackPolicyCheck.setUploadAttempted(true);
+    expect((depTrackPolicyCheck as any).uploadAttempted).toBe(true);
+  });
 });

@@ -73,15 +73,23 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
 
     if (exitCode === 1) {
       // Technical error occurred
-      core.warning(`Undeclared policy check encountered an error: ${stderr}`);
+      core.warning('Undeclared policy check encountered an error');
+      core.debug(`Undeclared policy check stderr: ${stderr}`);
       const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete undeclared component check';
-      const errorDetails = `Error details: ${stderr}`;
+      const errorDetails = 'Error details: Check debug logs for more information';
       
       await this.technicalError(errorSummary, errorDetails);
       return;
     }
 
     // exitCode === 2 means policy violations found
+    // Combine stdout (summary) and stderr (details) for comprehensive reporting
+    if (stderr) {
+      details = stdout + '\n\n' + stderr;
+    } else {
+      details = stdout;
+    }
+    
     const { id } = await this.uploadArtifact(details);
     core.debug(`Undeclared Artifact ID: ${id}`);
     if (id) details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);

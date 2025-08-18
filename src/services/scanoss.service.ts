@@ -53,10 +53,11 @@ export class ScanOssService {
   }
 
   /**
-   * Converts SCANOSS results to CycloneDX format using scanoss-py
+   * Converts SCANOSS results to CycloneDX format using scanoss-py.
+   * Currently always generates CycloneDX file which can be used by Dependency Track
+   * or uploaded as an artifact for other integrations.
    */
   async scanResultsToCycloneDX(): Promise<Error | undefined> {
-    // TODO only currently required if DT is enabled. Or do we produce a CDX file regardless and add it beside results.json
     try {
       core.info('Converting SCANOSS results to CycloneDX format...');
       const options = {

@@ -22,6 +22,44 @@
  */
 
 import * as core from '@actions/core';
+import * as path from 'path';
+
+/**
+ * Validates a filename to prevent directory traversal and ensure safe file operations.
+ * @param filename - The filename to validate
+ * @returns A safe filename or throws an error if invalid
+ */
+function validateFilename(filename: string | undefined): string {
+  if (!filename) {
+    return 'results.json';
+  }
+
+  // Normalize the path to handle any path traversal attempts
+  const normalizedPath = path.normalize(filename);
+  
+  // Check for directory traversal attempts
+  if (normalizedPath.includes('..') || normalizedPath.startsWith('/') || normalizedPath.includes('\\')) {
+    core.warning(`Invalid filename detected: ${filename}. Using default: results.json`);
+    return 'results.json';
+  }
+
+  // Extract just the filename (no directory components)
+  const basename = path.basename(normalizedPath);
+  
+  // Ensure it's a valid filename (alphanumeric, dots, dashes, underscores)
+  const safeFilenameRegex = /^[a-zA-Z0-9._-]+$/;
+  if (!safeFilenameRegex.test(basename)) {
+    core.warning(`Unsafe filename detected: ${filename}. Using default: results.json`);
+    return 'results.json';
+  }
+
+  // Ensure it has a proper extension
+  if (!basename.includes('.')) {
+    return basename + '.json';
+  }
+
+  return basename;
+}
 
 /**
  * Input configuration constants for the SCANOSS GitHub Action.
@@ -54,7 +92,7 @@ export const API_URL = core.getInput('api.url');
 
 // File System Configuration
 /** Path for scan results output */
-export const OUTPUT_FILEPATH = core.getInput('output.filepath');
+export const OUTPUT_FILEPATH = validateFilename(core.getInput('output.filepath'));
 /** GitHub token for API access */
 export const GITHUB_TOKEN = core.getInput('github.token');
 /** Repository directory path */

@@ -25,6 +25,7 @@ import { CONCLUSION, PolicyCheck } from '../src/policies/policy-check';
 import { UndeclaredPolicyCheck } from '../src/policies/undeclared-policy-check';
 import path from 'path';
 import * as exec from '@actions/exec';
+import * as core from '@actions/core';
 
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
@@ -140,15 +141,25 @@ describe('UndeclaredPolicyCheck', () => {
     appInput.OUTPUT_FILEPATH = TEST_RESULTS_FILE;
     appInput.HALT_ON_ERROR = false;
 
+    const debugSpy = jest.spyOn(core, 'debug').mockImplementation();
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+
     // Mock exec.getExecOutput to simulate technical error
     jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
       stdout: '',
-      stderr: 'Docker connection failed',
+      stderr: 'Docker connection failed with sensitive details',
       exitCode: 1
     });
 
     await undeclaredPolicyCheck.run();
+    
     expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
+    // Verify error message sanitization
+    expect(debugSpy).toHaveBeenCalledWith('Undeclared policy check stderr: Docker connection failed with sensitive details');
+    expect(warningSpy).toHaveBeenCalledWith('Undeclared policy check encountered an error');
+    
+    debugSpy.mockRestore();
+    warningSpy.mockRestore();
   }, 10000);
 
   it('should fail when technical error occurs and halt on error is true', async () => {

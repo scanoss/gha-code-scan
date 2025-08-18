@@ -123,22 +123,111 @@ export class DependencyTrackService {
   /**
    * Converts SCANOSS results to CycloneDX format and uploads to Dependency Track
    */
-  async uploadToDependencyTrack(): Promise<void> {
+  async uploadToDependencyTrack(): Promise<boolean> {
     try {
       if (!this.options.enabled) {
         core.debug('Dependency Track upload is disabled');
-        return;
+        return false;
       }
       this.validateConfiguration();
 
       // Check if CycloneDX file exists
-      // TODO change to `access` instead?
-      await fs.promises.readFile(CYCLONEDX_FILE_NAME, 'utf8');
+      await fs.promises.access(CYCLONEDX_FILE_NAME, fs.constants.F_OK);
 
       core.info('Starting Dependency Track upload process...');
-      await this.uploadCycloneDXToDependencyTrack();
+      const uploadError = await this.uploadCycloneDXToDependencyTrack();
+      if (uploadError) {
+        core.error(uploadError.message);
+        return false;
+      }
+      return true;
     } catch (e: any) {
       core.error(e.message);
+      return false;
+    }
+  }
+
+  /**
+   * Parse upload error and return appropriate error message
+   */
+  private parseUploadError(stderr: string): string {
+    const lowerStderr = stderr.toLowerCase();
+    
+    // Determine error type based on stderr content
+    const getErrorType = (): string => {
+      if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
+        return 'CONNECTION_ERROR';
+      }
+      if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized') || lowerStderr.includes('invalid api key')) {
+        return 'AUTH_ERROR';
+      }
+      if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
+        return 'NOT_FOUND_ERROR';
+      }
+      if (lowerStderr.includes('timeout') || lowerStderr.includes('timed out')) {
+        return 'TIMEOUT_ERROR';
+      }
+      if (lowerStderr.includes('ssl') || lowerStderr.includes('certificate') || lowerStderr.includes('tls')) {
+        return 'SSL_ERROR';
+      }
+      if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
+        return 'PROJECT_NOT_FOUND';
+      }
+      if (lowerStderr.includes('forbidden') || lowerStderr.includes('403')) {
+        return 'FORBIDDEN_ERROR';
+      }
+      return 'GENERIC_ERROR';
+    };
+
+    switch (getErrorType()) {
+      case 'CONNECTION_ERROR':
+        return `Cannot connect to Dependency Track server.\n` +
+          `• URL: ${this.options.url}\n` +
+          `• Issue: Server is not reachable\n` +
+          `• Solutions: Verify the URL, check network connectivity, ensure server is running`;
+          
+      case 'AUTH_ERROR':
+        return `Authentication failed with Dependency Track server.\n` +
+          `• URL: ${this.options.url}\n` +
+          `• Issue: Invalid or missing API key\n` +
+          `• Solutions: Verify your API key, check user permissions in Dependency Track`;
+          
+      case 'NOT_FOUND_ERROR':
+        return `Dependency Track server endpoint not found.\n` +
+          `• URL: ${this.options.url}\n` +
+          `• Issue: Server endpoint does not exist\n` +
+          `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`;
+          
+      case 'TIMEOUT_ERROR':
+        return `Connection to Dependency Track server timed out.\n` +
+          `• URL: ${this.options.url}\n` +
+          `• Issue: Server is too slow to respond\n` +
+          `• Solutions: Check network connectivity, verify server performance, try again later`;
+          
+      case 'SSL_ERROR':
+        return `SSL/TLS connection error with Dependency Track server.\n` +
+          `• URL: ${this.options.url}\n` +
+          `• Issue: SSL certificate validation failed\n` +
+          `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`;
+          
+      case 'PROJECT_NOT_FOUND':
+        return `Project not found in Dependency Track.\n` +
+          `• Project ID: ${this.options.projectId || 'Not specified'}\n` +
+          `• Project Name: ${this.options.projectName || 'Not specified'}\n` +
+          `• Solutions: Verify project exists, check project ID/name, create project first`;
+          
+      case 'FORBIDDEN_ERROR':
+        return `Access forbidden to Dependency Track resource.\n` +
+          `• URL: ${this.options.url}\n` +
+          `• Issue: Insufficient permissions\n` +
+          `• Solutions: Check API key permissions, verify user role in Dependency Track`;
+          
+      default:
+        return `Dependency Track upload failed with error:\n${stderr}\n\n` +
+          `Troubleshooting:\n` +
+          `• Verify URL: ${this.options.url}\n` +
+          `• Check API key validity\n` +
+          `• Ensure project exists in Dependency Track`;
     }
   }
 
@@ -182,52 +271,7 @@ export class DependencyTrackService {
       let errorMessage;
       
       if (stderr) {
-        const lowerStderr = stderr.toLowerCase();
-
-        // TODO Use switch instead
-        // Parse common error patterns to provide more helpful messages
-        if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
-          errorMessage = `Cannot connect to Dependency Track server.\n` +
-            `• URL: ${this.options.url}\n` +
-            `• Issue: Server is not reachable\n` +
-            `• Solutions: Verify the URL, check network connectivity, ensure server is running`;
-        } else if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized') || lowerStderr.includes('invalid api key')) {
-          errorMessage = `Authentication failed with Dependency Track server.\n` +
-            `• URL: ${this.options.url}\n` +
-            `• Issue: Invalid or missing API key\n` +
-            `• Solutions: Verify your API key, check user permissions in Dependency Track`;
-        } else if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
-          errorMessage = `Dependency Track server endpoint not found.\n` +
-            `• URL: ${this.options.url}\n` +
-            `• Issue: Server endpoint does not exist\n` +
-            `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`;
-        } else if (lowerStderr.includes('timeout') || lowerStderr.includes('timed out')) {
-          errorMessage = `Connection to Dependency Track server timed out.\n` +
-            `• URL: ${this.options.url}\n` +
-            `• Issue: Server is too slow to respond\n` +
-            `• Solutions: Check network connectivity, verify server performance, try again later`;
-        } else if (lowerStderr.includes('ssl') || lowerStderr.includes('certificate') || lowerStderr.includes('tls')) {
-          errorMessage = `SSL/TLS connection error with Dependency Track server.\n` +
-            `• URL: ${this.options.url}\n` +
-            `• Issue: SSL certificate validation failed\n` +
-            `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`;
-        } else if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
-          errorMessage = `Project not found in Dependency Track.\n` +
-            `• Project ID: ${this.options.projectId || 'Not specified'}\n` +
-            `• Project Name: ${this.options.projectName || 'Not specified'}\n` +
-            `• Solutions: Verify project exists, check project ID/name, create project first`;
-        } else if (lowerStderr.includes('forbidden') || lowerStderr.includes('403')) {
-          errorMessage = `Access forbidden to Dependency Track resource.\n` +
-            `• URL: ${this.options.url}\n` +
-            `• Issue: Insufficient permissions\n` +
-            `• Solutions: Check API key permissions, verify user role in Dependency Track`;
-        } else {
-          errorMessage = `Dependency Track upload failed with error:\n${stderr}\n\n` +
-            `Troubleshooting:\n` +
-            `• Verify URL: ${this.options.url}\n` +
-            `• Check API key validity\n` +
-            `• Ensure project exists in Dependency Track`;
-        }
+        errorMessage = this.parseUploadError(stderr);
       } else {
         errorMessage = `Dependency Track upload failed (exit code ${exitCode}).\n` +
           `• URL: ${this.options.url}\n` +
@@ -238,7 +282,10 @@ export class DependencyTrackService {
     }
     
     if (stderr) {
-      return new Error(`Error uploading CycloneDX to Dependency Track: ${stderr}`);
+      // TODO Move to parent
+      // Don't expose raw stderr as it might contain sensitive information
+      core.debug(`Dependency Track upload stderr: ${stderr}`);
+      return new Error('Error uploading CycloneDX to Dependency Track. Check debug logs for details.');
     }
     const response = JSON.parse(stdout);
     setDependencyTrackUploadToken(response.token);

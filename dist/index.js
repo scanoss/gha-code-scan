@@ -123718,6 +123718,37 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.REPO_DIR = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.HALT_ON_ERROR = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
 const core = __importStar(__nccwpck_require__(42186));
+const path = __importStar(__nccwpck_require__(71017));
+/**
+ * Validates a filename to prevent directory traversal and ensure safe file operations.
+ * @param filename - The filename to validate
+ * @returns A safe filename or throws an error if invalid
+ */
+function validateFilename(filename) {
+    if (!filename) {
+        return 'results.json';
+    }
+    // Normalize the path to handle any path traversal attempts
+    const normalizedPath = path.normalize(filename);
+    // Check for directory traversal attempts
+    if (normalizedPath.includes('..') || normalizedPath.startsWith('/') || normalizedPath.includes('\\')) {
+        core.warning(`Invalid filename detected: ${filename}. Using default: results.json`);
+        return 'results.json';
+    }
+    // Extract just the filename (no directory components)
+    const basename = path.basename(normalizedPath);
+    // Ensure it's a valid filename (alphanumeric, dots, dashes, underscores)
+    const safeFilenameRegex = /^[a-zA-Z0-9._-]+$/;
+    if (!safeFilenameRegex.test(basename)) {
+        core.warning(`Unsafe filename detected: ${filename}. Using default: results.json`);
+        return 'results.json';
+    }
+    // Ensure it has a proper extension
+    if (!basename.includes('.')) {
+        return basename + '.json';
+    }
+    return basename;
+}
 /**
  * Input configuration constants for the SCANOSS GitHub Action.
  * All values are loaded from GitHub Actions input parameters or environment variables.
@@ -123745,7 +123776,7 @@ exports.API_KEY = core.getInput('api.key');
 exports.API_URL = core.getInput('api.url');
 // File System Configuration
 /** Path for scan results output */
-exports.OUTPUT_FILEPATH = core.getInput('output.filepath');
+exports.OUTPUT_FILEPATH = validateFilename(core.getInput('output.filepath'));
 /** GitHub token for API access */
 exports.GITHUB_TOKEN = core.getInput('github.token');
 /** Repository directory path */
@@ -123905,6 +123936,7 @@ const inputs = __importStar(__nccwpck_require__(483));
 const outputs = __importStar(__nccwpck_require__(22698));
 const scan_service_1 = __nccwpck_require__(87577);
 const policy_manager_1 = __nccwpck_require__(78951);
+const dep_track_policy_check_1 = __nccwpck_require__(1669);
 const dependency_track_service_1 = __nccwpck_require__(57356);
 const scanoss_service_1 = __nccwpck_require__(73406);
 /**
@@ -123928,9 +123960,12 @@ async function run() {
         // 2: Convert scan results to CycloneDX
         await scanoss_service_1.scanossService.scanResultsToCycloneDX();
         // 3: Dependency Track
-        await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
+        const uploadAttempted = await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
         // 4: run policies
         for (const policy of policies) {
+            if (policy instanceof dep_track_policy_check_1.DepTrackPolicyCheck) {
+                policy.setUploadAttempted(uploadAttempted);
+            }
             await policy.run();
         }
         if ((0, github_utils_1.isPullRequest)()) {
@@ -124469,9 +124504,10 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
         }
         else if (exitCode === 1) {
             // Technical error occurred
-            core.warning(`Copyleft policy check encountered an error: ${stderr}`);
+            core.warning('Copyleft policy check encountered an error');
+            core.debug(`Copyleft policy check stderr: ${stderr}`);
             const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete copyleft license check';
-            const errorDetails = `Error details: ${stderr}`;
+            const errorDetails = 'Error details: Check debug logs for more information';
             await this.technicalError(errorSummary, errorDetails);
             return;
         }
@@ -124576,9 +124612,89 @@ const inputs = __importStar(__nccwpck_require__(483));
 class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
     static policyName = 'Dependency Track Policy';
     argumentBuilder;
+    uploadAttempted = true;
     constructor(argumentBuilder = new dep_track_argument_builder_1.DependencyTrackArgumentBuilder()) {
         super(`${app_config_1.CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
         this.argumentBuilder = argumentBuilder;
+    }
+    /**
+     * Sets whether the upload to Dependency Track was attempted
+     */
+    setUploadAttempted(attempted) {
+        this.uploadAttempted = attempted;
+    }
+    /**
+     * Parse policy check error and return appropriate error message and details
+     */
+    parseError(stderr) {
+        const lowerStderr = stderr.toLowerCase();
+        // Determine error type based on stderr content
+        const getErrorType = () => {
+            if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
+                return 'CONNECTION_ERROR';
+            }
+            if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized')) {
+                return 'AUTH_ERROR';
+            }
+            if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
+                return 'NOT_FOUND_ERROR';
+            }
+            if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
+                return 'PROJECT_NOT_FOUND';
+            }
+            if (lowerStderr.includes('timeout')) {
+                return 'TIMEOUT_ERROR';
+            }
+            return 'GENERIC_ERROR';
+        };
+        switch (getErrorType()) {
+            case 'CONNECTION_ERROR':
+                return {
+                    message: 'Cannot connect to Dependency Track server',
+                    details: `Connection failed to: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+                        `• Server may not be running\n` +
+                        `• URL may be incorrect\n` +
+                        `• Network connectivity issues`
+                };
+            case 'AUTH_ERROR':
+                return {
+                    message: 'Authentication failed with Dependency Track',
+                    details: `Authentication error for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+                        `• API key may be invalid\n` +
+                        `• API key may be expired\n` +
+                        `• Check user permissions`
+                };
+            case 'NOT_FOUND_ERROR':
+                return {
+                    message: 'Dependency Track endpoint not found',
+                    details: `Endpoint not found: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+                        `• URL may be incorrect\n` +
+                        `• API endpoint may not exist\n` +
+                        `• Check Dependency Track version`
+                };
+            case 'PROJECT_NOT_FOUND':
+                return {
+                    message: 'Project not found in Dependency Track',
+                    details: `Project not found:\n` +
+                        `• Project ID: ${inputs.DEPENDENCY_TRACK_PROJECT_ID || 'Not specified'}\n` +
+                        `• Project Name: ${inputs.DEPENDENCY_TRACK_PROJECT_NAME || 'Not specified'}\n` +
+                        `• Upload Token: ${inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN ? 'Present' : 'Not specified'}\n` +
+                        `Solutions: Create project in Dependency Track first`
+                };
+            case 'TIMEOUT_ERROR':
+                return {
+                    message: 'Dependency Track server timeout',
+                    details: `Server timeout for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+                        `• Server may be overloaded\n` +
+                        `• Network latency issues\n` +
+                        `• Try again later`
+                };
+            default:
+                return {
+                    message: 'Unable to complete Dependency Track policy check',
+                    details: `Error details: ${stderr}`
+                };
+        }
     }
     /**
      * Validates Dependency Track policy check configuration
@@ -124652,7 +124768,12 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
             let summary = stdout;
             let details = stderr;
             if (exitCode === 0) {
-                await this.success('### :white_check_mark: Policy Pass \n #### No policy violations were found', undefined);
+                let successMessage = '### :white_check_mark: Policy Pass \n #### No policy violations were found';
+                if (!this.uploadAttempted) {
+                    core.warning('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
+                    successMessage += '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. Results may not reflect latest changes.';
+                }
+                await this.success(successMessage, undefined);
                 return;
             }
             if (exitCode === 1) {
@@ -124660,44 +124781,9 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                 let errorMessage = 'Unable to complete Dependency Track policy check';
                 let errorDetails = `Error details: ${stderr}`;
                 if (stderr) {
-                    const lowerStderr = stderr.toLowerCase();
-                    if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
-                        errorMessage = 'Cannot connect to Dependency Track server';
-                        errorDetails = `Connection failed to: ${inputs.DEPENDENCY_TRACK_URL}\n` +
-                            `• Server may not be running\n` +
-                            `• URL may be incorrect\n` +
-                            `• Network connectivity issues`;
-                        // TODO Review
-                    }
-                    else if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized')) {
-                        errorMessage = 'Authentication failed with Dependency Track';
-                        errorDetails = `Authentication error for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
-                            `• API key may be invalid\n` +
-                            `• API key may be expired\n` +
-                            `• Check user permissions`;
-                    }
-                    else if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
-                        errorMessage = 'Dependency Track endpoint not found';
-                        errorDetails = `Endpoint not found: ${inputs.DEPENDENCY_TRACK_URL}\n` +
-                            `• URL may be incorrect\n` +
-                            `• API endpoint may not exist\n` +
-                            `• Check Dependency Track version`;
-                    }
-                    else if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
-                        errorMessage = 'Project not found in Dependency Track';
-                        errorDetails = `Project not found:\n` +
-                            `• Project ID: ${inputs.DEPENDENCY_TRACK_PROJECT_ID || 'Not specified'}\n` +
-                            `• Project Name: ${inputs.DEPENDENCY_TRACK_PROJECT_NAME || 'Not specified'}\n` +
-                            `• Upload Token: ${inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN ? 'Present' : 'Not specified'}\n` +
-                            `Solutions: Create project in Dependency Track first`;
-                    }
-                    else if (lowerStderr.includes('timeout')) {
-                        errorMessage = 'Dependency Track server timeout';
-                        errorDetails = `Server timeout for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
-                            `• Server may be overloaded\n` +
-                            `• Network latency issues\n` +
-                            `• Try again later`;
-                    }
+                    const { message, details } = this.parseError(stderr);
+                    errorMessage = message;
+                    errorDetails = details;
                 }
                 core.warning(`Dependency Track policy check encountered an error: ${errorMessage}`);
                 const errorSummary = `### :warning: Policy Check Error \n #### ${errorMessage}`;
@@ -124705,10 +124791,15 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                 return;
             }
             // exitCode === 2 means policy violations found
+            if (!this.uploadAttempted) {
+                core.warning('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
+                const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.\n';
+                details = stderr + uploadWarning;
+            }
             const { id } = await this.uploadArtifact(stdout);
             core.debug(`Dependency Track Artifact ID: ${id}`);
             if (id) {
-                details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
+                details = await this.concatPolicyArtifactURLToPolicyCheck(details || stderr, id);
             }
             if ((0, github_service_1.isOverMaxCharacterLimitAPI)(summary)) {
                 summary = '';
@@ -125171,14 +125262,21 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         }
         if (exitCode === 1) {
             // Technical error occurred
-            core.warning(`Undeclared policy check encountered an error: ${stderr}`);
+            core.warning('Undeclared policy check encountered an error');
+            core.debug(`Undeclared policy check stderr: ${stderr}`);
             const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete undeclared component check';
-            const errorDetails = `Error details: ${stderr}`;
+            const errorDetails = 'Error details: Check debug logs for more information';
             await this.technicalError(errorSummary, errorDetails);
             return;
         }
-        // TODO Combine stderr and stdout
         // exitCode === 2 means policy violations found
+        // Combine stdout (summary) and stderr (details) for comprehensive reporting
+        if (stderr) {
+            details = stdout + '\n\n' + stderr;
+        }
+        else {
+            details = stdout;
+        }
         const { id } = await this.uploadArtifact(details);
         core.debug(`Undeclared Artifact ID: ${id}`);
         if (id)
@@ -125433,17 +125531,96 @@ class DependencyTrackService {
         try {
             if (!this.options.enabled) {
                 core.debug('Dependency Track upload is disabled');
-                return;
+                return false;
             }
             this.validateConfiguration();
             // Check if CycloneDX file exists
-            // TODO change to `access` instead?
-            await fs_1.default.promises.readFile(app_output_1.CYCLONEDX_FILE_NAME, 'utf8');
+            await fs_1.default.promises.access(app_output_1.CYCLONEDX_FILE_NAME, fs_1.default.constants.F_OK);
             core.info('Starting Dependency Track upload process...');
-            await this.uploadCycloneDXToDependencyTrack();
+            const uploadError = await this.uploadCycloneDXToDependencyTrack();
+            if (uploadError) {
+                core.error(uploadError.message);
+                return false;
+            }
+            return true;
         }
         catch (e) {
             core.error(e.message);
+            return false;
+        }
+    }
+    /**
+     * Parse upload error and return appropriate error message
+     */
+    parseUploadError(stderr) {
+        const lowerStderr = stderr.toLowerCase();
+        // Determine error type based on stderr content
+        const getErrorType = () => {
+            if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
+                return 'CONNECTION_ERROR';
+            }
+            if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized') || lowerStderr.includes('invalid api key')) {
+                return 'AUTH_ERROR';
+            }
+            if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
+                return 'NOT_FOUND_ERROR';
+            }
+            if (lowerStderr.includes('timeout') || lowerStderr.includes('timed out')) {
+                return 'TIMEOUT_ERROR';
+            }
+            if (lowerStderr.includes('ssl') || lowerStderr.includes('certificate') || lowerStderr.includes('tls')) {
+                return 'SSL_ERROR';
+            }
+            if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
+                return 'PROJECT_NOT_FOUND';
+            }
+            if (lowerStderr.includes('forbidden') || lowerStderr.includes('403')) {
+                return 'FORBIDDEN_ERROR';
+            }
+            return 'GENERIC_ERROR';
+        };
+        switch (getErrorType()) {
+            case 'CONNECTION_ERROR':
+                return `Cannot connect to Dependency Track server.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Server is not reachable\n` +
+                    `• Solutions: Verify the URL, check network connectivity, ensure server is running`;
+            case 'AUTH_ERROR':
+                return `Authentication failed with Dependency Track server.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Invalid or missing API key\n` +
+                    `• Solutions: Verify your API key, check user permissions in Dependency Track`;
+            case 'NOT_FOUND_ERROR':
+                return `Dependency Track server endpoint not found.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Server endpoint does not exist\n` +
+                    `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`;
+            case 'TIMEOUT_ERROR':
+                return `Connection to Dependency Track server timed out.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Server is too slow to respond\n` +
+                    `• Solutions: Check network connectivity, verify server performance, try again later`;
+            case 'SSL_ERROR':
+                return `SSL/TLS connection error with Dependency Track server.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: SSL certificate validation failed\n` +
+                    `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`;
+            case 'PROJECT_NOT_FOUND':
+                return `Project not found in Dependency Track.\n` +
+                    `• Project ID: ${this.options.projectId || 'Not specified'}\n` +
+                    `• Project Name: ${this.options.projectName || 'Not specified'}\n` +
+                    `• Solutions: Verify project exists, check project ID/name, create project first`;
+            case 'FORBIDDEN_ERROR':
+                return `Access forbidden to Dependency Track resource.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Insufficient permissions\n` +
+                    `• Solutions: Check API key permissions, verify user role in Dependency Track`;
+            default:
+                return `Dependency Track upload failed with error:\n${stderr}\n\n` +
+                    `Troubleshooting:\n` +
+                    `• Verify URL: ${this.options.url}\n` +
+                    `• Check API key validity\n` +
+                    `• Ensure project exists in Dependency Track`;
         }
     }
     /**
@@ -125478,58 +125655,7 @@ class DependencyTrackService {
         if (exitCode !== 0) {
             let errorMessage;
             if (stderr) {
-                const lowerStderr = stderr.toLowerCase();
-                // TODO Use switch instead
-                // Parse common error patterns to provide more helpful messages
-                if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
-                    errorMessage = `Cannot connect to Dependency Track server.\n` +
-                        `• URL: ${this.options.url}\n` +
-                        `• Issue: Server is not reachable\n` +
-                        `• Solutions: Verify the URL, check network connectivity, ensure server is running`;
-                }
-                else if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized') || lowerStderr.includes('invalid api key')) {
-                    errorMessage = `Authentication failed with Dependency Track server.\n` +
-                        `• URL: ${this.options.url}\n` +
-                        `• Issue: Invalid or missing API key\n` +
-                        `• Solutions: Verify your API key, check user permissions in Dependency Track`;
-                }
-                else if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
-                    errorMessage = `Dependency Track server endpoint not found.\n` +
-                        `• URL: ${this.options.url}\n` +
-                        `• Issue: Server endpoint does not exist\n` +
-                        `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`;
-                }
-                else if (lowerStderr.includes('timeout') || lowerStderr.includes('timed out')) {
-                    errorMessage = `Connection to Dependency Track server timed out.\n` +
-                        `• URL: ${this.options.url}\n` +
-                        `• Issue: Server is too slow to respond\n` +
-                        `• Solutions: Check network connectivity, verify server performance, try again later`;
-                }
-                else if (lowerStderr.includes('ssl') || lowerStderr.includes('certificate') || lowerStderr.includes('tls')) {
-                    errorMessage = `SSL/TLS connection error with Dependency Track server.\n` +
-                        `• URL: ${this.options.url}\n` +
-                        `• Issue: SSL certificate validation failed\n` +
-                        `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`;
-                }
-                else if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
-                    errorMessage = `Project not found in Dependency Track.\n` +
-                        `• Project ID: ${this.options.projectId || 'Not specified'}\n` +
-                        `• Project Name: ${this.options.projectName || 'Not specified'}\n` +
-                        `• Solutions: Verify project exists, check project ID/name, create project first`;
-                }
-                else if (lowerStderr.includes('forbidden') || lowerStderr.includes('403')) {
-                    errorMessage = `Access forbidden to Dependency Track resource.\n` +
-                        `• URL: ${this.options.url}\n` +
-                        `• Issue: Insufficient permissions\n` +
-                        `• Solutions: Check API key permissions, verify user role in Dependency Track`;
-                }
-                else {
-                    errorMessage = `Dependency Track upload failed with error:\n${stderr}\n\n` +
-                        `Troubleshooting:\n` +
-                        `• Verify URL: ${this.options.url}\n` +
-                        `• Check API key validity\n` +
-                        `• Ensure project exists in Dependency Track`;
-                }
+                errorMessage = this.parseUploadError(stderr);
             }
             else {
                 errorMessage = `Dependency Track upload failed (exit code ${exitCode}).\n` +
@@ -125539,7 +125665,10 @@ class DependencyTrackService {
             return new Error(errorMessage);
         }
         if (stderr) {
-            return new Error(`Error uploading CycloneDX to Dependency Track: ${stderr}`);
+            // TODO Move to parent
+            // Don't expose raw stderr as it might contain sensitive information
+            core.debug(`Dependency Track upload stderr: ${stderr}`);
+            return new Error('Error uploading CycloneDX to Dependency Track. Check debug logs for details.');
         }
         const response = JSON.parse(stdout);
         (0, app_input_1.setDependencyTrackUploadToken)(response.token);
@@ -125764,21 +125893,18 @@ async function generatePRSummary(policies) {
         success: polCount.success ? `:white_check_mark: ${polCount.success} pass` : '',
         fail: polCount.fail ? `:x: ${polCount.fail} fail` : ''
     };
-    // TODO Fix
-    const content = `
-  ### SCANOSS SCAN Completed :rocket:
-  - **Detected components:** ${componentSummary.totalComponents}
-  - **Undeclared components:** ${componentSummary.undeclaredComponents}
-  - **Declared components:** ${componentSummary.declaredComponents}
-  - **Detected files:** ${componentSummary.totalFilesDetected}
-  - **Detected files undeclared:** ${componentSummary.totalFilesUndeclared}
-  - **Detected files declared:** ${componentSummary.totalFilesDeclared}
-  - **Licenses detected:** ${licenseSummary.detectedLicenses}
-  - **Licenses detected with copyleft:** ${licenseSummary.detectedLicensesWithCopyleft}
-  - **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
+    const content = `### SCANOSS SCAN Completed :rocket:
+- **Detected components:** ${componentSummary.totalComponents}
+- **Undeclared components:** ${componentSummary.undeclaredComponents}
+- **Declared components:** ${componentSummary.declaredComponents}
+- **Detected files:** ${componentSummary.totalFilesDetected}
+- **Detected files undeclared:** ${componentSummary.totalFilesUndeclared}
+- **Detected files declared:** ${componentSummary.totalFilesDeclared}
+- **Licenses detected:** ${licenseSummary.detectedLicenses}
+- **Licenses detected with copyleft:** ${licenseSummary.detectedLicensesWithCopyleft}
+- **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
 
-  View more details on [SCANOSS Action Summary](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId})
-  `;
+View more details on [SCANOSS Action Summary](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId})`;
     return content;
 }
 exports.generatePRSummary = generatePRSummary;
@@ -125983,8 +126109,13 @@ class ScanService {
             ignoreReturnCode: true
         };
         const args = await this.buildArgs();
-        const { stdout, stderr } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
-        // TODO add error checking
+        const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
+        if (exitCode !== 0) {
+            core.warning(`Scan execution completed with exit code ${exitCode}`);
+            if (stderr) {
+                core.debug(`Scan stderr: ${stderr}`);
+            }
+        }
         const scan = await this.parseResult();
         return { scan, stdout, stderr };
     }
@@ -126228,10 +126359,11 @@ class ScanOssService {
         return args;
     }
     /**
-     * Converts SCANOSS results to CycloneDX format using scanoss-py
+     * Converts SCANOSS results to CycloneDX format using scanoss-py.
+     * Currently always generates CycloneDX file which can be used by Dependency Track
+     * or uploaded as an artifact for other integrations.
      */
     async scanResultsToCycloneDX() {
-        // TODO only currently required if DT is enabled. Or do we produce a CDX file regardless and add it beside results.json
         try {
             core.info('Converting SCANOSS results to CycloneDX format...');
             const options = {

@@ -28,6 +28,7 @@ import * as inputs from './app.input';
 import * as outputs from './app.output';
 import { scanService, uploadResults } from './services/scan.service';
 import { policyManager } from './policies/policy.manager';
+import { DepTrackPolicyCheck } from './policies/dep-track-policy-check';
 import { dependencyTrackService } from './services/dependency-track.service';
 import { scanossService } from './services/scanoss.service';
 
@@ -57,10 +58,13 @@ export async function run(): Promise<void> {
     await scanossService.scanResultsToCycloneDX();
 
     // 3: Dependency Track
-    await dependencyTrackService.uploadToDependencyTrack();
+    const uploadAttempted = await dependencyTrackService.uploadToDependencyTrack();
 
     // 4: run policies
     for (const policy of policies) {
+      if (policy instanceof DepTrackPolicyCheck) {
+        policy.setUploadAttempted(uploadAttempted);
+      }
       await policy.run();
     }
 

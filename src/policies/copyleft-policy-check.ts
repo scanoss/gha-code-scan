@@ -66,9 +66,10 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     }
     else if (exitCode === 1) {
       // Technical error occurred
-      core.warning(`Copyleft policy check encountered an error: ${stderr}`);
+      core.warning('Copyleft policy check encountered an error');
+      core.debug(`Copyleft policy check stderr: ${stderr}`);
       const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete copyleft license check';
-      const errorDetails = `Error details: ${stderr}`;
+      const errorDetails = 'Error details: Check debug logs for more information';
       await this.technicalError(errorSummary, errorDetails);
       return;
     }

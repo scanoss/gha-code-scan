@@ -138,7 +138,7 @@ describe('CopyleftArgumentBuilder', () => {
     ]);
   });
 
-  it('should include --debug paramter', async () => {
+  it('should include --debug parameter', async () => {
     appInput.COPYLEFT_LICENSE_EXCLUDE = 'MIT,Apache-2.0';
     appInput.DEBUG = true;
     const builder = new CopyLeftArgumentBuilder();
