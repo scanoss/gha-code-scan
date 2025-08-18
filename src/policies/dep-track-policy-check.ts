@@ -219,10 +219,17 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       const args = await this.argumentBuilder.build();
       const options = {
         failOnStdErr: false,
-        ignoreReturnCode: true
+        ignoreReturnCode: true,
+        silent: true  // Suppress automatic stderr output
       };
 
       const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
+      
+      // Filter out the Python type error from stderr display
+      if (stderr && !stderr.toLowerCase().includes('not supported between instances')) {
+        // Only log stderr if it's not the empty repo Python error
+        core.debug(`Dependency Track policy check stderr: ${stderr}`);
+      }
       let summary = stdout;
       let details = stderr;
     
