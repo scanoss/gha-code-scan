@@ -23,7 +23,7 @@
 
 import * as core from '@actions/core';
 import { CHECK_NAME } from '../app.config';
-import { PolicyCheck } from './policy-check';
+import { PolicyCheck, CONCLUSION } from './policy-check';
 import { EXECUTABLE } from '../app.input';
 import * as exec from '@actions/exec';
 import { DependencyTrackArgumentBuilder } from './argument_builders/dependency_track/dep-track-argument-builder';
@@ -78,6 +78,9 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       if (lowerStderr.includes('timeout')) {
         return 'TIMEOUT_ERROR';
       }
+      if (lowerStderr.includes('not supported between instances')) {
+        return 'EMPTY_REPO_ERROR';
+      }
       return 'GENERIC_ERROR';
     };
 
@@ -126,6 +129,12 @@ export class DepTrackPolicyCheck extends PolicyCheck {
             `• Server may be overloaded\n` +
             `• Network latency issues\n` +
             `• Try again later`
+        };
+        
+      case 'EMPTY_REPO_ERROR':
+        return {
+          message: 'No dependencies found to analyze',
+          details: 'Repository appears to have no dependencies - no policy violations possible'
         };
         
       default:
@@ -203,7 +212,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
     try {
       core.info(`Checking Dependency Track for Project Violations...`);
       super.initStatus();
-      
+
       // Validate configuration before running
       this.validatePolicyConfiguration();
       

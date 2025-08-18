@@ -124645,6 +124645,9 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
             if (lowerStderr.includes('timeout')) {
                 return 'TIMEOUT_ERROR';
             }
+            if (lowerStderr.includes('not supported between instances')) {
+                return 'EMPTY_REPO_ERROR';
+            }
             return 'GENERIC_ERROR';
         };
         switch (getErrorType()) {
@@ -124688,6 +124691,11 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                         `• Server may be overloaded\n` +
                         `• Network latency issues\n` +
                         `• Try again later`
+                };
+            case 'EMPTY_REPO_ERROR':
+                return {
+                    message: 'No dependencies found to analyze',
+                    details: 'Repository appears to have no dependencies - no policy violations possible'
                 };
             default:
                 return {
