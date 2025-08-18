@@ -254,7 +254,7 @@ describe('Dependency track service', () => {
 
   // Test error message parsing and sanitization
   describe('Error message handling', () => {
-    it('should succeed with warnings when exitCode is 0 but stderr exists', async () => {
+    it('should succeed with warnings when exitCode is 0 but stderr has real warnings', async () => {
       mockGetExecOutput.mockResolvedValue({
         stdout: '{"token": "test-token", "project_uuid": "test-uuid"}',
         stderr: 'Warning: Connection to sensitive-server.com:8080 with API key abc123',
@@ -281,6 +281,38 @@ describe('Dependency track service', () => {
       expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Warning: Connection to sensitive-server.com:8080'));
       // Should show warning about stderr content
       expect(warningSpy).toHaveBeenCalledWith('Dependency Track upload completed with warnings. Check debug logs for details.');
+      
+      debugSpy.mockRestore();
+      warningSpy.mockRestore();
+    });
+
+    it('should succeed without warnings when stderr contains harmless info messages', async () => {
+      mockGetExecOutput.mockResolvedValue({
+        stdout: '{"token": "test-token", "project_uuid": "test-uuid"}',
+        stderr: 'Reading SBOM file: ./scanoss-cyclonedx.json',
+        exitCode: 0  // Success with harmless info message
+      });
+
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const debugSpy = jest.spyOn(core, 'debug').mockImplementation();
+      const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+
+      const result = await service.uploadToDependencyTrack();
+
+      // Should return true since exitCode is 0
+      expect(result).toBe(true);
+      // Should log stderr to debug
+      expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Reading SBOM file:'));
+      // Should NOT show warning for harmless info messages
+      expect(warningSpy).not.toHaveBeenCalled();
       
       debugSpy.mockRestore();
       warningSpy.mockRestore();

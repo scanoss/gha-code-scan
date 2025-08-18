@@ -283,11 +283,17 @@ export class DependencyTrackService {
     
     if (stderr) {
       // Log stderr for debugging but don't treat as error if exitCode is 0
-      // Many successful operations have warnings in stderr
-      core.info(`[DEBUG] Dependency Track upload stderr length: ${stderr.length}`);
-      core.info(`[DEBUG] Dependency Track upload stderr content: "${stderr}"`);
-      core.info(`[DEBUG] Dependency Track upload stderr (trimmed): "${stderr.trim()}"`);
-      core.warning('Dependency Track upload completed with warnings. Check debug logs for details.');
+      core.debug(`Dependency Track upload stderr: ${stderr}`);
+      
+      // Filter out harmless informational messages
+      const trimmedStderr = stderr.trim();
+      const isHarmlessInfo = trimmedStderr.startsWith('Reading SBOM file:') ||
+                            trimmedStderr.includes('Reading SBOM file:') ||
+                            trimmedStderr.match(/^Reading .+ file:/);
+      
+      if (!isHarmlessInfo) {
+        core.warning('Dependency Track upload completed with warnings. Check debug logs for details.');
+      }
     }
     const response = JSON.parse(stdout);
     setDependencyTrackUploadToken(response.token);
