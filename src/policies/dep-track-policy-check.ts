@@ -146,6 +146,22 @@ export class DepTrackPolicyCheck extends PolicyCheck {
   }
 
   /**
+   * Check if stderr message is informational rather than a real error
+   */
+  private isInformationalMessage(stderr: string): boolean {
+    const lowerStderr = stderr.toLowerCase();
+    return (
+      lowerStderr.includes('not supported between instances') ||  // Python type error for empty repos
+      lowerStderr.includes('policy violations were found') ||     // Status message, not error
+      lowerStderr.includes('policy violations detected') ||       // Status message, not error
+      lowerStderr.includes('no violations found') ||              // Status message, not error
+      lowerStderr.includes('violations detected') ||              // General status message
+      lowerStderr.includes('policy check') ||                     // General policy status
+      lowerStderr.includes('error details')                       // Generic error placeholder
+    );
+  }
+
+  /**
    * Validates Dependency Track policy check configuration
    */
   private validatePolicyConfiguration(): void {
@@ -230,8 +246,8 @@ export class DepTrackPolicyCheck extends PolicyCheck {
         core.info(stdout);
       }
       
-      // Only display stderr if it's not the Python type error
-      if (stderr && !stderr.toLowerCase().includes('not supported between instances')) {
+      // Only display stderr if it's a real error, not informational messages
+      if (stderr && !this.isInformationalMessage(stderr)) {
         core.error(stderr); // Display real errors to user
       }
       let summary = stdout;
