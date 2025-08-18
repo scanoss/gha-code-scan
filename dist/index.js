@@ -125755,7 +125755,8 @@ class DependencyTrackService {
     async uploadCycloneDXToDependencyTrack() {
         const options = {
             failOnStdErr: false,
-            ignoreReturnCode: true
+            ignoreReturnCode: true,
+            silent: true // Suppress automatic output, we'll handle errors cleanly
         };
         const { stderr, stdout, exitCode } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildDependencyTrackUploadParameters(), options);
         if (exitCode !== 0) {
@@ -125770,6 +125771,8 @@ class DependencyTrackService {
             }
             return new Error(errorMessage);
         }
+        // Upload succeeded - show success message
+        core.info('CycloneDX successfully uploaded to Dependency Track');
         if (stderr) {
             // Log stderr for debugging but don't treat as error if exitCode is 0
             core.debug(`Dependency Track upload stderr: ${stderr}`);
