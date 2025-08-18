@@ -254,7 +254,7 @@ describe('Dependency track service', () => {
 
   // Test error message parsing and sanitization
   describe('Error message handling', () => {
-    it('should sanitize stderr in upload errors when exitCode is 0 but stderr exists', async () => {
+    it('should succeed with warnings when exitCode is 0 but stderr exists', async () => {
       mockGetExecOutput.mockResolvedValue({
         stdout: '{"token": "test-token", "project_uuid": "test-uuid"}',
         stderr: 'Warning: Connection to sensitive-server.com:8080 with API key abc123',
@@ -271,15 +271,19 @@ describe('Dependency track service', () => {
       });
 
       const debugSpy = jest.spyOn(core, 'debug').mockImplementation();
+      const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
 
       const result = await service.uploadToDependencyTrack();
 
-      // Should return false due to stderr even with exitCode 0
-      expect(result).toBe(false);
+      // Should return true since exitCode is 0 (success with warnings)
+      expect(result).toBe(true);
       // Should log raw stderr to debug only
       expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Warning: Connection to sensitive-server.com:8080'));
+      // Should show warning about stderr content
+      expect(warningSpy).toHaveBeenCalledWith('Dependency Track upload completed with warnings. Check debug logs for details.');
       
       debugSpy.mockRestore();
+      warningSpy.mockRestore();
     });
 
     it('should use parseUploadError for exitCode 1 errors', async () => {

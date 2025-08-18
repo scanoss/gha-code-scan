@@ -282,10 +282,10 @@ export class DependencyTrackService {
     }
     
     if (stderr) {
-      // TODO Move to parent
-      // Don't expose raw stderr as it might contain sensitive information
+      // Log stderr for debugging but don't treat as error if exitCode is 0
+      // Many successful operations have warnings in stderr
       core.debug(`Dependency Track upload stderr: ${stderr}`);
-      return new Error('Error uploading CycloneDX to Dependency Track. Check debug logs for details.');
+      core.warning('Dependency Track upload completed with warnings. Check debug logs for details.');
     }
     const response = JSON.parse(stdout);
     setDependencyTrackUploadToken(response.token);
