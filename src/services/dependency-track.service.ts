@@ -284,9 +284,9 @@ export class DependencyTrackService {
     if (stderr) {
       // Log stderr for debugging but don't treat as error if exitCode is 0
       // Many successful operations have warnings in stderr
-      core.debug(`Dependency Track upload stderr length: ${stderr.length}`);
-      core.debug(`Dependency Track upload stderr content: "${stderr}"`);
-      core.debug(`Dependency Track upload stderr (trimmed): "${stderr.trim()}"`);
+      core.info(`[DEBUG] Dependency Track upload stderr length: ${stderr.length}`);
+      core.info(`[DEBUG] Dependency Track upload stderr content: "${stderr}"`);
+      core.info(`[DEBUG] Dependency Track upload stderr (trimmed): "${stderr.trim()}"`);
       core.warning('Dependency Track upload completed with warnings. Check debug logs for details.');
     }
     const response = JSON.parse(stdout);
