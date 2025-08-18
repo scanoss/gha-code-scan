@@ -131,8 +131,32 @@ export class DependencyTrackService {
       }
       this.validateConfiguration();
 
-      // Check if CycloneDX file exists
-      await fs.promises.access(CYCLONEDX_FILE_NAME, fs.constants.F_OK);
+      // Check if CycloneDX file exists, create minimal one if missing
+      try {
+        await fs.promises.access(CYCLONEDX_FILE_NAME, fs.constants.F_OK);
+      } catch (error) {
+        core.info('No CycloneDX file found - generating minimal SBOM for empty repository');
+        await this.generateMinimalCycloneDX();
+      }
+
+      // Check if CycloneDX file has meaningful content, enhance if empty
+      const cycloneDxContent = await fs.promises.readFile(CYCLONEDX_FILE_NAME, 'utf-8');
+      if (!cycloneDxContent.trim()) {
+        core.info('CycloneDX file is empty - generating minimal SBOM for empty repository');
+        await this.generateMinimalCycloneDX();
+      } else {
+        // Check if it has components, if not enhance it
+        try {
+          const cycloneDxData = JSON.parse(cycloneDxContent);
+          if (!cycloneDxData.components || cycloneDxData.components.length === 0) {
+            core.info('CycloneDX file contains no components - ensuring minimal valid SBOM structure');
+            await this.generateMinimalCycloneDX();
+          }
+        } catch (parseError) {
+          core.warning('CycloneDX file appears to be invalid JSON - regenerating minimal SBOM');
+          await this.generateMinimalCycloneDX();
+        }
+      }
 
       core.info('Starting Dependency Track upload process...');
       const uploadError = await this.uploadCycloneDXToDependencyTrack();
@@ -145,6 +169,48 @@ export class DependencyTrackService {
       core.error(e.message);
       return false;
     }
+  }
+
+  /**
+   * Generate a minimal valid CycloneDX SBOM for empty repositories
+   */
+  private async generateMinimalCycloneDX(): Promise<void> {
+    const minimalSbom = {
+      bomFormat: "CycloneDX",
+      specVersion: "1.4",
+      serialNumber: `urn:uuid:${this.generateUUID()}`,
+      version: 1,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        tools: [
+          {
+            vendor: "SCANOSS",
+            name: "scanoss-py",
+            version: "latest"
+          }
+        ],
+        component: {
+          type: "application",
+          name: this.options.projectName || "unknown-project",
+          version: this.options.projectVersion || "1.0.0"
+        }
+      },
+      components: []
+    };
+
+    await fs.promises.writeFile(CYCLONEDX_FILE_NAME, JSON.stringify(minimalSbom, null, 2), 'utf-8');
+    core.debug(`Generated minimal CycloneDX SBOM: ${JSON.stringify(minimalSbom, null, 2)}`);
+  }
+
+  /**
+   * Generate a simple UUID v4
+   */
+  private generateUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
   /**

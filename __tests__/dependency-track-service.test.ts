@@ -40,7 +40,8 @@ jest.mock('fs', () => ({
   promises: {
     readFile: jest.fn(),
     access: jest.fn(),
-    stat: jest.fn()
+    stat: jest.fn(),
+    writeFile: jest.fn()
   },
   constants: {
     F_OK: 0,
@@ -50,6 +51,8 @@ jest.mock('fs', () => ({
 }));
 const mockGetExecOutput = jest.spyOn(exec, 'getExecOutput');
 const mockReadFile = jest.spyOn(fs.promises, 'readFile');
+const mockWriteFile = jest.spyOn(fs.promises, 'writeFile');
+const mockAccess = jest.spyOn(fs.promises, 'access');
 
 describe('Dependency track service', () => {
   let dependencyTrackProjectName = 'dependency-track-project-name';
@@ -65,6 +68,8 @@ describe('Dependency track service', () => {
     dependencyTrackAPIKey = 'tgtresetryokjgvcb';
     jest.clearAllMocks();
     mockReadFile.mockResolvedValue('mock cyclonedx content');
+    mockWriteFile.mockResolvedValue(undefined);
+    mockAccess.mockResolvedValue(undefined);
   });
 
   it('should fail due to missing Dependency Track API Key', () => {
@@ -287,6 +292,15 @@ describe('Dependency track service', () => {
     });
 
     it('should succeed without warnings when stderr contains harmless info messages', async () => {
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify({
+        bomFormat: "CycloneDX",
+        specVersion: "1.4",
+        components: [
+          { name: "test-component", version: "1.0.0" }
+        ]
+      })); // Valid CycloneDX with components
+      
       mockGetExecOutput.mockResolvedValue({
         stdout: '{"token": "test-token", "project_uuid": "test-uuid"}',
         stderr: 'Reading SBOM file: ./scanoss-cyclonedx.json',
@@ -374,6 +388,147 @@ describe('Dependency track service', () => {
       expect(result).toContain('Authentication failed with Dependency Track server');
       expect(result).toContain('Invalid or missing API key');
       expect(result).not.toContain('401 Unauthorized invalid api key abc123');
+    });
+  });
+
+  // Test empty repository handling
+  describe('Empty repository handling', () => {
+    it('should generate minimal CycloneDX when file does not exist', async () => {
+      mockAccess.mockRejectedValue(new Error('File not found'));
+      mockWriteFile.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(JSON.stringify({
+        bomFormat: "CycloneDX",
+        specVersion: "1.4",
+        components: []
+      }));
+      
+      mockGetExecOutput.mockResolvedValue({
+        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
+        stderr: '',
+        exitCode: 0
+      });
+
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const result = await service.uploadToDependencyTrack();
+
+      expect(result).toBe(true);
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        'scanoss-cyclonedx.json',
+        expect.stringContaining('"bomFormat": "CycloneDX"'),
+        'utf-8'
+      );
+    });
+
+    it('should generate minimal CycloneDX when file is empty', async () => {
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValueOnce(''); // Empty file first read
+      mockWriteFile.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValueOnce(JSON.stringify({
+        bomFormat: "CycloneDX",
+        specVersion: "1.4",
+        components: []
+      })); // After writing minimal SBOM
+      
+      mockGetExecOutput.mockResolvedValue({
+        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
+        stderr: '',
+        exitCode: 0
+      });
+
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const result = await service.uploadToDependencyTrack();
+
+      expect(result).toBe(true);
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        'scanoss-cyclonedx.json',
+        expect.stringContaining('"bomFormat": "CycloneDX"'),
+        'utf-8'
+      );
+    });
+
+    it('should generate minimal CycloneDX when file has no components', async () => {
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValueOnce(JSON.stringify({
+        bomFormat: "CycloneDX",
+        specVersion: "1.4",
+        components: []
+      })); // File exists but no components
+      mockWriteFile.mockResolvedValue(undefined);
+      
+      mockGetExecOutput.mockResolvedValue({
+        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
+        stderr: '',
+        exitCode: 0
+      });
+
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const result = await service.uploadToDependencyTrack();
+
+      expect(result).toBe(true);
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        'scanoss-cyclonedx.json',
+        expect.stringContaining('"bomFormat": "CycloneDX"'),
+        'utf-8'
+      );
+    });
+
+    it('should generate minimal CycloneDX when file is invalid JSON', async () => {
+      mockAccess.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValueOnce('invalid json content'); // Invalid JSON first read
+      mockWriteFile.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValueOnce(JSON.stringify({
+        bomFormat: "CycloneDX",
+        specVersion: "1.4",
+        components: []
+      })); // After writing minimal SBOM
+      
+      mockGetExecOutput.mockResolvedValue({
+        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
+        stderr: '',
+        exitCode: 0
+      });
+
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const result = await service.uploadToDependencyTrack();
+
+      expect(result).toBe(true);
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        'scanoss-cyclonedx.json',
+        expect.stringContaining('"bomFormat": "CycloneDX"'),
+        'utf-8'
+      );
     });
   });
 });
