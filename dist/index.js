@@ -124785,6 +124785,13 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                 return;
             }
             if (exitCode === 1) {
+                // Check if this is the empty repository case first
+                if (stderr && stderr.toLowerCase().includes('not supported between instances')) {
+                    core.info('No dependencies found - no policy violations possible');
+                    const successMessage = '### :white_check_mark: No Dependencies Found \n #### Repository contains no dependencies - no policy violations possible';
+                    await this.success(successMessage);
+                    return;
+                }
                 // Technical error occurred - parse for better error messages
                 let errorMessage = 'Unable to complete Dependency Track policy check';
                 let errorDetails = `Error details: ${stderr}`;
