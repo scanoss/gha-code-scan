@@ -72,7 +72,7 @@ describe('Dependency track service', () => {
     mockAccess.mockResolvedValue(undefined);
   });
 
-  it('should fail due to missing Dependency Track API Key', () => {
+  it('should return false due to missing Dependency Track API Key', () => {
     dependencyTrackAPIKey = '';
     const service = new DependencyTrackService({
       enabled: true,
@@ -83,12 +83,15 @@ describe('Dependency track service', () => {
       projectVersion: dependencyTrackProjectVersion
     });
 
-    expect(() => {
-      (service as any).validateConfiguration();
-    }).toThrow('Dependency Track Upload Failed: Required parameters are missing.');
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+    const result = (service as any).validateConfiguration();
+    
+    expect(result).toBe(false);
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Required parameters are missing'));
+    warningSpy.mockRestore();
   });
 
-  it('should fail due to missing project version', () => {
+  it('should return false due to missing project version', () => {
     // Project id has more priority than project version
     dependencyTrackProjectID = '';
     // Set dependency track project version to empty string
@@ -102,12 +105,15 @@ describe('Dependency track service', () => {
       projectVersion: dependencyTrackProjectVersion
     });
 
-    expect(() => {
-      (service as any).validateConfiguration();
-    }).toThrow('Dependency Track Upload Failed: Project identification is incomplete.');
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+    const result = (service as any).validateConfiguration();
+    
+    expect(result).toBe(false);
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Project identification is incomplete'));
+    warningSpy.mockRestore();
   });
 
-  it('should fail due to missing project name', () => {
+  it('should return false due to missing project name', () => {
     // Project id has more priority than project version
     dependencyTrackProjectID = '';
     // Set dependency track project version to empty string
@@ -121,12 +127,15 @@ describe('Dependency track service', () => {
       projectVersion: dependencyTrackProjectVersion
     });
 
-    expect(() => {
-      (service as any).validateConfiguration();
-    }).toThrow('Dependency Track Upload Failed: Project identification is incomplete.');
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+    const result = (service as any).validateConfiguration();
+    
+    expect(result).toBe(false);
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Project identification is incomplete'));
+    warningSpy.mockRestore();
   });
 
-  it('should fail due to missing dependency track URL', () => {
+  it('should return false due to missing dependency track URL', () => {
     dependencyTrackURL = '';
     const service = new DependencyTrackService({
       enabled: true,
@@ -136,9 +145,13 @@ describe('Dependency track service', () => {
       projectName: dependencyTrackProjectName,
       projectVersion: dependencyTrackProjectVersion
     });
-    expect(() => {
-      (service as any).validateConfiguration();
-    }).toThrow('Dependency Track Upload Failed: Required parameters are missing.');
+    
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+    const result = (service as any).validateConfiguration();
+    
+    expect(result).toBe(false);
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Required parameters are missing'));
+    warningSpy.mockRestore();
   });
 
   it('should correctly return the scanoss-py Dependency Track upload command', () => {

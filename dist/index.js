@@ -125509,6 +125509,7 @@ class DependencyTrackService {
     }
     /**
      * Validates that all required Dependency Track parameters are provided
+     * @returns true if configuration is valid, false if parameters are missing
      */
     validateConfiguration() {
         const missingParams = [];
@@ -125537,14 +125538,16 @@ class DependencyTrackService {
             invalidParams.push('dependencytrack.apikey (appears to be too short)');
         }
         if (missingParams.length > 0) {
-            throw new Error(`Dependency Track Upload Failed: Required parameters are missing.\n` +
+            core.warning(`Dependency Track upload skipped: Required parameters are missing.\n` +
                 `Missing: ${missingParams.join(', ')}\n` +
                 `Please set these parameters in your workflow configuration.`);
+            return false;
         }
         if (invalidParams.length > 0) {
-            throw new Error(`Dependency Track Upload Failed: Invalid parameter values.\n` +
+            core.warning(`Dependency Track upload skipped: Invalid parameter values.\n` +
                 `Invalid: ${invalidParams.join(', ')}\n` +
                 `Please check your parameter values and try again.`);
+            return false;
         }
         // Check project identification - must have either projectId OR (projectName + projectVersion)
         if (!this.options.projectId) {
@@ -125554,13 +125557,15 @@ class DependencyTrackService {
             if (!this.options.projectVersion)
                 missingProjectParams.push('dependencytrack.projectversion');
             if (missingProjectParams.length > 0) {
-                throw new Error(`Dependency Track Upload Failed: Project identification is incomplete.\n` +
+                core.warning(`Dependency Track upload skipped: Project identification is incomplete.\n` +
                     `You must provide EITHER:\n` +
                     `  • dependencytrack.projectid (for existing projects), OR\n` +
                     `  • Both dependencytrack.projectname AND dependencytrack.projectversion (to create/find projects)\n\n` +
                     `Missing: ${missingProjectParams.join(', ')}`);
+                return false;
             }
         }
+        return true;
     }
     /**
      * Converts SCANOSS results to CycloneDX format and uploads to Dependency Track
@@ -125571,7 +125576,9 @@ class DependencyTrackService {
                 core.debug('Dependency Track upload is disabled');
                 return false;
             }
-            this.validateConfiguration();
+            if (!this.validateConfiguration()) {
+                return false;
+            }
             // Check if CycloneDX file exists, create minimal one if missing
             try {
                 await fs_1.default.promises.access(app_output_1.CYCLONEDX_FILE_NAME, fs_1.default.constants.F_OK);
