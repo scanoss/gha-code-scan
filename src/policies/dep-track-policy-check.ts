@@ -78,9 +78,6 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       if (lowerStderr.includes('timeout')) {
         return 'TIMEOUT_ERROR';
       }
-      if (lowerStderr.includes('not supported between instances')) {
-        return 'EMPTY_REPO_ERROR';
-      }
       return 'GENERIC_ERROR';
     };
 
@@ -131,12 +128,6 @@ export class DepTrackPolicyCheck extends PolicyCheck {
             `• Try again later`
         };
         
-      case 'EMPTY_REPO_ERROR':
-        return {
-          message: 'No dependencies found to analyze',
-          details: 'Repository appears to have no dependencies - no policy violations possible'
-        };
-        
       default:
         return {
           message: 'Unable to complete Dependency Track policy check',
@@ -151,7 +142,6 @@ export class DepTrackPolicyCheck extends PolicyCheck {
   private isInformationalMessage(stderr: string): boolean {
     const lowerStderr = stderr.toLowerCase();
     return (
-      lowerStderr.includes('not supported between instances') ||  // Python type error for empty repos
       lowerStderr.includes('policy violations were found') ||     // Status message, not error
       lowerStderr.includes('policy violations detected') ||       // Status message, not error
       lowerStderr.includes('no violations found') ||              // Status message, not error
@@ -264,14 +254,6 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       }
 
       if (exitCode === 1) {
-        // Check if this is the empty repository case first
-        if (stderr && stderr.toLowerCase().includes('not supported between instances')) {
-          core.info('No dependencies found - no policy violations possible');
-          const successMessage = '### :white_check_mark: No Dependencies Found \n #### Repository contains no dependencies - no policy violations possible';
-          await this.success(successMessage);
-          return;
-        }
-
         // Technical error occurred - parse for better error messages
         let errorMessage = 'Unable to complete Dependency Track policy check';
         let errorDetails = `Error details: ${stderr}`;

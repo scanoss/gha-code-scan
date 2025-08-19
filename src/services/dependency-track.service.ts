@@ -238,6 +238,9 @@ export class DependencyTrackService {
       if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized') || lowerStderr.includes('invalid api key')) {
         return 'AUTH_ERROR';
       }
+      if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
+        return 'PROJECT_NOT_FOUND';
+      }
       if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
         return 'NOT_FOUND_ERROR';
       }
@@ -246,9 +249,6 @@ export class DependencyTrackService {
       }
       if (lowerStderr.includes('ssl') || lowerStderr.includes('certificate') || lowerStderr.includes('tls')) {
         return 'SSL_ERROR';
-      }
-      if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
-        return 'PROJECT_NOT_FOUND';
       }
       if (lowerStderr.includes('forbidden') || lowerStderr.includes('403')) {
         return 'FORBIDDEN_ERROR';
@@ -379,7 +379,6 @@ export class DependencyTrackService {
     const response = JSON.parse(stdout);
     setDependencyTrackUploadToken(response.token);
     setDependencyTrackProjectId(response.project_uuid);
-    core.info('CycloneDX successfully uploaded to Dependency Track');
   }
 }
 

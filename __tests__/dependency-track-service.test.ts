@@ -135,6 +135,63 @@ describe('Dependency track service', () => {
     warningSpy.mockRestore();
   });
 
+  it('should return false due to invalid URL format', () => {
+    dependencyTrackURL = 'not-a-valid-url';
+    const service = new DependencyTrackService({
+      enabled: true,
+      url: dependencyTrackURL,
+      apiKey: dependencyTrackAPIKey,
+      projectId: dependencyTrackProjectID,
+      projectName: dependencyTrackProjectName,
+      projectVersion: dependencyTrackProjectVersion
+    });
+    
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+    const result = (service as any).validateConfiguration();
+    
+    expect(result).toBe(false);
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid parameter values'));
+    warningSpy.mockRestore();
+  });
+
+  it('should return false due to non-HTTP protocol in URL', () => {
+    dependencyTrackURL = 'ftp://dependencytrack.com';
+    const service = new DependencyTrackService({
+      enabled: true,
+      url: dependencyTrackURL,
+      apiKey: dependencyTrackAPIKey,
+      projectId: dependencyTrackProjectID,
+      projectName: dependencyTrackProjectName,
+      projectVersion: dependencyTrackProjectVersion
+    });
+    
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+    const result = (service as any).validateConfiguration();
+    
+    expect(result).toBe(false);
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid parameter values'));
+    warningSpy.mockRestore();
+  });
+
+  it('should return false due to API key too short', () => {
+    dependencyTrackAPIKey = 'short';
+    const service = new DependencyTrackService({
+      enabled: true,
+      url: dependencyTrackURL,
+      apiKey: dependencyTrackAPIKey,
+      projectId: dependencyTrackProjectID,
+      projectName: dependencyTrackProjectName,
+      projectVersion: dependencyTrackProjectVersion
+    });
+    
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+    const result = (service as any).validateConfiguration();
+    
+    expect(result).toBe(false);
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid parameter values'));
+    warningSpy.mockRestore();
+  });
+
   it('should return false due to missing dependency track URL', () => {
     dependencyTrackURL = '';
     const service = new DependencyTrackService({
@@ -402,6 +459,164 @@ describe('Dependency track service', () => {
       expect(result).toContain('Invalid or missing API key');
       expect(result).not.toContain('401 Unauthorized invalid api key abc123');
     });
+
+    it('should parse timeout errors correctly', async () => {
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const parseMethod = (service as any).parseUploadError.bind(service);
+      const result = parseMethod('Request timed out after 30 seconds');
+      
+      expect(result).toContain('Connection to Dependency Track server timed out');
+      expect(result).toContain('Server is too slow to respond');
+      expect(result).not.toContain('timed out after 30 seconds');
+    });
+
+    it('should parse SSL errors correctly', async () => {
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const parseMethod = (service as any).parseUploadError.bind(service);
+      const result = parseMethod('SSL certificate verification failed');
+      
+      expect(result).toContain('SSL/TLS connection error with Dependency Track server');
+      expect(result).toContain('SSL certificate validation failed');
+      expect(result).not.toContain('SSL certificate verification failed');
+    });
+
+    it('should parse not found errors correctly', async () => {
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const parseMethod = (service as any).parseUploadError.bind(service);
+      const result = parseMethod('404 Not Found - endpoint does not exist');
+      
+      expect(result).toContain('Dependency Track server endpoint not found');
+      expect(result).toContain('Server endpoint does not exist');
+      expect(result).not.toContain('404 Not Found - endpoint does not exist');
+    });
+
+    it('should parse project not found errors correctly', async () => {
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const parseMethod = (service as any).parseUploadError.bind(service);
+      const result = parseMethod('Project abc123 not found in system');
+      
+      expect(result).toContain('Project not found in Dependency Track');
+      expect(result).toContain('Verify project exists');
+      expect(result).not.toContain('Project abc123 not found in system');
+    });
+
+    it('should parse forbidden errors correctly', async () => {
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const parseMethod = (service as any).parseUploadError.bind(service);
+      const result = parseMethod('403 Forbidden - insufficient permissions');
+      
+      expect(result).toContain('Access forbidden to Dependency Track resource');
+      expect(result).toContain('Insufficient permissions');
+      expect(result).not.toContain('403 Forbidden - insufficient permissions');
+    });
+
+    it('should parse generic errors correctly', async () => {
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const parseMethod = (service as any).parseUploadError.bind(service);
+      const result = parseMethod('Some unexpected error occurred');
+      
+      expect(result).toContain('Dependency Track upload failed with error');
+      expect(result).toContain('Some unexpected error occurred');
+      expect(result).toContain('Troubleshooting');
+    });
+  });
+
+  // Test utility functions
+  describe('Utility functions', () => {
+    it('should generate valid UUIDs', () => {
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const uuid1 = (service as any).generateUUID();
+      const uuid2 = (service as any).generateUUID();
+      
+      expect(uuid1).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(uuid2).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(uuid1).not.toBe(uuid2); // Should generate unique UUIDs
+    });
+
+    it('should only show success message once (fix duplicate message)', async () => {
+      mockGetExecOutput.mockResolvedValue({
+        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
+        stderr: '',
+        exitCode: 0
+      });
+
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      const infoSpy = jest.spyOn(core, 'info').mockImplementation();
+      
+      await service.uploadToDependencyTrack();
+      
+      // Count how many times the success message was shown
+      const successCalls = infoSpy.mock.calls.filter(call => 
+        call[0].includes('CycloneDX successfully uploaded to Dependency Track')
+      );
+      
+      expect(successCalls.length).toBe(1); // Should only appear once, not twice
+      infoSpy.mockRestore();
+    });
   });
 
   // Test empty repository handling
@@ -542,6 +757,56 @@ describe('Dependency track service', () => {
         expect.stringContaining('"bomFormat": "CycloneDX"'),
         'utf-8'
       );
+    });
+
+    it('should generate minimal SBOM with correct structure and metadata', async () => {
+      mockAccess.mockRejectedValue(new Error('File not found'));
+      mockWriteFile.mockResolvedValue(undefined);
+      
+      let capturedSbomContent = '';
+      mockWriteFile.mockImplementation((filename, content) => {
+        if (filename === 'scanoss-cyclonedx.json') {
+          capturedSbomContent = content as string;
+        }
+        return Promise.resolve(undefined);
+      });
+      
+      mockReadFile.mockResolvedValue('{}'); // Mock subsequent read
+      mockGetExecOutput.mockResolvedValue({
+        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
+        stderr: '',
+        exitCode: 0
+      });
+
+      const service = new DependencyTrackService({
+        enabled: true,
+        url: dependencyTrackURL,
+        apiKey: dependencyTrackAPIKey,
+        projectId: dependencyTrackProjectID,
+        projectName: dependencyTrackProjectName,
+        projectVersion: dependencyTrackProjectVersion
+      });
+
+      await service.uploadToDependencyTrack();
+      
+      expect(capturedSbomContent).toBeTruthy();
+      const sbomData = JSON.parse(capturedSbomContent);
+      
+      // Verify SBOM structure
+      expect(sbomData.bomFormat).toBe('CycloneDX');
+      expect(sbomData.specVersion).toBe('1.4');
+      expect(sbomData.serialNumber).toMatch(/^urn:uuid:/);
+      expect(sbomData.version).toBe(1);
+      expect(sbomData.metadata).toBeDefined();
+      expect(sbomData.metadata.timestamp).toBeDefined();
+      expect(sbomData.metadata.tools).toHaveLength(1);
+      expect(sbomData.metadata.tools[0].vendor).toBe('SCANOSS');
+      expect(sbomData.metadata.component).toBeDefined();
+      expect(sbomData.metadata.component.name).toBe(dependencyTrackProjectName);
+      expect(sbomData.metadata.component.version).toBe(dependencyTrackProjectVersion);
+      expect(sbomData.components).toEqual([]);
+      expect(sbomData.dependencies).toEqual([]);
+      expect(sbomData.vulnerabilities).toEqual([]);
     });
   });
 });

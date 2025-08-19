@@ -124645,9 +124645,6 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
             if (lowerStderr.includes('timeout')) {
                 return 'TIMEOUT_ERROR';
             }
-            if (lowerStderr.includes('not supported between instances')) {
-                return 'EMPTY_REPO_ERROR';
-            }
             return 'GENERIC_ERROR';
         };
         switch (getErrorType()) {
@@ -124692,11 +124689,6 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                         `• Network latency issues\n` +
                         `• Try again later`
                 };
-            case 'EMPTY_REPO_ERROR':
-                return {
-                    message: 'No dependencies found to analyze',
-                    details: 'Repository appears to have no dependencies - no policy violations possible'
-                };
             default:
                 return {
                     message: 'Unable to complete Dependency Track policy check',
@@ -124709,8 +124701,7 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
      */
     isInformationalMessage(stderr) {
         const lowerStderr = stderr.toLowerCase();
-        return (lowerStderr.includes('not supported between instances') || // Python type error for empty repos
-            lowerStderr.includes('policy violations were found') || // Status message, not error
+        return (lowerStderr.includes('policy violations were found') || // Status message, not error
             lowerStderr.includes('policy violations detected') || // Status message, not error
             lowerStderr.includes('no violations found') || // Status message, not error
             lowerStderr.includes('violations detected') || // General status message
@@ -124808,13 +124799,6 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                 return;
             }
             if (exitCode === 1) {
-                // Check if this is the empty repository case first
-                if (stderr && stderr.toLowerCase().includes('not supported between instances')) {
-                    core.info('No dependencies found - no policy violations possible');
-                    const successMessage = '### :white_check_mark: No Dependencies Found \n #### Repository contains no dependencies - no policy violations possible';
-                    await this.success(successMessage);
-                    return;
-                }
                 // Technical error occurred - parse for better error messages
                 let errorMessage = 'Unable to complete Dependency Track policy check';
                 let errorDetails = `Error details: ${stderr}`;
@@ -125675,6 +125659,9 @@ class DependencyTrackService {
             if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized') || lowerStderr.includes('invalid api key')) {
                 return 'AUTH_ERROR';
             }
+            if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
+                return 'PROJECT_NOT_FOUND';
+            }
             if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
                 return 'NOT_FOUND_ERROR';
             }
@@ -125683,9 +125670,6 @@ class DependencyTrackService {
             }
             if (lowerStderr.includes('ssl') || lowerStderr.includes('certificate') || lowerStderr.includes('tls')) {
                 return 'SSL_ERROR';
-            }
-            if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
-                return 'PROJECT_NOT_FOUND';
             }
             if (lowerStderr.includes('forbidden') || lowerStderr.includes('403')) {
                 return 'FORBIDDEN_ERROR';
@@ -125795,7 +125779,6 @@ class DependencyTrackService {
         const response = JSON.parse(stdout);
         (0, app_input_1.setDependencyTrackUploadToken)(response.token);
         (0, app_input_1.setDependencyTrackProjectId)(response.project_uuid);
-        core.info('CycloneDX successfully uploaded to Dependency Track');
     }
 }
 exports.DependencyTrackService = DependencyTrackService;
