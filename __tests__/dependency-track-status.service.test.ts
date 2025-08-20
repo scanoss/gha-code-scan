@@ -89,7 +89,8 @@ describe('DependencyTrackStatusService', () => {
       });
 
       const callArgs = mockOctokit.rest.checks.create.mock.calls[0][0];
-      expect(callArgs.output.text).toContain('• Project: test-project v1.0.0');
+      expect(callArgs.output.text).toContain('• Project Name: test-project');
+      expect(callArgs.output.text).toContain('• Project Version: 1.0.0');
       expect(callArgs.output.text).toContain('• Project ID: project-123');
       expect(callArgs.output.text).toContain('• Upload Token: ***789');
       expect(callArgs.output.text).toContain('• Server: https://dependencytrack.example.com');
@@ -175,7 +176,7 @@ describe('DependencyTrackStatusService', () => {
         output: {
           title: 'SBOM successfully uploaded to Dependency Track',
           summary: '### ✅ Dependency Track Upload \n #### SBOM successfully uploaded to Dependency Track',
-          text: expect.stringContaining('• Project: minimal-project vUnknown')
+          text: expect.stringContaining('• Project Name: minimal-project')
         }
       });
     });

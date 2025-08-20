@@ -26,6 +26,7 @@ import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 
 import { generateJobSummary, generatePRSummary } from '../src/services/report.service';
+import { DependencyTrackUploadResult } from '../src/services/dependency-track-status.service';
 import path from 'path';
 
 jest.mock('../src/app.input', () => ({
@@ -36,7 +37,8 @@ jest.mock('../src/app.input', () => ({
   COPYLEFT_LICENSE_EXPLICIT: '',
   COPYLEFT_LICENSE_INCLUDE: '',
   SCANOSS_SETTINGS: true,
-  SBOM_ENABLED: false
+  SBOM_ENABLED: false,
+  DEPENDENCY_TRACK_URL: 'https://dt.example.com'
 }));
 
 describe('Test report service', () => {
@@ -45,6 +47,10 @@ describe('Test report service', () => {
     
     jest.spyOn(github.context, 'repo', 'get').mockReturnValue({ owner: 'x', repo: 'y' });
     jest.spyOn(core.summary, 'write').mockImplementation();
+    jest.spyOn(core.summary, 'addHeading').mockImplementation(() => core.summary);
+    jest.spyOn(core.summary, 'addCodeBlock').mockImplementation(() => core.summary);
+    jest.spyOn(core.summary, 'addRaw').mockImplementation(() => core.summary);
+    jest.spyOn(core.summary, 'addSeparator').mockImplementation(() => core.summary);
     github.context.runId = 0;
     
     const appInput = jest.requireMock('../src/app.input');
@@ -57,9 +63,13 @@ describe('Test report service', () => {
     appInput.OUTPUT_FILEPATH = TEST_RESULTS_FILE;
 
     // Mock the exec.getExecOutput calls that these services will make
-    jest.spyOn(exec, 'getExecOutput')
-      // First call for license summary
-      .mockResolvedValueOnce({
+    const mockExec = jest.spyOn(exec, 'getExecOutput');
+    mockExec.mockClear();
+    
+    // Create a sequence of responses - each test will get fresh responses
+    mockExec
+      // License summary calls (multiple tests need this)
+      .mockResolvedValue({
         stdout: JSON.stringify({
           licenses: [
             { spdxid: "MIT", copyleft: false, url: "https://spdx.org/licenses/MIT.html", componentCount: 1 },
@@ -67,14 +77,7 @@ describe('Test report service', () => {
             { spdxid: "GPL-2.0-only", copyleft: true, url: "https://spdx.org/licenses/GPL-2.0-only.html", componentCount: 1 }
           ],
           detectedLicenses: 3,
-          detectedLicensesWithCopyleft: 1
-        }),
-        stderr: '',
-        exitCode: 0
-      })
-      // Second call for component summary  
-      .mockResolvedValueOnce({
-        stdout: JSON.stringify({
+          detectedLicensesWithCopyleft: 1,
           components: [],
           totalComponents: 2,
           undeclaredComponents: 2,
@@ -90,6 +93,78 @@ describe('Test report service', () => {
 
   it('Should generate job summary', async () => {
     await expect(generateJobSummary([])).resolves.toEqual(undefined);
+  }, 10000);
+
+  it('Should generate job summary with successful Dependency Track upload', async () => {
+    const uploadResult: DependencyTrackUploadResult = {
+      success: true,
+      enabled: true,
+      projectId: 'abc-123-def',
+      projectName: 'test-project',
+      projectVersion: '1.0.0',
+      fileSize: 2048,
+      componentsCount: 25,
+      uploadTime: 1500
+    };
+
+    await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
+    
+    // Verify that the summary was called with the Dependency Track section
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Dependency Track Upload', 3);
+    
+    // Verify that the project link was included
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.stringContaining('View project in Dependency Track](https://dt.example.com/projects/abc-123-def)')
+    );
+  }, 10000);
+
+  it('Should generate job summary with disabled Dependency Track upload', async () => {
+    const uploadResult: DependencyTrackUploadResult = {
+      success: false,
+      enabled: false,
+      projectId: 'disabled-project-123'
+    };
+
+    await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
+    
+    // Verify that the summary was called with the Dependency Track section
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Dependency Track Upload', 3);
+    
+    // Verify that the project link is still shown even when disabled
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.stringContaining('View project in Dependency Track](https://dt.example.com/projects/disabled-project-123)')
+    );
+  }, 10000);
+
+  it('Should generate job summary with failed Dependency Track upload', async () => {
+    const uploadResult: DependencyTrackUploadResult = {
+      success: false,
+      enabled: true,
+      error: 'Connection timeout'
+    };
+
+    await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
+    
+    // Verify that the summary was called with the Dependency Track section
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Dependency Track Upload', 3);
+  }, 10000);
+
+  it('Should generate job summary without project link when project ID is missing', async () => {
+    const uploadResult: DependencyTrackUploadResult = {
+      success: false,
+      enabled: false
+      // No projectId provided
+    };
+
+    await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
+    
+    // Verify that the summary was called with the Dependency Track section
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Dependency Track Upload', 3);
+    
+    // Verify that NO project link was included when projectId is missing
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.not.stringContaining('View project in Dependency Track')
+    );
   }, 10000);
 
   it('Should generate PR summary', async () => {

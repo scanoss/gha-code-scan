@@ -29,6 +29,8 @@ import { licenseUtil } from '../utils/license.utils';
 import { isOverMaxCharacterLimitAPI } from './github.service';
 import { getLicenseSummary, License } from './license.service';
 import { getComponentSummary } from './component.service';
+import { DependencyTrackUploadResult } from './dependency-track-status.service';
+import * as inputs from '../app.input';
 
 /**
  * Generates a summary report for pull request comments.
@@ -67,9 +69,9 @@ View more details on [SCANOSS Action Summary](${context.serverUrl}/${context.rep
 
 /**
  * Generates and publishes a detailed job summary to GitHub Actions.
- * Creates visual reports with license distributions, component summaries, and policy results.
+ * Creates visual reports with license distributions, component summaries, policy results, and Dependency Track upload status.
  */
-export async function generateJobSummary(policies: PolicyCheck[]): Promise<void> {
+export async function generateJobSummary(policies: PolicyCheck[], uploadResult?: DependencyTrackUploadResult): Promise<void> {
   const licenseSummary = await getLicenseSummary();
   licenseSummary.licenses.sort((l1, l2) => l2.componentCount - l1.componentCount);
   const LicensesPie = (items: License[]): string => {
@@ -112,17 +114,76 @@ export async function generateJobSummary(policies: PolicyCheck[]): Promise<void>
     return generateTable(HEADERS, ROWS);
   };
 
+  const DependencyTrackSection = (result?: DependencyTrackUploadResult): string => {
+    if (!result) {
+      return '';
+    }
+
+    if (!result.enabled) {
+      // Even when disabled, show project link if available
+      let projectLink = '';
+      if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
+        projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
+      }
+
+      return `
+**Status:** :white_circle: Disabled
+
+Dependency Track upload is not enabled for this workflow.${projectLink}`;
+    }
+
+    if (result.success) {
+      const details = [];
+      if (result.projectName) details.push(`**Project:** ${result.projectName}`);
+      if (result.projectVersion) details.push(`**Version:** ${result.projectVersion}`);
+      if (result.fileSize) details.push(`**File Size:** ${(result.fileSize / 1024).toFixed(1)}KB`);
+      if (result.componentsCount) details.push(`**Components:** ${result.componentsCount}`);
+      if (result.uploadTime) details.push(`**Upload Time:** ${result.uploadTime}ms`);
+      
+      const detailsText = details.length > 0 ? '\n\n' + details.join('  \n') : '';
+
+      // Add project link if available
+      let projectLink = '';
+      if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
+        projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
+      }
+
+      return `
+**Status:** :white_check_mark: Successfully uploaded
+
+SBOM has been successfully uploaded to Dependency Track.${detailsText}${projectLink}`;
+    }
+
+    return `
+**Status:** :x: Upload failed
+
+${result.error || 'Failed to upload SBOM to Dependency Track.'}`;
+  };
+
   let licenseTable = LicensesTable(licenseSummary.licenses);
   if (isOverMaxCharacterLimitAPI(licenseTable)) {
     licenseTable = 'License table too large to display, omitted from GitHub UI due to length';
   }
-  await core.summary
+
+  const summary = core.summary
     .addHeading('Scan Report Section', 2)
     .addHeading('Licenses', 3)
     .addCodeBlock(LicensesPie(licenseSummary.licenses), 'mermaid')
     .addRaw(licenseTable)
     .addSeparator()
     .addHeading('Policies', 3)
-    .addRaw(PoliciesTable(policies))
-    .write();
+    .addRaw(PoliciesTable(policies));
+
+  // Add Dependency Track section if upload result is provided
+  if (uploadResult) {
+    const depTrackContent = DependencyTrackSection(uploadResult);
+    if (depTrackContent) {
+      summary
+        .addSeparator()
+        .addHeading('Dependency Track Upload', 3)
+        .addRaw(depTrackContent);
+    }
+  }
+
+  await summary.write();
 }

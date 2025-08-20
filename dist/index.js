@@ -125540,8 +125540,11 @@ class DependencyTrackStatusService {
     createSuccessDetails(result) {
         const details = [
             '**Upload Details:**',
-            `• Project: ${result.projectName || 'Unknown'} v${result.projectVersion || 'Unknown'}`,
+            `• Project Name: ${result.projectName || 'Unknown'}`,
         ];
+        if (result.projectVersion) {
+            details.push(`• Project Version: ${result.projectVersion}`);
+        }
         if (result.projectId) {
             details.push(`• Project ID: ${result.projectId}`);
         }
@@ -126153,6 +126156,7 @@ const license_utils_1 = __nccwpck_require__(52210);
 const github_service_1 = __nccwpck_require__(43123);
 const license_service_1 = __nccwpck_require__(54621);
 const component_service_1 = __nccwpck_require__(44749);
+const inputs = __importStar(__nccwpck_require__(483));
 /**
  * Generates a summary report for pull request comments.
  * Includes policy check results, component counts, and license statistics.
@@ -126187,9 +126191,9 @@ View more details on [SCANOSS Action Summary](${github_1.context.serverUrl}/${gi
 exports.generatePRSummary = generatePRSummary;
 /**
  * Generates and publishes a detailed job summary to GitHub Actions.
- * Creates visual reports with license distributions, component summaries, and policy results.
+ * Creates visual reports with license distributions, component summaries, policy results, and Dependency Track upload status.
  */
-async function generateJobSummary(policies) {
+async function generateJobSummary(policies, uploadResult) {
     const licenseSummary = await (0, license_service_1.getLicenseSummary)();
     licenseSummary.licenses.sort((l1, l2) => l2.componentCount - l1.componentCount);
     const LicensesPie = (items) => {
@@ -126225,19 +126229,72 @@ async function generateJobSummary(policies) {
         });
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
+    const DependencyTrackSection = (result) => {
+        if (!result) {
+            return '';
+        }
+        if (!result.enabled) {
+            // Even when disabled, show project link if available
+            let projectLink = '';
+            if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
+                projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
+            }
+            return `
+**Status:** :white_circle: Disabled
+
+Dependency Track upload is not enabled for this workflow.${projectLink}`;
+        }
+        if (result.success) {
+            const details = [];
+            if (result.projectName)
+                details.push(`**Project:** ${result.projectName}`);
+            if (result.projectVersion)
+                details.push(`**Version:** ${result.projectVersion}`);
+            if (result.fileSize)
+                details.push(`**File Size:** ${(result.fileSize / 1024).toFixed(1)}KB`);
+            if (result.componentsCount)
+                details.push(`**Components:** ${result.componentsCount}`);
+            if (result.uploadTime)
+                details.push(`**Upload Time:** ${result.uploadTime}ms`);
+            const detailsText = details.length > 0 ? '\n\n' + details.join('  \n') : '';
+            // Add project link if available
+            let projectLink = '';
+            if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
+                projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
+            }
+            return `
+**Status:** :white_check_mark: Successfully uploaded
+
+SBOM has been successfully uploaded to Dependency Track.${detailsText}${projectLink}`;
+        }
+        return `
+**Status:** :x: Upload failed
+
+${result.error || 'Failed to upload SBOM to Dependency Track.'}`;
+    };
     let licenseTable = LicensesTable(licenseSummary.licenses);
     if ((0, github_service_1.isOverMaxCharacterLimitAPI)(licenseTable)) {
         licenseTable = 'License table too large to display, omitted from GitHub UI due to length';
     }
-    await core.summary
+    const summary = core.summary
         .addHeading('Scan Report Section', 2)
         .addHeading('Licenses', 3)
         .addCodeBlock(LicensesPie(licenseSummary.licenses), 'mermaid')
         .addRaw(licenseTable)
         .addSeparator()
         .addHeading('Policies', 3)
-        .addRaw(PoliciesTable(policies))
-        .write();
+        .addRaw(PoliciesTable(policies));
+    // Add Dependency Track section if upload result is provided
+    if (uploadResult) {
+        const depTrackContent = DependencyTrackSection(uploadResult);
+        if (depTrackContent) {
+            summary
+                .addSeparator()
+                .addHeading('Dependency Track Upload', 3)
+                .addRaw(depTrackContent);
+        }
+    }
+    await summary.write();
 }
 exports.generateJobSummary = generateJobSummary;
 

@@ -102,8 +102,12 @@ export class DependencyTrackStatusService {
   private createSuccessDetails(result: DependencyTrackUploadResult): string {
     const details = [
       '**Upload Details:**',
-      `• Project: ${result.projectName || 'Unknown'} v${result.projectVersion || 'Unknown'}`,
+      `• Project Name: ${result.projectName || 'Unknown'}`,
     ];
+
+    if (result.projectVersion) {
+    details.push(`• Project Version: ${result.projectVersion}`);
+    }
 
     if (result.projectId) {
       details.push(`• Project ID: ${result.projectId}`);
