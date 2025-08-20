@@ -123656,11 +123656,12 @@ ZipStream.prototype.finalize = function() {
    THE SOFTWARE.
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CHECK_NAME = void 0;
+exports.STATUS_NAME = exports.CHECK_NAME = void 0;
 /**
  * Configuration constants for the SCANOSS action.
  */
-exports.CHECK_NAME = 'SCANOSS Policy Checker';
+exports.CHECK_NAME = 'Policy Check';
+exports.STATUS_NAME = 'Status Check';
 
 
 /***/ }),
@@ -123938,6 +123939,7 @@ const scan_service_1 = __nccwpck_require__(87577);
 const policy_manager_1 = __nccwpck_require__(78951);
 const dep_track_policy_check_1 = __nccwpck_require__(1669);
 const dependency_track_service_1 = __nccwpck_require__(57356);
+const dependency_track_status_service_1 = __nccwpck_require__(55414);
 const scanoss_service_1 = __nccwpck_require__(73406);
 /**
  * The main function for the action.
@@ -123960,11 +123962,15 @@ async function run() {
         // 2: Convert scan results to CycloneDX
         await scanoss_service_1.scanossService.scanResultsToCycloneDX();
         // 3: Dependency Track
-        const uploadAttempted = await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
+        const uploadResult = await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
+        // 3.1: Report Dependency Track upload status
+        if (inputs.DEPENDENCY_TRACK_ENABLED) {
+            await dependency_track_status_service_1.dependencyTrackStatusService.reportUploadStatus(uploadResult);
+        }
         // 4: run policies
         for (const policy of policies) {
             if (policy instanceof dep_track_policy_check_1.DepTrackPolicyCheck) {
-                policy.setUploadAttempted(uploadAttempted);
+                policy.setUploadAttempted(uploadResult.success);
             }
             await policy.run();
         }
@@ -124477,7 +124483,7 @@ const github_service_1 = __nccwpck_require__(43123);
  * It then generates a summary and detailed report of the findings.
  */
 class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
-    static policyName = 'Copyleft Policy';
+    static policyName = 'Copyleft';
     argumentBuilder;
     constructor(argumentBuilder = new copyleft_argument_builder_1.CopyLeftArgumentBuilder()) {
         super(`${app_config_1.CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`);
@@ -124610,7 +124616,7 @@ const inputs = __importStar(__nccwpck_require__(483));
  * It then generates a summary and detailed report of any violations found.
  */
 class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
-    static policyName = 'Dependency Track Policy';
+    static policyName = 'Dependency Track';
     argumentBuilder;
     uploadAttempted = true;
     constructor(argumentBuilder = new dep_track_argument_builder_1.DependencyTrackArgumentBuilder()) {
@@ -124817,6 +124823,11 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                 core.warning('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
                 const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.\n';
                 details = stderr + uploadWarning;
+            }
+            // Add link to Dependency Track Project
+            if (inputs.DEPENDENCY_TRACK_PROJECT_ID) {
+                const projectLink = `\n\nView project in Dependency Track [here](${inputs.DEPENDENCY_TRACK_URL}/projects/${inputs.DEPENDENCY_TRACK_PROJECT_ID}).`;
+                details = details + projectLink;
             }
             const { id } = await this.uploadArtifact(stdout);
             core.debug(`Dependency Track Artifact ID: ${id}`);
@@ -125254,7 +125265,7 @@ const github_service_1 = __nccwpck_require__(43123);
  *
  */
 class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
-    static policyName = 'Undeclared Policy';
+    static policyName = 'Undeclared';
     argumentBuilder;
     constructor(argumentBuilder = new undeclared_argument_builder_1.UndeclaredArgumentBuilder()) {
         super(`${app_config_1.CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`);
@@ -125413,6 +125424,180 @@ exports.getComponentSummary = getComponentSummary;
 
 /***/ }),
 
+/***/ 55414:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+*/
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.dependencyTrackStatusService = exports.DependencyTrackStatusService = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const github_1 = __nccwpck_require__(95438);
+const github_utils_1 = __nccwpck_require__(17889);
+const inputs = __importStar(__nccwpck_require__(483));
+const app_config_1 = __nccwpck_require__(29014);
+/**
+ * Service for reporting Dependency Track upload status as a GitHub check
+ */
+class DependencyTrackStatusService {
+    checkName = `${app_config_1.STATUS_NAME}: Dependency Track Upload`;
+    /**
+     * Reports the Dependency Track upload status as a GitHub check run
+     */
+    async reportUploadStatus(result) {
+        try {
+            const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+            const sha = await (0, github_utils_1.getSHA)();
+            let conclusion;
+            let title;
+            let summary;
+            let text;
+            if (!result.enabled) {
+                conclusion = 'neutral';
+                title = 'Dependency Track upload is disabled';
+                summary = '### ⚪ Dependency Track Upload \n #### Upload is disabled';
+                text = this.createDisabledDetails();
+            }
+            else if (result.success) {
+                conclusion = 'success';
+                title = 'SBOM successfully uploaded to Dependency Track';
+                summary = '### ✅ Dependency Track Upload \n #### SBOM successfully uploaded to Dependency Track';
+                text = this.createSuccessDetails(result);
+            }
+            else {
+                conclusion = 'failure';
+                title = 'Failed to upload SBOM to Dependency Track';
+                summary = '### ❌ Dependency Track Upload \n #### Failed to upload SBOM to Dependency Track';
+                text = this.createFailureDetails(result);
+            }
+            await octokit.rest.checks.create({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                name: this.checkName,
+                head_sha: sha,
+                status: 'completed',
+                conclusion,
+                output: {
+                    title,
+                    summary,
+                    text
+                }
+            });
+            core.debug(`Dependency Track upload status check created: ${conclusion}`);
+        }
+        catch (error) {
+            core.warning(`Failed to create Dependency Track upload status check: ${error}`);
+        }
+    }
+    /**
+     * Creates details text for successful upload
+     */
+    createSuccessDetails(result) {
+        const details = [
+            '**Upload Details:**',
+            `• Project: ${result.projectName || 'Unknown'} v${result.projectVersion || 'Unknown'}`,
+        ];
+        if (result.projectId) {
+            details.push(`• Project ID: ${result.projectId}`);
+        }
+        if (result.uploadToken) {
+            details.push(`• Upload Token: ***${result.uploadToken.slice(-3)}`);
+        }
+        details.push(`• Server: ${inputs.DEPENDENCY_TRACK_URL}`);
+        if (result.fileSize) {
+            const fileSizeKB = (result.fileSize / 1024).toFixed(1);
+            details.push(`• File: scanoss-cyclonedx.json (${fileSizeKB} KB${result.componentsCount ? `, ${result.componentsCount} components` : ''})`);
+        }
+        if (result.uploadTime) {
+            details.push(`• Upload Time: ${result.uploadTime.toFixed(1)}s`);
+        }
+        if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
+            details.push('', `View project in Dependency Track [here](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId}).`);
+        }
+        return details.join('\n');
+    }
+    /**
+     * Creates details text for failed upload
+     */
+    createFailureDetails(result) {
+        const details = [
+            '**Upload Details:**',
+            `• Server: ${inputs.DEPENDENCY_TRACK_URL}`,
+        ];
+        if (result.error) {
+            details.push(`• Error: ${result.error}`);
+        }
+        // Add troubleshooting section
+        details.push('', '**Troubleshooting:**', '• Verify the Dependency Track URL is correct', '• Check that the server is running and accessible', '• Ensure API key is valid and has proper permissions', '• Verify project exists or can be created automatically');
+        return details.join('\n');
+    }
+    /**
+     * Creates details text for disabled upload
+     */
+    createDisabledDetails() {
+        return [
+            '**Status:** Skipped (dependencytrack.enabled=false)',
+            '',
+            '**To enable Dependency Track upload:**',
+            '• Set `dependencytrack.enabled: true` in your workflow',
+            '• Configure required parameters:',
+            '  - `dependencytrack.url`',
+            '  - `dependencytrack.apikey`',
+            '  - `dependencytrack.projectid` OR (`dependencytrack.projectname` + `dependencytrack.projectversion`)'
+        ].join('\n');
+    }
+}
+exports.DependencyTrackStatusService = DependencyTrackStatusService;
+exports.dependencyTrackStatusService = new DependencyTrackStatusService();
+
+
+/***/ }),
+
 /***/ 57356:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -125472,8 +125657,8 @@ const core = __importStar(__nccwpck_require__(42186));
 const exec = __importStar(__nccwpck_require__(71514));
 const inputs = __importStar(__nccwpck_require__(483));
 const app_input_1 = __nccwpck_require__(483);
-const fs_1 = __importDefault(__nccwpck_require__(57147));
 const app_output_1 = __nccwpck_require__(22698);
+const fs_1 = __importDefault(__nccwpck_require__(57147));
 /**
  * Service for integrating with Dependency Track for vulnerability and policy management.
  * Handles SBOM upload and project management within Dependency Track instances.
@@ -125553,98 +125738,85 @@ class DependencyTrackService {
     }
     /**
      * Converts SCANOSS results to CycloneDX format and uploads to Dependency Track
+     * @returns DependencyTrackUploadResult with detailed upload information
      */
     async uploadToDependencyTrack() {
+        const startTime = Date.now();
         try {
             if (!this.options.enabled) {
                 core.debug('Dependency Track upload is disabled');
-                return false;
+                return {
+                    success: false,
+                    enabled: false
+                };
             }
             if (!this.validateConfiguration()) {
-                return false;
+                return {
+                    success: false,
+                    enabled: true,
+                    error: 'Configuration validation failed'
+                };
             }
-            // Check if CycloneDX file exists, create minimal one if missing
+            // Get file information before upload
+            let fileSize;
+            let componentsCount;
             try {
-                await fs_1.default.promises.access(app_output_1.CYCLONEDX_FILE_NAME, fs_1.default.constants.F_OK);
+                const stats = await fs_1.default.promises.stat(app_output_1.CYCLONEDX_FILE_NAME);
+                fileSize = stats.size;
+                // Try to get component count from CycloneDX file
+                const cycloneDxContent = await fs_1.default.promises.readFile(app_output_1.CYCLONEDX_FILE_NAME, 'utf-8');
+                const cycloneDxData = JSON.parse(cycloneDxContent);
+                componentsCount = cycloneDxData.components?.length || 0;
             }
-            catch (error) {
-                core.info('No CycloneDX file found - generating minimal SBOM for empty repository');
-                await this.generateMinimalCycloneDX();
-            }
-            // Check if CycloneDX file has meaningful content, enhance if empty
-            const cycloneDxContent = await fs_1.default.promises.readFile(app_output_1.CYCLONEDX_FILE_NAME, 'utf-8');
-            if (!cycloneDxContent.trim()) {
-                core.info('CycloneDX file is empty - generating minimal SBOM for empty repository');
-                await this.generateMinimalCycloneDX();
-            }
-            else {
-                // Check if it has components, if not enhance it
-                try {
-                    const cycloneDxData = JSON.parse(cycloneDxContent);
-                    if (!cycloneDxData.components || cycloneDxData.components.length === 0) {
-                        core.info('CycloneDX file contains no components - ensuring minimal valid SBOM structure');
-                        await this.generateMinimalCycloneDX();
-                    }
-                }
-                catch (parseError) {
-                    core.warning('CycloneDX file appears to be invalid JSON - regenerating minimal SBOM');
-                    await this.generateMinimalCycloneDX();
-                }
+            catch (fileError) {
+                core.debug(`Could not read SBOM file details: ${fileError}`);
             }
             core.info('Starting Dependency Track upload process...');
             const uploadError = await this.uploadCycloneDXToDependencyTrack();
+            const uploadTime = (Date.now() - startTime) / 1000;
             if (uploadError) {
                 core.error(uploadError.message);
-                return false;
+                return {
+                    success: false,
+                    enabled: true,
+                    error: uploadError.message,
+                    projectName: this.options.projectName,
+                    projectVersion: this.options.projectVersion,
+                    fileSize,
+                    componentsCount,
+                    uploadTime
+                };
             }
-            return true;
+            return {
+                success: true,
+                enabled: true,
+                projectId: inputs.DEPENDENCY_TRACK_PROJECT_ID,
+                uploadToken: inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN,
+                projectName: this.options.projectName,
+                projectVersion: this.options.projectVersion,
+                fileSize,
+                componentsCount,
+                uploadTime
+            };
         }
         catch (e) {
+            const uploadTime = (Date.now() - startTime) / 1000;
             core.error(e.message);
-            return false;
+            return {
+                success: false,
+                enabled: true,
+                error: e.message,
+                uploadTime
+            };
         }
     }
     /**
-     * Generate a minimal valid CycloneDX SBOM for empty repositories
+     * Legacy method for backward compatibility - returns boolean success status
+     * @deprecated Use uploadToDependencyTrack() which returns DependencyTrackUploadResult
      */
-    async generateMinimalCycloneDX() {
-        const minimalSbom = {
-            bomFormat: "CycloneDX",
-            specVersion: "1.4",
-            serialNumber: `urn:uuid:${this.generateUUID()}`,
-            version: 1,
-            metadata: {
-                timestamp: new Date().toISOString(),
-                tools: [
-                    {
-                        vendor: "SCANOSS",
-                        name: "scanoss-py",
-                        version: "latest"
-                    }
-                ],
-                component: {
-                    type: "application",
-                    "bom-ref": this.generateUUID(),
-                    name: this.options.projectName || "unknown-project",
-                    version: this.options.projectVersion || "1.0.0"
-                }
-            },
-            components: [],
-            dependencies: [],
-            vulnerabilities: []
-        };
-        await fs_1.default.promises.writeFile(app_output_1.CYCLONEDX_FILE_NAME, JSON.stringify(minimalSbom, null, 2), 'utf-8');
-        core.debug(`Generated minimal CycloneDX SBOM: ${JSON.stringify(minimalSbom, null, 2)}`);
-    }
-    /**
-     * Generate a simple UUID v4
-     */
-    generateUUID() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-            const r = Math.random() * 16 | 0;
-            const v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
+    async uploadToDependencyTrackLegacy() {
+        const result = await this.uploadToDependencyTrack();
+        return result.success;
     }
     /**
      * Parse upload error and return appropriate error message
