@@ -38,7 +38,7 @@ import { isOverMaxCharacterLimitAPI } from '../services/github.service';
  *
  */
 export class UndeclaredPolicyCheck extends PolicyCheck {
-  static policyName = 'Undeclared Policy';
+  static policyName = 'Undeclared';
   private argumentBuilder: ArgumentBuilder;
   constructor(argumentBuilder: ArgumentBuilder = new UndeclaredArgumentBuilder()) {
     super(`${CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`);

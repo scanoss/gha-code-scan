@@ -243,7 +243,7 @@ describe('Dependency track service', () => {
     ]);
   });
 
-  it('should return false when dependency track is disabled', async () => {
+  it('should return disabled result when dependency track is disabled', async () => {
     const service = new DependencyTrackService({
       enabled: false,
       url: dependencyTrackURL,
@@ -254,10 +254,11 @@ describe('Dependency track service', () => {
     });
 
     const result = await service.uploadToDependencyTrack();
-    expect(result).toBe(false);
+    expect(result.success).toBe(false);
+    expect(result.enabled).toBe(false);
   });
 
-  it('should return false when upload fails due to validation errors', async () => {
+  it('should return validation error when upload fails due to validation errors', async () => {
     const service = new DependencyTrackService({
       enabled: true,
       url: '',  // Invalid URL to trigger validation error
@@ -268,11 +269,24 @@ describe('Dependency track service', () => {
     });
 
     const result = await service.uploadToDependencyTrack();
-    expect(result).toBe(false);
+    expect(result.success).toBe(false);
+    expect(result.enabled).toBe(true);
+    expect(result.error).toBe('Configuration validation failed');
   });
 
-  it('should return false when cyclonedx file read fails', async () => {
+  it('should handle file read errors gracefully for metadata collection', async () => {
+    // Mock file system operations to fail
+    jest.spyOn(require('fs').promises, 'stat').mockRejectedValue(new Error('File not found'));
     mockReadFile.mockRejectedValue(new Error('File not found'));
+    
+    // Mock successful upload execution despite file read error
+    mockGetExecOutput.mockResolvedValue({
+      stdout: JSON.stringify({ token: 'upload-token', project_uuid: 'project-id' }),
+      stderr: '',
+      exitCode: 0
+    });
+    
+    const debugSpy = jest.spyOn(require('@actions/core'), 'debug').mockImplementation();
     
     const service = new DependencyTrackService({
       enabled: true,
@@ -284,10 +298,30 @@ describe('Dependency track service', () => {
     });
 
     const result = await service.uploadToDependencyTrack();
-    expect(result).toBe(false);
+    
+    // Should still succeed because file read errors are only for metadata
+    expect(result.success).toBe(true);
+    expect(result.enabled).toBe(true);
+    // Should not have file metadata due to read error
+    expect(result.fileSize).toBeUndefined();
+    expect(result.componentsCount).toBeUndefined();
+    // Should have logged the debug message about file read error
+    expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Could not read SBOM file details'));
+    
+    debugSpy.mockRestore();
   });
 
-  it('should return true when upload succeeds', async () => {
+  it('should return success result when upload succeeds', async () => {
+    // Mock file system operations
+    const mockStats = { size: 2048 };
+    const mockCycloneDxData = {
+      bomFormat: "CycloneDX",
+      components: [{ name: "test-comp" }, { name: "test-comp2" }]
+    };
+    
+    jest.spyOn(require('fs').promises, 'stat').mockResolvedValue(mockStats);
+    mockReadFile.mockResolvedValue(JSON.stringify(mockCycloneDxData));
+    
     mockGetExecOutput.mockResolvedValue({
       stdout: JSON.stringify({ token: 'upload-token', project_uuid: 'project-id' }),
       stderr: '',
@@ -304,10 +338,16 @@ describe('Dependency track service', () => {
     });
 
     const result = await service.uploadToDependencyTrack();
-    expect(result).toBe(true);
+    expect(result.success).toBe(true);
+    expect(result.enabled).toBe(true);
+    expect(result.projectId).toBeDefined();
+    expect(result.uploadToken).toBeDefined();
+    expect(result.fileSize).toBe(2048);
+    expect(result.componentsCount).toBe(2);
+    expect(result.uploadTime).toBeGreaterThanOrEqual(0);
   });
 
-  it('should return false when upload command fails', async () => {
+  it('should return error result when upload command fails', async () => {
     mockGetExecOutput.mockResolvedValue({
       stdout: '',
       stderr: 'Connection refused',
@@ -324,7 +364,9 @@ describe('Dependency track service', () => {
     });
 
     const result = await service.uploadToDependencyTrack();
-    expect(result).toBe(false);
+    expect(result.success).toBe(false);
+    expect(result.enabled).toBe(true);
+    expect(result.error).toContain('Cannot connect to Dependency Track server');
   });
 
   // Test error message parsing and sanitization
@@ -351,7 +393,7 @@ describe('Dependency track service', () => {
       const result = await service.uploadToDependencyTrack();
 
       // Should return true since exitCode is 0 (success with warnings)
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
       // Should log raw stderr to debug only
       expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Warning: Connection to sensitive-server.com:8080'));
       // Should show warning about stderr content
@@ -362,15 +404,6 @@ describe('Dependency track service', () => {
     });
 
     it('should succeed without warnings when stderr contains harmless info messages', async () => {
-      mockAccess.mockResolvedValue(undefined);
-      mockReadFile.mockResolvedValue(JSON.stringify({
-        bomFormat: "CycloneDX",
-        specVersion: "1.4",
-        components: [
-          { name: "test-component", version: "1.0.0" }
-        ]
-      })); // Valid CycloneDX with components
-      
       mockGetExecOutput.mockResolvedValue({
         stdout: '{"token": "test-token", "project_uuid": "test-uuid"}',
         stderr: 'Reading SBOM file: ./scanoss-cyclonedx.json',
@@ -392,7 +425,7 @@ describe('Dependency track service', () => {
       const result = await service.uploadToDependencyTrack();
 
       // Should return true since exitCode is 0
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
       // Should log stderr to debug
       expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Reading SBOM file:'));
       // Should NOT show warning for harmless info messages
@@ -419,7 +452,7 @@ describe('Dependency track service', () => {
       });
 
       const result = await service.uploadToDependencyTrack();
-      expect(result).toBe(false);
+      expect(result.success).toBe(false);
       // Error should be parsed through the parseUploadError method, not directly exposed
     });
 
@@ -566,247 +599,6 @@ describe('Dependency track service', () => {
       expect(result).toContain('Dependency Track upload failed with error');
       expect(result).toContain('Some unexpected error occurred');
       expect(result).toContain('Troubleshooting');
-    });
-  });
-
-  // Test utility functions
-  describe('Utility functions', () => {
-    it('should generate valid UUIDs', () => {
-      const service = new DependencyTrackService({
-        enabled: true,
-        url: dependencyTrackURL,
-        apiKey: dependencyTrackAPIKey,
-        projectId: dependencyTrackProjectID,
-        projectName: dependencyTrackProjectName,
-        projectVersion: dependencyTrackProjectVersion
-      });
-
-      const uuid1 = (service as any).generateUUID();
-      const uuid2 = (service as any).generateUUID();
-      
-      expect(uuid1).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-      expect(uuid2).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-      expect(uuid1).not.toBe(uuid2); // Should generate unique UUIDs
-    });
-
-    it('should only show success message once (fix duplicate message)', async () => {
-      mockGetExecOutput.mockResolvedValue({
-        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
-        stderr: '',
-        exitCode: 0
-      });
-
-      const service = new DependencyTrackService({
-        enabled: true,
-        url: dependencyTrackURL,
-        apiKey: dependencyTrackAPIKey,
-        projectId: dependencyTrackProjectID,
-        projectName: dependencyTrackProjectName,
-        projectVersion: dependencyTrackProjectVersion
-      });
-
-      const infoSpy = jest.spyOn(core, 'info').mockImplementation();
-      
-      await service.uploadToDependencyTrack();
-      
-      // Count how many times the success message was shown
-      const successCalls = infoSpy.mock.calls.filter(call => 
-        call[0].includes('CycloneDX successfully uploaded to Dependency Track')
-      );
-      
-      expect(successCalls.length).toBe(1); // Should only appear once, not twice
-      infoSpy.mockRestore();
-    });
-  });
-
-  // Test empty repository handling
-  describe('Empty repository handling', () => {
-    it('should generate minimal CycloneDX when file does not exist', async () => {
-      mockAccess.mockRejectedValue(new Error('File not found'));
-      mockWriteFile.mockResolvedValue(undefined);
-      mockReadFile.mockResolvedValue(JSON.stringify({
-        bomFormat: "CycloneDX",
-        specVersion: "1.4",
-        components: []
-      }));
-      
-      mockGetExecOutput.mockResolvedValue({
-        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
-        stderr: '',
-        exitCode: 0
-      });
-
-      const service = new DependencyTrackService({
-        enabled: true,
-        url: dependencyTrackURL,
-        apiKey: dependencyTrackAPIKey,
-        projectId: dependencyTrackProjectID,
-        projectName: dependencyTrackProjectName,
-        projectVersion: dependencyTrackProjectVersion
-      });
-
-      const result = await service.uploadToDependencyTrack();
-
-      expect(result).toBe(true);
-      expect(mockWriteFile).toHaveBeenCalledWith(
-        'scanoss-cyclonedx.json',
-        expect.stringContaining('"bomFormat": "CycloneDX"'),
-        'utf-8'
-      );
-    });
-
-    it('should generate minimal CycloneDX when file is empty', async () => {
-      mockAccess.mockResolvedValue(undefined);
-      mockReadFile.mockResolvedValueOnce(''); // Empty file first read
-      mockWriteFile.mockResolvedValue(undefined);
-      mockReadFile.mockResolvedValueOnce(JSON.stringify({
-        bomFormat: "CycloneDX",
-        specVersion: "1.4",
-        components: []
-      })); // After writing minimal SBOM
-      
-      mockGetExecOutput.mockResolvedValue({
-        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
-        stderr: '',
-        exitCode: 0
-      });
-
-      const service = new DependencyTrackService({
-        enabled: true,
-        url: dependencyTrackURL,
-        apiKey: dependencyTrackAPIKey,
-        projectId: dependencyTrackProjectID,
-        projectName: dependencyTrackProjectName,
-        projectVersion: dependencyTrackProjectVersion
-      });
-
-      const result = await service.uploadToDependencyTrack();
-
-      expect(result).toBe(true);
-      expect(mockWriteFile).toHaveBeenCalledWith(
-        'scanoss-cyclonedx.json',
-        expect.stringContaining('"bomFormat": "CycloneDX"'),
-        'utf-8'
-      );
-    });
-
-    it('should generate minimal CycloneDX when file has no components', async () => {
-      mockAccess.mockResolvedValue(undefined);
-      mockReadFile.mockResolvedValueOnce(JSON.stringify({
-        bomFormat: "CycloneDX",
-        specVersion: "1.4",
-        components: []
-      })); // File exists but no components
-      mockWriteFile.mockResolvedValue(undefined);
-      
-      mockGetExecOutput.mockResolvedValue({
-        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
-        stderr: '',
-        exitCode: 0
-      });
-
-      const service = new DependencyTrackService({
-        enabled: true,
-        url: dependencyTrackURL,
-        apiKey: dependencyTrackAPIKey,
-        projectId: dependencyTrackProjectID,
-        projectName: dependencyTrackProjectName,
-        projectVersion: dependencyTrackProjectVersion
-      });
-
-      const result = await service.uploadToDependencyTrack();
-
-      expect(result).toBe(true);
-      expect(mockWriteFile).toHaveBeenCalledWith(
-        'scanoss-cyclonedx.json',
-        expect.stringContaining('"bomFormat": "CycloneDX"'),
-        'utf-8'
-      );
-    });
-
-    it('should generate minimal CycloneDX when file is invalid JSON', async () => {
-      mockAccess.mockResolvedValue(undefined);
-      mockReadFile.mockResolvedValueOnce('invalid json content'); // Invalid JSON first read
-      mockWriteFile.mockResolvedValue(undefined);
-      mockReadFile.mockResolvedValueOnce(JSON.stringify({
-        bomFormat: "CycloneDX",
-        specVersion: "1.4",
-        components: []
-      })); // After writing minimal SBOM
-      
-      mockGetExecOutput.mockResolvedValue({
-        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
-        stderr: '',
-        exitCode: 0
-      });
-
-      const service = new DependencyTrackService({
-        enabled: true,
-        url: dependencyTrackURL,
-        apiKey: dependencyTrackAPIKey,
-        projectId: dependencyTrackProjectID,
-        projectName: dependencyTrackProjectName,
-        projectVersion: dependencyTrackProjectVersion
-      });
-
-      const result = await service.uploadToDependencyTrack();
-
-      expect(result).toBe(true);
-      expect(mockWriteFile).toHaveBeenCalledWith(
-        'scanoss-cyclonedx.json',
-        expect.stringContaining('"bomFormat": "CycloneDX"'),
-        'utf-8'
-      );
-    });
-
-    it('should generate minimal SBOM with correct structure and metadata', async () => {
-      mockAccess.mockRejectedValue(new Error('File not found'));
-      mockWriteFile.mockResolvedValue(undefined);
-      
-      let capturedSbomContent = '';
-      mockWriteFile.mockImplementation((filename, content) => {
-        if (filename === 'scanoss-cyclonedx.json') {
-          capturedSbomContent = content as string;
-        }
-        return Promise.resolve(undefined);
-      });
-      
-      mockReadFile.mockResolvedValue('{}'); // Mock subsequent read
-      mockGetExecOutput.mockResolvedValue({
-        stdout: JSON.stringify({ token: 'test-token', project_uuid: 'test-uuid' }),
-        stderr: '',
-        exitCode: 0
-      });
-
-      const service = new DependencyTrackService({
-        enabled: true,
-        url: dependencyTrackURL,
-        apiKey: dependencyTrackAPIKey,
-        projectId: dependencyTrackProjectID,
-        projectName: dependencyTrackProjectName,
-        projectVersion: dependencyTrackProjectVersion
-      });
-
-      await service.uploadToDependencyTrack();
-      
-      expect(capturedSbomContent).toBeTruthy();
-      const sbomData = JSON.parse(capturedSbomContent);
-      
-      // Verify SBOM structure
-      expect(sbomData.bomFormat).toBe('CycloneDX');
-      expect(sbomData.specVersion).toBe('1.4');
-      expect(sbomData.serialNumber).toMatch(/^urn:uuid:/);
-      expect(sbomData.version).toBe(1);
-      expect(sbomData.metadata).toBeDefined();
-      expect(sbomData.metadata.timestamp).toBeDefined();
-      expect(sbomData.metadata.tools).toHaveLength(1);
-      expect(sbomData.metadata.tools[0].vendor).toBe('SCANOSS');
-      expect(sbomData.metadata.component).toBeDefined();
-      expect(sbomData.metadata.component.name).toBe(dependencyTrackProjectName);
-      expect(sbomData.metadata.component.version).toBe(dependencyTrackProjectVersion);
-      expect(sbomData.components).toEqual([]);
-      expect(sbomData.dependencies).toEqual([]);
-      expect(sbomData.vulnerabilities).toEqual([]);
     });
   });
 });

@@ -36,7 +36,7 @@ import { isOverMaxCharacterLimitAPI } from '../services/github.service';
  * It then generates a summary and detailed report of the findings.
  */
 export class CopyleftPolicyCheck extends PolicyCheck {
-  static policyName = 'Copyleft Policy';
+  static policyName = 'Copyleft';
   private argumentBuilder: ArgumentBuilder;
 
   constructor(argumentBuilder: CopyLeftArgumentBuilder = new CopyLeftArgumentBuilder()) {

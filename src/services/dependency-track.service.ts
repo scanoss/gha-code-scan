@@ -25,8 +25,9 @@ import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as inputs from '../app.input';
 import { setDependencyTrackProjectId, setDependencyTrackUploadToken } from '../app.input';
-import fs from 'fs';
 import { CYCLONEDX_FILE_NAME } from '../app.output';
+import { DependencyTrackUploadResult } from './dependency-track-status.service';
+import fs from 'fs';
 
 export interface DependencyTrackOptions {
   enabled: boolean;
@@ -128,100 +129,92 @@ export class DependencyTrackService {
 
   /**
    * Converts SCANOSS results to CycloneDX format and uploads to Dependency Track
+   * @returns DependencyTrackUploadResult with detailed upload information
    */
-  async uploadToDependencyTrack(): Promise<boolean> {
+  async uploadToDependencyTrack(): Promise<DependencyTrackUploadResult> {
+    const startTime = Date.now();
+    
     try {
       if (!this.options.enabled) {
         core.debug('Dependency Track upload is disabled');
-        return false;
+        return {
+          success: false,
+          enabled: false
+        };
       }
+      
       if (!this.validateConfiguration()) {
-        return false;
+        return {
+          success: false,
+          enabled: true,
+          error: 'Configuration validation failed'
+        };
       }
 
-      // Check if CycloneDX file exists, create minimal one if missing
+      // Get file information before upload
+      let fileSize: number | undefined;
+      let componentsCount: number | undefined;
+      
       try {
-        await fs.promises.access(CYCLONEDX_FILE_NAME, fs.constants.F_OK);
-      } catch (error) {
-        core.info('No CycloneDX file found - generating minimal SBOM for empty repository');
-        await this.generateMinimalCycloneDX();
-      }
-
-      // Check if CycloneDX file has meaningful content, enhance if empty
-      const cycloneDxContent = await fs.promises.readFile(CYCLONEDX_FILE_NAME, 'utf-8');
-      if (!cycloneDxContent.trim()) {
-        core.info('CycloneDX file is empty - generating minimal SBOM for empty repository');
-        await this.generateMinimalCycloneDX();
-      } else {
-        // Check if it has components, if not enhance it
-        try {
-          const cycloneDxData = JSON.parse(cycloneDxContent);
-          if (!cycloneDxData.components || cycloneDxData.components.length === 0) {
-            core.info('CycloneDX file contains no components - ensuring minimal valid SBOM structure');
-            await this.generateMinimalCycloneDX();
-          }
-        } catch (parseError) {
-          core.warning('CycloneDX file appears to be invalid JSON - regenerating minimal SBOM');
-          await this.generateMinimalCycloneDX();
-        }
+        const stats = await fs.promises.stat(CYCLONEDX_FILE_NAME);
+        fileSize = stats.size;
+        
+        // Try to get component count from CycloneDX file
+        const cycloneDxContent = await fs.promises.readFile(CYCLONEDX_FILE_NAME, 'utf-8');
+        const cycloneDxData = JSON.parse(cycloneDxContent);
+        componentsCount = cycloneDxData.components?.length || 0;
+      } catch (fileError) {
+        core.debug(`Could not read SBOM file details: ${fileError}`);
       }
 
       core.info('Starting Dependency Track upload process...');
       const uploadError = await this.uploadCycloneDXToDependencyTrack();
+      const uploadTime = (Date.now() - startTime) / 1000;
+      
       if (uploadError) {
         core.error(uploadError.message);
-        return false;
+        return {
+          success: false,
+          enabled: true,
+          error: uploadError.message,
+          projectName: this.options.projectName,
+          projectVersion: this.options.projectVersion,
+          fileSize,
+          componentsCount,
+          uploadTime
+        };
       }
-      return true;
+      
+      return {
+        success: true,
+        enabled: true,
+        projectId: inputs.DEPENDENCY_TRACK_PROJECT_ID,
+        uploadToken: inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN,
+        projectName: this.options.projectName,
+        projectVersion: this.options.projectVersion,
+        fileSize,
+        componentsCount,
+        uploadTime
+      };
     } catch (e: any) {
+      const uploadTime = (Date.now() - startTime) / 1000;
       core.error(e.message);
-      return false;
+      return {
+        success: false,
+        enabled: true,
+        error: e.message,
+        uploadTime
+      };
     }
   }
 
   /**
-   * Generate a minimal valid CycloneDX SBOM for empty repositories
+   * Legacy method for backward compatibility - returns boolean success status
+   * @deprecated Use uploadToDependencyTrack() which returns DependencyTrackUploadResult
    */
-  private async generateMinimalCycloneDX(): Promise<void> {
-    const minimalSbom = {
-      bomFormat: "CycloneDX",
-      specVersion: "1.4",
-      serialNumber: `urn:uuid:${this.generateUUID()}`,
-      version: 1,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        tools: [
-          {
-            vendor: "SCANOSS",
-            name: "scanoss-py",
-            version: "latest"
-          }
-        ],
-        component: {
-          type: "application",
-          "bom-ref": this.generateUUID(),
-          name: this.options.projectName || "unknown-project",
-          version: this.options.projectVersion || "1.0.0"
-        }
-      },
-      components: [],
-      dependencies: [],
-      vulnerabilities: []
-    };
-
-    await fs.promises.writeFile(CYCLONEDX_FILE_NAME, JSON.stringify(minimalSbom, null, 2), 'utf-8');
-    core.debug(`Generated minimal CycloneDX SBOM: ${JSON.stringify(minimalSbom, null, 2)}`);
-  }
-
-  /**
-   * Generate a simple UUID v4
-   */
-  private generateUUID(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
+  async uploadToDependencyTrackLegacy(): Promise<boolean> {
+    const result = await this.uploadToDependencyTrack();
+    return result.success;
   }
 
   /**

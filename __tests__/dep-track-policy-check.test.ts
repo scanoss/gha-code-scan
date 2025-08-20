@@ -163,7 +163,7 @@ describe('DepTrackPolicyCheck', () => {
 
   // Test: Make sure we're testing the right class
   it('should return correct policy name', () => {
-    expect(depTrackPolicyCheck.getPolicyName()).toBe('Dependency Track Policy');
+    expect(depTrackPolicyCheck.getPolicyName()).toBe('Dependency Track');
   });
 
   it('should return correct artifact file name', () => {

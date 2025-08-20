@@ -39,7 +39,7 @@ import * as inputs from '../app.input';
  * It then generates a summary and detailed report of any violations found.
  */
 export class DepTrackPolicyCheck extends PolicyCheck {
-  static policyName = 'Dependency Track Policy';
+  static policyName = 'Dependency Track';
   private argumentBuilder: ArgumentBuilder;
   private uploadAttempted: boolean = true;
 
@@ -275,6 +275,12 @@ export class DepTrackPolicyCheck extends PolicyCheck {
         core.warning('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
         const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.\n';
         details = stderr + uploadWarning;
+      }
+
+      // Add link to Dependency Track Project
+      if (inputs.DEPENDENCY_TRACK_PROJECT_ID) {
+        const projectLink = `\n\nView project in Dependency Track [here](${inputs.DEPENDENCY_TRACK_URL}/projects/${inputs.DEPENDENCY_TRACK_PROJECT_ID}).`;
+        details = details + projectLink;
       }
       
       const { id } = await this.uploadArtifact(stdout);
