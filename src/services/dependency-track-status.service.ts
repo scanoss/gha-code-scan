@@ -150,16 +150,6 @@ export class DependencyTrackStatusService {
       details.push(`• Error: ${result.error}`);
     }
 
-    // Add troubleshooting section
-    details.push(
-      '',
-      '**Troubleshooting:**',
-      '• Verify the Dependency Track URL is correct',
-      '• Check that the server is running and accessible', 
-      '• Ensure API key is valid and has proper permissions',
-      '• Verify project exists or can be created automatically'
-    );
-
     return details.join('\n');
   }
 

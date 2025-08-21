@@ -296,8 +296,9 @@ export class DependencyTrackService {
         return `Dependency Track upload failed with error:\n${stderr}\n\n` +
           `Troubleshooting:\n` +
           `• Verify URL: ${this.options.url}\n` +
-          `• Check API key validity\n` +
-          `• Ensure project exists in Dependency Track`;
+          `• Check that the server is running and accessible\n` +
+          `• Ensure API key is valid and has proper permissions\n` +
+          `• Verify project exists or can be created automatically`;
     }
   }
 

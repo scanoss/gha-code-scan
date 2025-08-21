@@ -125579,8 +125579,6 @@ class DependencyTrackStatusService {
         if (result.error) {
             details.push(`• Error: ${result.error}`);
         }
-        // Add troubleshooting section
-        details.push('', '**Troubleshooting:**', '• Verify the Dependency Track URL is correct', '• Check that the server is running and accessible', '• Ensure API key is valid and has proper permissions', '• Verify project exists or can be created automatically');
         return details.join('\n');
     }
     /**
@@ -125895,8 +125893,9 @@ class DependencyTrackService {
                 return `Dependency Track upload failed with error:\n${stderr}\n\n` +
                     `Troubleshooting:\n` +
                     `• Verify URL: ${this.options.url}\n` +
-                    `• Check API key validity\n` +
-                    `• Ensure project exists in Dependency Track`;
+                    `• Check that the server is running and accessible\n` +
+                    `• Ensure API key is valid and has proper permissions\n` +
+                    `• Verify project exists or can be created automatically`;
         }
     }
     /**

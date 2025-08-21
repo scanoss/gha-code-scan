@@ -127,8 +127,6 @@ describe('DependencyTrackStatusService', () => {
       const callArgs = mockOctokit.rest.checks.create.mock.calls[0][0];
       expect(callArgs.output.text).toContain('• Server: https://dependencytrack.example.com');
       expect(callArgs.output.text).toContain('• Error: Connection refused to server');
-      expect(callArgs.output.text).toContain('**Troubleshooting:**');
-      expect(callArgs.output.text).toContain('• Verify the Dependency Track URL is correct');
     });
 
     it('should create neutral status check for disabled upload', async () => {
