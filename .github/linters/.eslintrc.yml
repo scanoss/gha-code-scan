@@ -14,6 +14,7 @@ ignorePatterns:
   - '**/coverage/.*'
   - '*.json'
   - '**/__tests__/.*'
+  - '**/.github/.*'
 
 parser: '@typescript-eslint/parser'
 
