@@ -123979,7 +123979,7 @@ async function run() {
             const report = await (0, report_service_1.generatePRSummary)(policies);
             await (0, github_utils_1.createCommentOnPR)(report);
         }
-        await (0, report_service_1.generateJobSummary)(policies);
+        await (0, report_service_1.generateJobSummary)(policies, uploadResult);
         // set outputs for other workflow steps to use
         core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
         core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
@@ -126174,7 +126174,7 @@ async function generatePRSummary(policies) {
         success: polCount.success ? `:white_check_mark: ${polCount.success} pass` : '',
         fail: polCount.fail ? `:x: ${polCount.fail} fail` : ''
     };
-    const content = `### SCANOSS SCAN Completed :rocket:
+    return `### SCANOSS SCAN Completed :rocket:
 - **Detected components:** ${componentSummary.totalComponents}
 - **Undeclared components:** ${componentSummary.undeclaredComponents}
 - **Declared components:** ${componentSummary.declaredComponents}
@@ -126186,7 +126186,6 @@ async function generatePRSummary(policies) {
 - **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
 
 View more details on [SCANOSS Action Summary](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId})`;
-    return content;
 }
 exports.generatePRSummary = generatePRSummary;
 /**
@@ -126245,18 +126244,28 @@ async function generateJobSummary(policies, uploadResult) {
 Dependency Track upload is not enabled for this workflow.${projectLink}`;
         }
         if (result.success) {
-            const details = [];
-            if (result.projectName)
-                details.push(`**Project:** ${result.projectName}`);
-            if (result.projectVersion)
-                details.push(`**Version:** ${result.projectVersion}`);
-            if (result.fileSize)
-                details.push(`**File Size:** ${(result.fileSize / 1024).toFixed(1)}KB`);
-            if (result.componentsCount)
-                details.push(`**Components:** ${result.componentsCount}`);
-            if (result.uploadTime)
-                details.push(`**Upload Time:** ${result.uploadTime}ms`);
-            const detailsText = details.length > 0 ? '\n\n' + details.join('  \n') : '';
+            const details = [
+                '**Upload Details:**',
+                `• Project Name: ${result.projectName || 'Unknown'}`
+            ];
+            if (result.projectVersion) {
+                details.push(`• Project Version: ${result.projectVersion}`);
+            }
+            if (result.projectId) {
+                details.push(`• Project ID: ${result.projectId}`);
+            }
+            if (result.uploadToken) {
+                details.push(`• Upload Token: ***${result.uploadToken.slice(-3)}`);
+            }
+            details.push(`• Server: ${inputs.DEPENDENCY_TRACK_URL}`);
+            if (result.fileSize) {
+                const fileSizeKB = (result.fileSize / 1024).toFixed(1);
+                details.push(`• File: scanoss-cyclonedx.json (${fileSizeKB} KB${result.componentsCount ? `, ${result.componentsCount} components` : ''})`);
+            }
+            if (result.uploadTime) {
+                details.push(`• Upload Time: ${result.uploadTime.toFixed ? result.uploadTime.toFixed(1) : result.uploadTime}s`);
+            }
+            const detailsText = '\n\n' + details.join('\n');
             // Add project link if available
             let projectLink = '';
             if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
@@ -126267,10 +126276,15 @@ Dependency Track upload is not enabled for this workflow.${projectLink}`;
 
 SBOM has been successfully uploaded to Dependency Track.${detailsText}${projectLink}`;
         }
+        // Add project link if available, even for failed uploads
+        let projectLink = '';
+        if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
+            projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
+        }
         return `
 **Status:** :x: Upload failed
 
-${result.error || 'Failed to upload SBOM to Dependency Track.'}`;
+${result.error || 'Failed to upload SBOM to Dependency Track.'}${projectLink}`;
     };
     let licenseTable = LicensesTable(licenseSummary.licenses);
     if ((0, github_service_1.isOverMaxCharacterLimitAPI)(licenseTable)) {

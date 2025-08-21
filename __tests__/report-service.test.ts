@@ -140,13 +140,19 @@ describe('Test report service', () => {
     const uploadResult: DependencyTrackUploadResult = {
       success: false,
       enabled: true,
-      error: 'Connection timeout'
+      error: 'Connection timeout',
+      projectId: 'failed-project-456'
     };
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
     
     // Verify that the summary was called with the Dependency Track section
     expect(core.summary.addHeading).toHaveBeenCalledWith('Dependency Track Upload', 3);
+    
+    // Verify that the project link appears even for failed uploads
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.stringContaining('View project in Dependency Track](https://dt.example.com/projects/failed-project-456)')
+    );
   }, 10000);
 
   it('Should generate job summary without project link when project ID is missing', async () => {

@@ -80,7 +80,7 @@ export async function run(): Promise<void> {
       await createCommentOnPR(report);
     }
 
-    await generateJobSummary(policies);
+    await generateJobSummary(policies, uploadResult);
 
     // set outputs for other workflow steps to use
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
