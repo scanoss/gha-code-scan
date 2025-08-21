@@ -126280,10 +126280,10 @@ async function generateJobSummary(policies, uploadResult) {
         if (statusChecksTable || linksTable) {
             summary.addSeparator().addHeading('Details', 3);
             if (statusChecksTable) {
-                summary.addRaw('**Status Checks**').addRaw(statusChecksTable);
+                summary.addHeading('Status Checks', 4).addRaw(statusChecksTable);
             }
             if (linksTable) {
-                summary.addRaw('**Links**').addRaw(linksTable);
+                summary.addHeading('Links', 4).addRaw(linksTable);
             }
         }
     }

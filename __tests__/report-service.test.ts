@@ -110,8 +110,10 @@ describe('Test report service', () => {
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
     
-    // Verify that the summary was called with the Details section
+    // Verify that the summary was called with the Details section and subsections
     expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
     
     // Verify that the project link was included in the Links table
     expect(core.summary.addRaw).toHaveBeenCalledWith(
@@ -128,8 +130,10 @@ describe('Test report service', () => {
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
     
-    // Verify that the summary was called with the Details section
+    // Verify that the summary was called with the Details section and subsections
     expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
     
     // Verify that the project link is still shown even when disabled
     expect(core.summary.addRaw).toHaveBeenCalledWith(
@@ -147,8 +151,10 @@ describe('Test report service', () => {
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
     
-    // Verify that the summary was called with the Details section
+    // Verify that the summary was called with the Details section and subsections
     expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
     
     // Verify that the project link appears even for failed uploads
     expect(core.summary.addRaw).toHaveBeenCalledWith(
@@ -165,8 +171,10 @@ describe('Test report service', () => {
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
     
-    // Verify that the summary was called with the Details section
+    // Verify that the summary was called with the Details section and subsections
     expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
     
     // Verify that the project link from configuration is included
     expect(core.summary.addRaw).toHaveBeenCalledWith(
