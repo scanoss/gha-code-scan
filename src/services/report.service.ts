@@ -112,77 +112,50 @@ export async function generateJobSummary(policies: PolicyCheck[], uploadResult?:
     return generateTable(HEADERS, ROWS);
   };
 
-  const DependencyTrackSection = (result?: DependencyTrackUploadResult): string => {
-    if (!result) {
+  const StatusChecksTable = (uploadResult?: DependencyTrackUploadResult): string => {
+    if (!uploadResult) {
       return '';
     }
 
-    if (!result.enabled) {
-      // Even when disabled, show project link if available
-      let projectLink = '';
-      if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
-        projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
-      }
+    const HEADERS = ['Status Check', 'Status', 'Details'];
+    const ROWS: string[][] = [];
 
-      return `
-**Status:** :white_circle: Disabled
-
-Dependency Track upload is not enabled for this workflow.${projectLink}`;
+    let statusIcon: string;
+    if (!uploadResult.enabled) {
+      statusIcon = ':white_circle:';
+    } else if (uploadResult.success) {
+      statusIcon = ':white_check_mark:';
+    } else {
+      statusIcon = ':x:';
     }
 
-    if (result.success) {
-      const details = [
-        '**Upload Details:**',
-        `• Project Name: ${result.projectName || 'Unknown'}`
-      ];
+    // Generate link to GitHub status check details
+    const statusCheckUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+    
+    ROWS.push(['Dependency Track Upload', statusIcon, `[More Details](${statusCheckUrl})`]);
 
-      if (result.projectVersion) {
-        details.push(`• Project Version: ${result.projectVersion}`);
-      }
+    return generateTable(HEADERS, ROWS);
+  };
 
-      if (result.projectId) {
-        details.push(`• Project ID: ${result.projectId}`);
-      }
-
-      if (result.uploadToken) {
-        details.push(`• Upload Token: ***${result.uploadToken.slice(-3)}`);
-      }
-
-      details.push(`• Server: ${inputs.DEPENDENCY_TRACK_URL}`);
-
-      if (result.fileSize) {
-        const fileSizeKB = (result.fileSize / 1024).toFixed(1);
-        details.push(`• File: scanoss-cyclonedx.json (${fileSizeKB} KB${result.componentsCount ? `, ${result.componentsCount} components` : ''})`);
-      }
-
-      if (result.uploadTime) {
-        details.push(`• Upload Time: ${result.uploadTime.toFixed ? result.uploadTime.toFixed(1) : result.uploadTime}s`);
-      }
-
-      const detailsText = '\n\n' + details.join('\n');
-
-      // Add project link if available
-      let projectLink = '';
-      if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
-        projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
-      }
-
-      return `
-**Status:** :white_check_mark: Successfully uploaded
-
-SBOM has been successfully uploaded to Dependency Track.${detailsText}${projectLink}`;
+  const LinksTable = (uploadResult?: DependencyTrackUploadResult): string => {
+    if (!uploadResult) {
+      return '';
     }
 
-    // Add project link if available, even for failed uploads
-    let projectLink = '';
-    if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
-      projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
+    // Check if we have project link data
+    if (!(uploadResult.projectId || inputs.DEPENDENCY_TRACK_PROJECT_ID) || !inputs.DEPENDENCY_TRACK_URL) {
+      return '';
     }
 
-    return `
-**Status:** :x: Upload failed
+    const HEADERS = ['Resource', 'Link'];
+    const ROWS: string[][] = [];
 
-${result.error || 'Failed to upload SBOM to Dependency Track.'}${projectLink}`;
+    const projectId = uploadResult.projectId || inputs.DEPENDENCY_TRACK_PROJECT_ID;
+    const projectUrl = `${inputs.DEPENDENCY_TRACK_URL}/projects/${projectId}`;
+    
+    ROWS.push(['Dependency Track Project', `[View Project](${projectUrl})`]);
+
+    return generateTable(HEADERS, ROWS);
   };
 
   let licenseTable = LicensesTable(licenseSummary.licenses);
@@ -199,14 +172,21 @@ ${result.error || 'Failed to upload SBOM to Dependency Track.'}${projectLink}`;
     .addHeading('Policies', 3)
     .addRaw(PoliciesTable(policies));
 
-  // Add Dependency Track section if upload result is provided
+  // Add Details section if upload result is provided
   if (uploadResult) {
-    const depTrackContent = DependencyTrackSection(uploadResult);
-    if (depTrackContent) {
-      summary
-        .addSeparator()
-        .addHeading('Dependency Track Upload', 3)
-        .addRaw(depTrackContent);
+    const statusChecksTable = StatusChecksTable(uploadResult);
+    const linksTable = LinksTable(uploadResult);
+    
+    if (statusChecksTable || linksTable) {
+      summary.addSeparator().addHeading('Details', 3);
+      
+      if (statusChecksTable) {
+        summary.addRaw('**Status Checks**').addRaw(statusChecksTable);
+      }
+      
+      if (linksTable) {
+        summary.addRaw('**Links**').addRaw(linksTable);
+      }
     }
   }
 

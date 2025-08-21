@@ -113,9 +113,6 @@ export class DependencyTrackStatusService {
       details.push(`• Project ID: ${result.projectId}`);
     }
 
-    if (result.uploadToken) {
-      details.push(`• Upload Token: ***${result.uploadToken.slice(-3)}`);
-    }
 
     details.push(`• Server: ${inputs.DEPENDENCY_TRACK_URL}`);
 

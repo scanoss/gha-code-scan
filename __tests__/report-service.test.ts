@@ -38,7 +38,8 @@ jest.mock('../src/app.input', () => ({
   COPYLEFT_LICENSE_INCLUDE: '',
   SCANOSS_SETTINGS: true,
   SBOM_ENABLED: false,
-  DEPENDENCY_TRACK_URL: 'https://dt.example.com'
+  DEPENDENCY_TRACK_URL: 'https://dt.example.com',
+  DEPENDENCY_TRACK_PROJECT_ID: 'config-project-789'
 }));
 
 describe('Test report service', () => {
@@ -109,12 +110,12 @@ describe('Test report service', () => {
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
     
-    // Verify that the summary was called with the Dependency Track section
-    expect(core.summary.addHeading).toHaveBeenCalledWith('Dependency Track Upload', 3);
+    // Verify that the summary was called with the Details section
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
     
-    // Verify that the project link was included
+    // Verify that the project link was included in the Links table
     expect(core.summary.addRaw).toHaveBeenCalledWith(
-      expect.stringContaining('View project in Dependency Track](https://dt.example.com/projects/abc-123-def)')
+      expect.stringContaining('[View Project](https://dt.example.com/projects/abc-123-def)')
     );
   }, 10000);
 
@@ -127,12 +128,12 @@ describe('Test report service', () => {
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
     
-    // Verify that the summary was called with the Dependency Track section
-    expect(core.summary.addHeading).toHaveBeenCalledWith('Dependency Track Upload', 3);
+    // Verify that the summary was called with the Details section
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
     
     // Verify that the project link is still shown even when disabled
     expect(core.summary.addRaw).toHaveBeenCalledWith(
-      expect.stringContaining('View project in Dependency Track](https://dt.example.com/projects/disabled-project-123)')
+      expect.stringContaining('[View Project](https://dt.example.com/projects/disabled-project-123)')
     );
   }, 10000);
 
@@ -146,30 +147,30 @@ describe('Test report service', () => {
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
     
-    // Verify that the summary was called with the Dependency Track section
-    expect(core.summary.addHeading).toHaveBeenCalledWith('Dependency Track Upload', 3);
+    // Verify that the summary was called with the Details section
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
     
     // Verify that the project link appears even for failed uploads
     expect(core.summary.addRaw).toHaveBeenCalledWith(
-      expect.stringContaining('View project in Dependency Track](https://dt.example.com/projects/failed-project-456)')
+      expect.stringContaining('[View Project](https://dt.example.com/projects/failed-project-456)')
     );
   }, 10000);
 
-  it('Should generate job summary without project link when project ID is missing', async () => {
+  it('Should generate job summary with project link from configuration when upload result has no project ID', async () => {
     const uploadResult: DependencyTrackUploadResult = {
       success: false,
       enabled: false
-      // No projectId provided
+      // No projectId in upload result, should fall back to config
     };
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
     
-    // Verify that the summary was called with the Dependency Track section
-    expect(core.summary.addHeading).toHaveBeenCalledWith('Dependency Track Upload', 3);
+    // Verify that the summary was called with the Details section
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
     
-    // Verify that NO project link was included when projectId is missing
+    // Verify that the project link from configuration is included
     expect(core.summary.addRaw).toHaveBeenCalledWith(
-      expect.not.stringContaining('View project in Dependency Track')
+      expect.stringContaining('[View Project](https://dt.example.com/projects/config-project-789)')
     );
   }, 10000);
 

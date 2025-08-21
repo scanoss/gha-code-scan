@@ -92,7 +92,6 @@ describe('DependencyTrackStatusService', () => {
       expect(callArgs.output.text).toContain('• Project Name: test-project');
       expect(callArgs.output.text).toContain('• Project Version: 1.0.0');
       expect(callArgs.output.text).toContain('• Project ID: project-123');
-      expect(callArgs.output.text).toContain('• Upload Token: ***789');
       expect(callArgs.output.text).toContain('• Server: https://dependencytrack.example.com');
       expect(callArgs.output.text).toContain('• File: scanoss-cyclonedx.json (2.0 KB, 25 components)');
       expect(callArgs.output.text).toContain('• Upload Time: 1.5s');

@@ -125548,9 +125548,6 @@ class DependencyTrackStatusService {
         if (result.projectId) {
             details.push(`• Project ID: ${result.projectId}`);
         }
-        if (result.uploadToken) {
-            details.push(`• Upload Token: ***${result.uploadToken.slice(-3)}`);
-        }
         details.push(`• Server: ${inputs.DEPENDENCY_TRACK_URL}`);
         if (result.fileSize) {
             const fileSizeKB = (result.fileSize / 1024).toFixed(1);
@@ -126228,63 +126225,41 @@ async function generateJobSummary(policies, uploadResult) {
         });
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
-    const DependencyTrackSection = (result) => {
-        if (!result) {
+    const StatusChecksTable = (uploadResult) => {
+        if (!uploadResult) {
             return '';
         }
-        if (!result.enabled) {
-            // Even when disabled, show project link if available
-            let projectLink = '';
-            if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
-                projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
-            }
-            return `
-**Status:** :white_circle: Disabled
-
-Dependency Track upload is not enabled for this workflow.${projectLink}`;
+        const HEADERS = ['Status Check', 'Status', 'Details'];
+        const ROWS = [];
+        let statusIcon;
+        if (!uploadResult.enabled) {
+            statusIcon = ':white_circle:';
         }
-        if (result.success) {
-            const details = [
-                '**Upload Details:**',
-                `• Project Name: ${result.projectName || 'Unknown'}`
-            ];
-            if (result.projectVersion) {
-                details.push(`• Project Version: ${result.projectVersion}`);
-            }
-            if (result.projectId) {
-                details.push(`• Project ID: ${result.projectId}`);
-            }
-            if (result.uploadToken) {
-                details.push(`• Upload Token: ***${result.uploadToken.slice(-3)}`);
-            }
-            details.push(`• Server: ${inputs.DEPENDENCY_TRACK_URL}`);
-            if (result.fileSize) {
-                const fileSizeKB = (result.fileSize / 1024).toFixed(1);
-                details.push(`• File: scanoss-cyclonedx.json (${fileSizeKB} KB${result.componentsCount ? `, ${result.componentsCount} components` : ''})`);
-            }
-            if (result.uploadTime) {
-                details.push(`• Upload Time: ${result.uploadTime.toFixed ? result.uploadTime.toFixed(1) : result.uploadTime}s`);
-            }
-            const detailsText = '\n\n' + details.join('\n');
-            // Add project link if available
-            let projectLink = '';
-            if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
-                projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
-            }
-            return `
-**Status:** :white_check_mark: Successfully uploaded
-
-SBOM has been successfully uploaded to Dependency Track.${detailsText}${projectLink}`;
+        else if (uploadResult.success) {
+            statusIcon = ':white_check_mark:';
         }
-        // Add project link if available, even for failed uploads
-        let projectLink = '';
-        if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
-            projectLink = `\n\n🔗 **[View project in Dependency Track](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId})**`;
+        else {
+            statusIcon = ':x:';
         }
-        return `
-**Status:** :x: Upload failed
-
-${result.error || 'Failed to upload SBOM to Dependency Track.'}${projectLink}`;
+        // Generate link to GitHub status check details
+        const statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId}`;
+        ROWS.push(['Dependency Track Upload', statusIcon, `[More Details](${statusCheckUrl})`]);
+        return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
+    };
+    const LinksTable = (uploadResult) => {
+        if (!uploadResult) {
+            return '';
+        }
+        // Check if we have project link data
+        if (!(uploadResult.projectId || inputs.DEPENDENCY_TRACK_PROJECT_ID) || !inputs.DEPENDENCY_TRACK_URL) {
+            return '';
+        }
+        const HEADERS = ['Resource', 'Link'];
+        const ROWS = [];
+        const projectId = uploadResult.projectId || inputs.DEPENDENCY_TRACK_PROJECT_ID;
+        const projectUrl = `${inputs.DEPENDENCY_TRACK_URL}/projects/${projectId}`;
+        ROWS.push(['Dependency Track Project', `[View Project](${projectUrl})`]);
+        return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
     let licenseTable = LicensesTable(licenseSummary.licenses);
     if ((0, github_service_1.isOverMaxCharacterLimitAPI)(licenseTable)) {
@@ -126298,14 +126273,18 @@ ${result.error || 'Failed to upload SBOM to Dependency Track.'}${projectLink}`;
         .addSeparator()
         .addHeading('Policies', 3)
         .addRaw(PoliciesTable(policies));
-    // Add Dependency Track section if upload result is provided
+    // Add Details section if upload result is provided
     if (uploadResult) {
-        const depTrackContent = DependencyTrackSection(uploadResult);
-        if (depTrackContent) {
-            summary
-                .addSeparator()
-                .addHeading('Dependency Track Upload', 3)
-                .addRaw(depTrackContent);
+        const statusChecksTable = StatusChecksTable(uploadResult);
+        const linksTable = LinksTable(uploadResult);
+        if (statusChecksTable || linksTable) {
+            summary.addSeparator().addHeading('Details', 3);
+            if (statusChecksTable) {
+                summary.addRaw('**Status Checks**').addRaw(statusChecksTable);
+            }
+            if (linksTable) {
+                summary.addRaw('**Links**').addRaw(linksTable);
+            }
         }
     }
     await summary.write();
