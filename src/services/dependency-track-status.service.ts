@@ -61,12 +61,7 @@ export class DependencyTrackStatusService {
       let summary: string;
       let text: string;
 
-      if (!result.enabled) {
-        conclusion = 'neutral';
-        title = 'Dependency Track upload is disabled';
-        summary = '### ⚪ Dependency Track Upload \n #### Upload is disabled';
-        text = this.createDisabledDetails();
-      } else if (result.success) {
+      if (result.success) {
         conclusion = 'success';
         title = 'SBOM successfully uploaded to Dependency Track';
         summary = '### ✅ Dependency Track Upload \n #### SBOM successfully uploaded to Dependency Track';
@@ -153,21 +148,6 @@ export class DependencyTrackStatusService {
     return details.join('\n');
   }
 
-  /**
-   * Creates details text for disabled upload
-   */
-  private createDisabledDetails(): string {
-    return [
-      '**Status:** Skipped (deptrack.upload=false)',
-      '',
-      '**To enable Dependency Track upload:**',
-      '• Set `deptrack.upload: true` in your workflow',
-      '• Configure required parameters:',
-      '  - `deptrack.url`',
-      '  - `deptrack.apikey`', 
-      '  - `deptrack.projectid` OR (`deptrack.projectname` + `deptrack.projectversion`)'
-    ].join('\n');
-  }
 }
 
 export const dependencyTrackStatusService = new DependencyTrackStatusService();

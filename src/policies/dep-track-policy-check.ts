@@ -248,6 +248,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
         if (!this.uploadAttempted) {
           core.warning('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
           successMessage += '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. Results may not reflect latest changes.';
+          successMessage += this.getUploadConfigurationHelp();
         }
         await this.success(successMessage, undefined);
         return;
@@ -273,8 +274,9 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       // exitCode === 2 means policy violations found
       if (!this.uploadAttempted) {
         core.warning('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
-        const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.\n';
-        details = stderr + uploadWarning;
+        const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.';
+        const configHelp = this.getUploadConfigurationHelp();
+        details = stderr + uploadWarning + configHelp;
       }
 
       // Add link to Dependency Track Project
@@ -314,5 +316,20 @@ export class DepTrackPolicyCheck extends PolicyCheck {
    */
   getPolicyName(): string {
     return DepTrackPolicyCheck.policyName;
+  }
+
+  /**
+   * Returns upload configuration instructions for when upload is disabled
+   */
+  private getUploadConfigurationHelp(): string {
+    return [
+      '',
+      '**To enable Dependency Track upload:**',
+      '• Set `deptrack.upload: true` in your workflow',
+      '• Configure required parameters:',
+      '  - `deptrack.url`',
+      '  - `deptrack.apikey`', 
+      '  - `deptrack.projectid` OR (`deptrack.projectname` + `deptrack.projectversion`)'
+    ].join('\n');
   }
 }

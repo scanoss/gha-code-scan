@@ -243,6 +243,8 @@ describe('DepTrackPolicyCheck', () => {
     expect(mockCoreWarning).toHaveBeenCalledWith('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Success);
     expect(capturedSummary).toContain(':warning: **Warning**: SBOM upload to Dependency Track was not attempted');
+    expect(capturedSummary).toContain('**To enable Dependency Track upload:**');
+    expect(capturedSummary).toContain('• Set `deptrack.upload: true` in your workflow');
   }, 10000);
 
   it('should show warning when violations found but upload was not attempted', async () => {
@@ -274,6 +276,8 @@ describe('DepTrackPolicyCheck', () => {
     expect(mockCoreWarning).toHaveBeenCalledWith('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.ActionRequired);
     expect(capturedDetails).toContain(':warning: **Warning**: SBOM upload to Dependency Track was not attempted');
+    expect(capturedDetails).toContain('**To enable Dependency Track upload:**');
+    expect(capturedDetails).toContain('• Set `deptrack.upload: true` in your workflow');
   }, 10000);
 
   it('should not show warning when upload was attempted successfully', async () => {

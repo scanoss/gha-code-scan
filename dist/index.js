@@ -124803,6 +124803,7 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                 if (!this.uploadAttempted) {
                     core.warning('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
                     successMessage += '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. Results may not reflect latest changes.';
+                    successMessage += this.getUploadConfigurationHelp();
                 }
                 await this.success(successMessage, undefined);
                 return;
@@ -124824,8 +124825,9 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
             // exitCode === 2 means policy violations found
             if (!this.uploadAttempted) {
                 core.warning('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
-                const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.\n';
-                details = stderr + uploadWarning;
+                const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.';
+                const configHelp = this.getUploadConfigurationHelp();
+                details = stderr + uploadWarning + configHelp;
             }
             // Add link to Dependency Track Project
             if (inputs.DEPENDENCY_TRACK_PROJECT_ID) {
@@ -124860,6 +124862,20 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
      */
     getPolicyName() {
         return DepTrackPolicyCheck.policyName;
+    }
+    /**
+     * Returns upload configuration instructions for when upload is disabled
+     */
+    getUploadConfigurationHelp() {
+        return [
+            '',
+            '**To enable Dependency Track upload:**',
+            '• Set `deptrack.upload: true` in your workflow',
+            '• Configure required parameters:',
+            '  - `deptrack.url`',
+            '  - `deptrack.apikey`',
+            '  - `deptrack.projectid` OR (`deptrack.projectname` + `deptrack.projectversion`)'
+        ].join('\n');
     }
 }
 exports.DepTrackPolicyCheck = DepTrackPolicyCheck;
@@ -125501,13 +125517,7 @@ class DependencyTrackStatusService {
             let title;
             let summary;
             let text;
-            if (!result.enabled) {
-                conclusion = 'neutral';
-                title = 'Dependency Track upload is disabled';
-                summary = '### ⚪ Dependency Track Upload \n #### Upload is disabled';
-                text = this.createDisabledDetails();
-            }
-            else if (result.success) {
+            if (result.success) {
                 conclusion = 'success';
                 title = 'SBOM successfully uploaded to Dependency Track';
                 summary = '### ✅ Dependency Track Upload \n #### SBOM successfully uploaded to Dependency Track';
@@ -125580,21 +125590,6 @@ class DependencyTrackStatusService {
             details.push(`• Error: ${result.error}`);
         }
         return details.join('\n');
-    }
-    /**
-     * Creates details text for disabled upload
-     */
-    createDisabledDetails() {
-        return [
-            '**Status:** Skipped (deptrack.upload=false)',
-            '',
-            '**To enable Dependency Track upload:**',
-            '• Set `deptrack.upload: true` in your workflow',
-            '• Configure required parameters:',
-            '  - `deptrack.url`',
-            '  - `deptrack.apikey`',
-            '  - `deptrack.projectid` OR (`deptrack.projectname` + `deptrack.projectversion`)'
-        ].join('\n');
     }
 }
 exports.DependencyTrackStatusService = DependencyTrackStatusService;

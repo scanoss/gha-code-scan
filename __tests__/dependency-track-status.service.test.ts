@@ -129,32 +129,6 @@ describe('DependencyTrackStatusService', () => {
       expect(callArgs.output.text).toContain('• Error: Connection refused to server');
     });
 
-    it('should create neutral status check for disabled upload', async () => {
-      const uploadResult: DependencyTrackUploadResult = {
-        success: false,
-        enabled: false
-      };
-
-      await service.reportUploadStatus(uploadResult);
-
-      expect(mockOctokit.rest.checks.create).toHaveBeenCalledWith({
-        owner: 'test-owner',
-        repo: 'test-repo',
-        name: 'Status Check: Dependency Track Upload',
-        head_sha: 'abc123',
-        status: 'completed',
-        conclusion: 'neutral',
-        output: {
-          title: 'Dependency Track upload is disabled',
-          summary: '### ⚪ Dependency Track Upload \n #### Upload is disabled',
-          text: expect.stringContaining('**Status:** Skipped (deptrack.upload=false)')
-        }
-      });
-
-      const callArgs = mockOctokit.rest.checks.create.mock.calls[0][0];
-      expect(callArgs.output.text).toContain('**To enable Dependency Track upload:**');
-      expect(callArgs.output.text).toContain('• Set `deptrack.upload: true` in your workflow');
-    });
 
     it('should handle minimal success result', async () => {
       const uploadResult: DependencyTrackUploadResult = {
