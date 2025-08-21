@@ -125528,13 +125528,13 @@ class DependencyTrackStatusService {
             if (result.success) {
                 conclusion = 'success';
                 title = 'SBOM successfully uploaded to Dependency Track';
-                summary = '### ✅ Dependency Track Upload \n #### SBOM successfully uploaded to Dependency Track';
+                summary = '### ✅ Dependency Track Upload\n#### SBOM successfully uploaded to Dependency Track';
                 text = this.createSuccessDetails(result);
             }
             else {
                 conclusion = 'failure';
                 title = 'Failed to upload SBOM to Dependency Track';
-                summary = '### ❌ Dependency Track Upload \n #### Failed to upload SBOM to Dependency Track';
+                summary = '### ❌ Dependency Track Upload\n#### Failed to upload SBOM to Dependency Track';
                 text = this.createFailureDetails(result);
             }
             const response = await octokit.rest.checks.create({
