@@ -41,12 +41,13 @@ inputs:
     required: false
     default: ''
   output.filepath:
+    description: 'Scanner results filepath'
     required: false
     default: 'results.json'
   github.token:
     description: 'Your GitHub token'
     required: false
-    default: ${{ github.token }}
+    default: '${{ github.token }}'
   licenses.copyleft.include:
     description: 'List of Copyleft licenses to append to the default list. Provide licenses as a comma-separated list.'
     required: false

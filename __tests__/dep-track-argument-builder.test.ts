@@ -50,7 +50,7 @@ describe('DependencyTrackArgumentBuilder', () => {
     appInput.DEPENDENCY_TRACK_API_KEY = 'abcdefghijklmno';
   });
 
-  it('Build Command with id test', async function ()  {
+  it('Build Command with id test', async function () {
     appInput.DEPENDENCY_TRACK_PROJECT_ID = '01234-56789';
     const builder = new DependencyTrackArgumentBuilder();
     const cmd = await builder.build();
@@ -73,7 +73,7 @@ describe('DependencyTrackArgumentBuilder', () => {
     ]);
   });
 
-  it('Build Command with name and version test', async function ()  {
+  it('Build Command with name and version test', async function () {
     appInput.DEPENDENCY_TRACK_PROJECT_NAME = 'test-project';
     appInput.DEPENDENCY_TRACK_PROJECT_VERSION = '1.0.0';
     const builder = new DependencyTrackArgumentBuilder();
@@ -99,7 +99,7 @@ describe('DependencyTrackArgumentBuilder', () => {
     ]);
   });
 
-  it('Build Command with upload token test', async function ()  {
+  it('Build Command with upload token test', async function () {
     appInput.DEPENDENCY_TRACK_PROJECT_ID = '01234-56789';
     appInput.DEPENDENCY_TRACK_UPLOAD_TOKEN = 'abcde-12345';
     const builder = new DependencyTrackArgumentBuilder();
@@ -125,7 +125,7 @@ describe('DependencyTrackArgumentBuilder', () => {
     ]);
   });
 
-  it('Build Command with output test', async function ()  {
+  it('Build Command with output test', async function () {
     appInput.DEPENDENCY_TRACK_PROJECT_ID = '01234-56789';
     appInput.OUTPUT_FILEPATH = 'scanoss-inspect-result.json';
     const builder = new DependencyTrackArgumentBuilder();

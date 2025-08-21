@@ -21,10 +21,12 @@
    THE SOFTWARE.
 */
 
-import { DependencyTrackStatusService, DependencyTrackUploadResult } from '../src/services/dependency-track-status.service';
+import {
+  DependencyTrackStatusService,
+  DependencyTrackUploadResult
+} from '../src/services/dependency-track-status.service';
 import * as core from '@actions/core';
 import { context, getOctokit } from '@actions/github';
-import * as inputs from '../src/app.input';
 
 // Mock modules
 jest.mock('@actions/core');
@@ -49,10 +51,10 @@ describe('DependencyTrackStatusService', () => {
   beforeEach(() => {
     service = new DependencyTrackStatusService();
     jest.clearAllMocks();
-    
+
     (getOctokit as jest.Mock).mockReturnValue(mockOctokit);
     (context.repo as any) = { owner: 'test-owner', repo: 'test-repo' };
-    
+
     // Mock getSHA
     const { getSHA } = require('../src/utils/github.utils');
     (getSHA as jest.Mock).mockResolvedValue('abc123');
@@ -73,7 +75,7 @@ describe('DependencyTrackStatusService', () => {
       };
 
       const checkRunId = await service.reportUploadStatus(uploadResult);
-      
+
       expect(checkRunId).toBe(12345);
 
       expect(mockOctokit.rest.checks.create).toHaveBeenCalledWith({
@@ -97,7 +99,9 @@ describe('DependencyTrackStatusService', () => {
       expect(callArgs.output.text).toContain('• Server: https://dependencytrack.example.com');
       expect(callArgs.output.text).toContain('• File: scanoss-cyclonedx.json (2.0 KB, 25 components)');
       expect(callArgs.output.text).toContain('• Upload Time: 1.5s');
-      expect(callArgs.output.text).toContain('View project in Dependency Track [here](https://dependencytrack.example.com/projects/project-123).');
+      expect(callArgs.output.text).toContain(
+        'View project in Dependency Track [here](https://dependencytrack.example.com/projects/project-123).'
+      );
     });
 
     it('should create failure status check for failed upload', async () => {
@@ -128,7 +132,6 @@ describe('DependencyTrackStatusService', () => {
       expect(callArgs.output.text).toContain('• Server: https://dependencytrack.example.com');
       expect(callArgs.output.text).toContain('• Error: Connection refused to server');
     });
-
 
     it('should handle minimal success result', async () => {
       const uploadResult: DependencyTrackUploadResult = {
@@ -166,9 +169,11 @@ describe('DependencyTrackStatusService', () => {
       const checkRunId = await service.reportUploadStatus(uploadResult);
 
       expect(checkRunId).toBeNull();
-      expect(warningSpy).toHaveBeenCalledWith('Failed to create Dependency Track upload status check: Error: GitHub API error');
+      expect(warningSpy).toHaveBeenCalledWith(
+        'Failed to create Dependency Track upload status check: Error: GitHub API error'
+      );
       warningSpy.mockRestore();
-      
+
       // Reset mock to return success for other tests
       mockOctokit.rest.checks.create.mockResolvedValue({ data: { id: 12345 } });
     });

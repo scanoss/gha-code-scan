@@ -46,7 +46,7 @@ export interface DependencyTrackUploadResult {
  */
 export class DependencyTrackStatusService {
   private readonly checkName = `${STATUS_NAME}: Dependency Track Upload`;
-  
+
   /**
    * Reports the Dependency Track upload status as a GitHub check run
    * Returns the created check run ID for linking purposes
@@ -54,6 +54,7 @@ export class DependencyTrackStatusService {
   async reportUploadStatus(result: DependencyTrackUploadResult): Promise<number | null> {
     try {
       const octokit = getOctokit(inputs.GITHUB_TOKEN);
+      // eslint-disable-next-line @typescript-eslint/await-thenable
       const sha = await getSHA();
 
       let conclusion: 'success' | 'failure' | 'neutral';
@@ -100,25 +101,23 @@ export class DependencyTrackStatusService {
    * Creates details text for successful upload
    */
   private createSuccessDetails(result: DependencyTrackUploadResult): string {
-    const details = [
-      '**Upload Details:**',
-      `• Project Name: ${result.projectName || 'Unknown'}`,
-    ];
+    const details = ['**Upload Details:**', `• Project Name: ${result.projectName || 'Unknown'}`];
 
     if (result.projectVersion) {
-    details.push(`• Project Version: ${result.projectVersion}`);
+      details.push(`• Project Version: ${result.projectVersion}`);
     }
 
     if (result.projectId) {
       details.push(`• Project ID: ${result.projectId}`);
     }
 
-
     details.push(`• Server: ${inputs.DEPENDENCY_TRACK_URL}`);
 
     if (result.fileSize) {
       const fileSizeKB = (result.fileSize / 1024).toFixed(1);
-      details.push(`• File: scanoss-cyclonedx.json (${fileSizeKB} KB${result.componentsCount ? `, ${result.componentsCount} components` : ''})`);
+      details.push(
+        `• File: scanoss-cyclonedx.json (${fileSizeKB} KB${result.componentsCount ? `, ${result.componentsCount} components` : ''})`
+      );
     }
 
     if (result.uploadTime) {
@@ -126,7 +125,10 @@ export class DependencyTrackStatusService {
     }
 
     if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
-      details.push('', `View project in Dependency Track [here](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId}).`);
+      details.push(
+        '',
+        `View project in Dependency Track [here](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId}).`
+      );
     }
 
     return details.join('\n');
@@ -136,18 +138,11 @@ export class DependencyTrackStatusService {
    * Creates details text for failed upload
    */
   private createFailureDetails(result: DependencyTrackUploadResult): string {
-    const details = [
-      '**Upload Details:**',
-      `• Server: ${inputs.DEPENDENCY_TRACK_URL}`,
-    ];
-
+    const details = ['**Upload Details:**', `• Server: ${inputs.DEPENDENCY_TRACK_URL}`];
     if (result.error) {
       details.push(`• Error: ${result.error}`);
     }
-
     return details.join('\n');
   }
-
 }
-
 export const dependencyTrackStatusService = new DependencyTrackStatusService();

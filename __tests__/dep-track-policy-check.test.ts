@@ -78,7 +78,7 @@ jest.mock('@actions/core', () => ({
 const mockCoreWarning = core.warning as jest.MockedFunction<typeof core.warning>;
 
 describe('DepTrackPolicyCheck', () => {
-  let depTrackPolicyCheck: DepTrackPolicyCheck
+  let depTrackPolicyCheck: DepTrackPolicyCheck;
   const appInput = jest.requireMock('../src/app.input');
   const TEST_DIR = __dirname;
   const TEST_REPO_DIR = path.join(TEST_DIR, 'data');
@@ -103,16 +103,16 @@ describe('DepTrackPolicyCheck', () => {
   // Test: Policy pass
   it('should pass the policy check when no violations are found', async () => {
     // Mock inspect dt pv - success
-     jest.spyOn(exec, 'getExecOutput').mockResolvedValue(
-      new Promise<ExecOutput>(resolve =>{
+    jest.spyOn(exec, 'getExecOutput').mockResolvedValue(
+      new Promise<ExecOutput>(resolve => {
         resolve({
           stdout: 'No policy violations found',
           stderr: 'no violations found',
           exitCode: 0
-        })
-        })
+        });
+      })
     );
-    await depTrackPolicyCheck.start(1)
+    await depTrackPolicyCheck.start(1);
     await depTrackPolicyCheck.run();
     // Expecting success
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Success);
@@ -120,7 +120,6 @@ describe('DepTrackPolicyCheck', () => {
 
   // Test: policy fail
   it('should fail the policy check when violations are found', async () => {
-
     const violationsOutput = `
 # Dependency Track Policy Violations
 
@@ -138,10 +137,9 @@ describe('DepTrackPolicyCheck', () => {
       stderr: 'Policy violations detected',
       exitCode: 2
     });
-    await depTrackPolicyCheck.start(1)
+    await depTrackPolicyCheck.start(1);
     await depTrackPolicyCheck.run();
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.ActionRequired);
-
   }, 10000);
 
   it('should return neutral when policy violations occur and halt on failure is false', async () => {
@@ -156,7 +154,7 @@ describe('DepTrackPolicyCheck', () => {
       stderr: 'Policy violations detected',
       exitCode: 2
     });
-    await depTrackPolicyCheck.start(1)
+    await depTrackPolicyCheck.start(1);
     await depTrackPolicyCheck.run();
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Neutral);
   }, 10000);
@@ -171,38 +169,38 @@ describe('DepTrackPolicyCheck', () => {
   });
 
   it('should handle execution errors gracefully when halt on error is false', async () => {
-    appInput.HALT_ON_ERROR = false
+    appInput.HALT_ON_ERROR = false;
     const mockExecOutput = jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
       stdout: '',
       stderr: 'Connection to Dependency Track failed',
       exitCode: 1
     });
-    await depTrackPolicyCheck.start(1)
+    await depTrackPolicyCheck.start(1);
     await depTrackPolicyCheck.run();
-    
+
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Neutral);
     expect(mockExecOutput).toHaveBeenCalled();
   }, 10000);
 
   it('should fail when technical error occurs and halt on error is true', async () => {
-    appInput.HALT_ON_ERROR = true
+    appInput.HALT_ON_ERROR = true;
     const mockExecOutput = jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
       stdout: '',
       stderr: 'Connection to Dependency Track failed',
       exitCode: 1
     });
-    await depTrackPolicyCheck.start(1)
+    await depTrackPolicyCheck.start(1);
     await depTrackPolicyCheck.run();
-    
+
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Failure);
     expect(mockExecOutput).toHaveBeenCalled();
   }, 10000);
 
   it('should truncate summary when over character limit', async () => {
     const depTrackPolicyCheck = new DepTrackPolicyCheck();
-    
+
     // Mock isOverMaxCharacterLimitAPI to return true
-    const mockIsOverLimit = jest.spyOn(githubService,'isOverMaxCharacterLimitAPI').mockReturnValue(true);
+    const mockIsOverLimit = jest.spyOn(githubService, 'isOverMaxCharacterLimitAPI').mockReturnValue(true);
     jest.doMock('../src/services/github.service', () => ({
       isOverMaxCharacterLimitAPI: mockIsOverLimit
     }));
@@ -213,9 +211,9 @@ describe('DepTrackPolicyCheck', () => {
       exitCode: 2
     });
 
-    await depTrackPolicyCheck.start(1)
+    await depTrackPolicyCheck.start(1);
     await depTrackPolicyCheck.run();
-    
+
     expect(mockIsOverLimit).toHaveBeenCalledWith('Very long summary that exceeds limits');
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.ActionRequired);
   }, 10000);
@@ -240,7 +238,9 @@ describe('DepTrackPolicyCheck', () => {
     await depTrackPolicyCheck.start(1);
     await depTrackPolicyCheck.run();
 
-    expect(mockCoreWarning).toHaveBeenCalledWith('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
+    expect(mockCoreWarning).toHaveBeenCalledWith(
+      'No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues'
+    );
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Success);
     expect(capturedSummary).toContain(':warning: **Warning**: SBOM upload to Dependency Track was not attempted');
     expect(capturedSummary).toContain('**To enable Dependency Track upload:**');
@@ -273,7 +273,9 @@ describe('DepTrackPolicyCheck', () => {
     await depTrackPolicyCheck.start(1);
     await depTrackPolicyCheck.run();
 
-    expect(mockCoreWarning).toHaveBeenCalledWith('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
+    expect(mockCoreWarning).toHaveBeenCalledWith(
+      'Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated'
+    );
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.ActionRequired);
     expect(capturedDetails).toContain(':warning: **Warning**: SBOM upload to Dependency Track was not attempted');
     expect(capturedDetails).toContain('**To enable Dependency Track upload:**');
@@ -299,21 +301,23 @@ describe('DepTrackPolicyCheck', () => {
     await depTrackPolicyCheck.start(1);
     await depTrackPolicyCheck.run();
 
-    expect(mockCoreWarning).not.toHaveBeenCalledWith(expect.stringContaining('upload to Dependency Track was not attempted'));
+    expect(mockCoreWarning).not.toHaveBeenCalledWith(
+      expect.stringContaining('upload to Dependency Track was not attempted')
+    );
     expect(depTrackPolicyCheck.conclusion).toBe(CONCLUSION.Success);
     expect(capturedSummary).not.toContain(':warning: **Warning**: SBOM upload to Dependency Track was not attempted');
   }, 10000);
 
   it('should test setUploadAttempted method', () => {
     const depTrackPolicyCheck = new DepTrackPolicyCheck();
-    
+
     // Default should be true
     expect((depTrackPolicyCheck as any).uploadAttempted).toBe(true);
-    
+
     // Set to false
     depTrackPolicyCheck.setUploadAttempted(false);
     expect((depTrackPolicyCheck as any).uploadAttempted).toBe(false);
-    
+
     // Set back to true
     depTrackPolicyCheck.setUploadAttempted(true);
     expect((depTrackPolicyCheck as any).uploadAttempted).toBe(true);

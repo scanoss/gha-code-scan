@@ -70,7 +70,10 @@ View more details on [SCANOSS Action Summary](${context.serverUrl}/${context.rep
  * Generates and publishes a detailed job summary to GitHub Actions.
  * Creates visual reports with license distributions, component summaries, policy results, and Dependency Track upload status.
  */
-export async function generateJobSummary(policies: PolicyCheck[], uploadResult?: DependencyTrackUploadResult): Promise<void> {
+export async function generateJobSummary(
+  policies: PolicyCheck[],
+  uploadResult?: DependencyTrackUploadResult
+): Promise<void> {
   const licenseSummary = await getLicenseSummary();
   licenseSummary.licenses.sort((l1, l2) => l2.componentCount - l1.componentCount);
   const LicensesPie = (items: License[]): string => {
@@ -129,8 +132,7 @@ export async function generateJobSummary(policies: PolicyCheck[], uploadResult?:
     } else {
       statusIcon = ':x:';
     }
-
-    // Generate link to GitHub status check details 
+    // Generate link to GitHub status check details
     // Use specific job ID if available, otherwise fallback to general run page
     let statusCheckUrl: string;
     if (uploadResult.checkRunId) {
@@ -140,7 +142,6 @@ export async function generateJobSummary(policies: PolicyCheck[], uploadResult?:
       const firstRunId = await getFirstRunId();
       statusCheckUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${firstRunId}`;
     }
-    
     ROWS.push(['Dependency Track Upload', statusIcon, `[More Details](${statusCheckUrl})`]);
 
     return generateTable(HEADERS, ROWS);
@@ -158,12 +159,10 @@ export async function generateJobSummary(policies: PolicyCheck[], uploadResult?:
 
     const HEADERS = ['Resource', 'Link'];
     const ROWS: string[][] = [];
-
     const projectId = uploadResult.projectId || inputs.DEPENDENCY_TRACK_PROJECT_ID;
     const projectUrl = `${inputs.DEPENDENCY_TRACK_URL}/projects/${projectId}`;
-    
-    ROWS.push(['Dependency Track Project', `[View Project](${projectUrl})`]);
 
+    ROWS.push(['Dependency Track Project', `[View Project](${projectUrl})`]);
     return generateTable(HEADERS, ROWS);
   };
 
@@ -185,14 +184,11 @@ export async function generateJobSummary(policies: PolicyCheck[], uploadResult?:
   if (uploadResult) {
     const statusChecksTable = await StatusChecksTable(uploadResult);
     const linksTable = LinksTable(uploadResult);
-    
     if (statusChecksTable || linksTable) {
       summary.addSeparator().addHeading('Details', 3);
-      
       if (statusChecksTable) {
         summary.addHeading('Status Checks', 4).addRaw(statusChecksTable);
       }
-      
       if (linksTable) {
         summary.addHeading('Links', 4).addRaw(linksTable);
       }

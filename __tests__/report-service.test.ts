@@ -45,7 +45,7 @@ jest.mock('../src/app.input', () => ({
 describe('Test report service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     jest.spyOn(github.context, 'repo', 'get').mockReturnValue({ owner: 'x', repo: 'y' });
     jest.spyOn(core.summary, 'write').mockImplementation();
     jest.spyOn(core.summary, 'addHeading').mockImplementation(() => core.summary);
@@ -53,7 +53,7 @@ describe('Test report service', () => {
     jest.spyOn(core.summary, 'addRaw').mockImplementation(() => core.summary);
     jest.spyOn(core.summary, 'addSeparator').mockImplementation(() => core.summary);
     github.context.runId = 0;
-    
+
     const appInput = jest.requireMock('../src/app.input');
     const TEST_DIR = __dirname;
     const TEST_REPO_DIR = path.join(TEST_DIR, 'data');
@@ -66,16 +66,26 @@ describe('Test report service', () => {
     // Mock the exec.getExecOutput calls that these services will make
     const mockExec = jest.spyOn(exec, 'getExecOutput');
     mockExec.mockClear();
-    
+
     // Create a sequence of responses - each test will get fresh responses
     mockExec
       // License summary calls (multiple tests need this)
       .mockResolvedValue({
         stdout: JSON.stringify({
           licenses: [
-            { spdxid: "MIT", copyleft: false, url: "https://spdx.org/licenses/MIT.html", componentCount: 1 },
-            { spdxid: "Apache-2.0", copyleft: false, url: "https://spdx.org/licenses/Apache-2.0.html", componentCount: 1 },
-            { spdxid: "GPL-2.0-only", copyleft: true, url: "https://spdx.org/licenses/GPL-2.0-only.html", componentCount: 1 }
+            { spdxid: 'MIT', copyleft: false, url: 'https://spdx.org/licenses/MIT.html', componentCount: 1 },
+            {
+              spdxid: 'Apache-2.0',
+              copyleft: false,
+              url: 'https://spdx.org/licenses/Apache-2.0.html',
+              componentCount: 1
+            },
+            {
+              spdxid: 'GPL-2.0-only',
+              copyleft: true,
+              url: 'https://spdx.org/licenses/GPL-2.0-only.html',
+              componentCount: 1
+            }
           ],
           detectedLicenses: 3,
           detectedLicensesWithCopyleft: 1,
@@ -109,12 +119,12 @@ describe('Test report service', () => {
     };
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
-    
+
     // Verify that the summary was called with the Details section and subsections
     expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
-    
+
     // Verify that the project link was included in the Links table
     expect(core.summary.addRaw).toHaveBeenCalledWith(
       expect.stringContaining('[View Project](https://dt.example.com/projects/abc-123-def)')
@@ -129,12 +139,12 @@ describe('Test report service', () => {
     };
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
-    
+
     // Verify that the summary was called with the Details section and subsections
     expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
-    
+
     // Verify that the project link is still shown even when disabled
     expect(core.summary.addRaw).toHaveBeenCalledWith(
       expect.stringContaining('[View Project](https://dt.example.com/projects/disabled-project-123)')
@@ -150,12 +160,12 @@ describe('Test report service', () => {
     };
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
-    
+
     // Verify that the summary was called with the Details section and subsections
     expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
-    
+
     // Verify that the project link appears even for failed uploads
     expect(core.summary.addRaw).toHaveBeenCalledWith(
       expect.stringContaining('[View Project](https://dt.example.com/projects/failed-project-456)')
@@ -170,12 +180,12 @@ describe('Test report service', () => {
     };
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
-    
+
     // Verify that the summary was called with the Details section and subsections
     expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
-    
+
     // Verify that the project link from configuration is included
     expect(core.summary.addRaw).toHaveBeenCalledWith(
       expect.stringContaining('[View Project](https://dt.example.com/projects/config-project-789)')

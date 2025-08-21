@@ -101,7 +101,8 @@ describe('UndeclaredPolicyCheck', () => {
 
     // Mock exec.getExecOutput to simulate undeclared components found
     jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
-      stdout: '## Undeclared Components Found\n\n- wfp@6afc1f6 found in crc32c.c but not declared in SBOM\n- scanner.c@1.3.3 found in json.c but not declared in SBOM',
+      stdout:
+        '## Undeclared Components Found\n\n- wfp@6afc1f6 found in crc32c.c but not declared in SBOM\n- scanner.c@1.3.3 found in json.c but not declared in SBOM',
       stderr: 'Undeclared components detected in scan results',
       exitCode: 2
     });
@@ -152,12 +153,14 @@ describe('UndeclaredPolicyCheck', () => {
     });
 
     await undeclaredPolicyCheck.run();
-    
+
     expect(undeclaredPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
     // Verify error message sanitization
-    expect(debugSpy).toHaveBeenCalledWith('Undeclared policy check stderr: Docker connection failed with sensitive details');
+    expect(debugSpy).toHaveBeenCalledWith(
+      'Undeclared policy check stderr: Docker connection failed with sensitive details'
+    );
     expect(warningSpy).toHaveBeenCalledWith('Undeclared policy check encountered an error');
-    
+
     debugSpy.mockRestore();
     warningSpy.mockRestore();
   }, 10000);

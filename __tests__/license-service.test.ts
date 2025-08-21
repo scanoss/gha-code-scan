@@ -52,14 +52,19 @@ describe('Test license service', () => {
     // Mock exec.getExecOutput to return license summary
     const mockLicenseSummary = {
       licenses: [
-        { spdxid: "MIT", copyleft: false, url: "https://spdx.org/licenses/MIT.html", componentCount: 1 },
-        { spdxid: "Apache-2.0", copyleft: false, url: "https://spdx.org/licenses/Apache-2.0.html", componentCount: 1 },
-        { spdxid: "GPL-2.0-only", copyleft: true, url: "https://spdx.org/licenses/GPL-2.0-only.html", componentCount: 1 }
+        { spdxid: 'MIT', copyleft: false, url: 'https://spdx.org/licenses/MIT.html', componentCount: 1 },
+        { spdxid: 'Apache-2.0', copyleft: false, url: 'https://spdx.org/licenses/Apache-2.0.html', componentCount: 1 },
+        {
+          spdxid: 'GPL-2.0-only',
+          copyleft: true,
+          url: 'https://spdx.org/licenses/GPL-2.0-only.html',
+          componentCount: 1
+        }
       ],
       detectedLicenses: 3,
       detectedLicensesWithCopyleft: 1
     };
-    
+
     jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
       stdout: JSON.stringify(mockLicenseSummary),
       stderr: '',

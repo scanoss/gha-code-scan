@@ -23,7 +23,7 @@
 
 import * as core from '@actions/core';
 import { CHECK_NAME } from '../app.config';
-import { PolicyCheck, CONCLUSION } from './policy-check';
+import { PolicyCheck } from './policy-check';
 import { EXECUTABLE } from '../app.input';
 import * as exec from '@actions/exec';
 import { DependencyTrackArgumentBuilder } from './argument_builders/dependency_track/dep-track-argument-builder';
@@ -41,7 +41,7 @@ import * as inputs from '../app.input';
 export class DepTrackPolicyCheck extends PolicyCheck {
   static policyName = 'Dependency Track';
   private argumentBuilder: ArgumentBuilder;
-  private uploadAttempted: boolean = true;
+  private uploadAttempted = true;
 
   constructor(argumentBuilder: DependencyTrackArgumentBuilder = new DependencyTrackArgumentBuilder()) {
     super(`${CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
@@ -60,7 +60,6 @@ export class DepTrackPolicyCheck extends PolicyCheck {
    */
   private parseError(stderr: string): { message: string; details: string } {
     const lowerStderr = stderr.toLowerCase();
-    
     // Determine error type based on stderr content
     const getErrorType = (): string => {
       if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
@@ -85,49 +84,54 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       case 'CONNECTION_ERROR':
         return {
           message: 'Cannot connect to Dependency Track server',
-          details: `Connection failed to: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+          details:
+            `Connection failed to: ${inputs.DEPENDENCY_TRACK_URL}\n` +
             `• Server may not be running\n` +
             `• URL may be incorrect\n` +
             `• Network connectivity issues`
         };
-        
+
       case 'AUTH_ERROR':
         return {
           message: 'Authentication failed with Dependency Track',
-          details: `Authentication error for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+          details:
+            `Authentication error for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
             `• API key may be invalid\n` +
             `• API key may be expired\n` +
             `• Check user permissions`
         };
-        
+
       case 'NOT_FOUND_ERROR':
         return {
           message: 'Dependency Track endpoint not found',
-          details: `Endpoint not found: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+          details:
+            `Endpoint not found: ${inputs.DEPENDENCY_TRACK_URL}\n` +
             `• URL may be incorrect\n` +
             `• API endpoint may not exist\n` +
             `• Check Dependency Track version`
         };
-        
+
       case 'PROJECT_NOT_FOUND':
         return {
           message: 'Project not found in Dependency Track',
-          details: `Project not found:\n` +
+          details:
+            `Project not found:\n` +
             `• Project ID: ${inputs.DEPENDENCY_TRACK_PROJECT_ID || 'Not specified'}\n` +
             `• Project Name: ${inputs.DEPENDENCY_TRACK_PROJECT_NAME || 'Not specified'}\n` +
             `• Upload Token: ${inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN ? 'Present' : 'Not specified'}\n` +
             `Solutions: Create project in Dependency Track first`
         };
-        
+
       case 'TIMEOUT_ERROR':
         return {
           message: 'Dependency Track server timeout',
-          details: `Server timeout for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+          details:
+            `Server timeout for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
             `• Server may be overloaded\n` +
             `• Network latency issues\n` +
             `• Try again later`
         };
-        
+
       default:
         return {
           message: 'Unable to complete Dependency Track policy check',
@@ -142,12 +146,12 @@ export class DepTrackPolicyCheck extends PolicyCheck {
   private isInformationalMessage(stderr: string): boolean {
     const lowerStderr = stderr.toLowerCase();
     return (
-      lowerStderr.includes('policy violations were found') ||     // Status message, not error
-      lowerStderr.includes('policy violations detected') ||       // Status message, not error
-      lowerStderr.includes('no violations found') ||              // Status message, not error
-      lowerStderr.includes('violations detected') ||              // General status message
-      lowerStderr.includes('policy check') ||                     // General policy status
-      lowerStderr.includes('error details')                       // Generic error placeholder
+      lowerStderr.includes('policy violations were found') || // Status message, not error
+      lowerStderr.includes('policy violations detected') || // Status message, not error
+      lowerStderr.includes('no violations found') || // Status message, not error
+      lowerStderr.includes('violations detected') || // General status message
+      lowerStderr.includes('policy check') || // General policy status
+      lowerStderr.includes('error details') // Generic error placeholder
     );
   }
 
@@ -185,8 +189,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       const missingProjectParams: string[] = [];
       if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME && !inputs.DEPENDENCY_TRACK_PROJECT_VERSION) {
         missingProjectParams.push('Either deptrack.projectid or BOTH deptrack.projectname AND deptrack.projectversion');
-      }
-      else if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME) missingProjectParams.push('deptrack.projectname');
+      } else if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME) missingProjectParams.push('deptrack.projectname');
       else if (!inputs.DEPENDENCY_TRACK_PROJECT_VERSION) missingProjectParams.push('deptrack.projectversion');
 
       if (missingProjectParams.length > 0) {
@@ -197,16 +200,16 @@ export class DepTrackPolicyCheck extends PolicyCheck {
     if (missingParams.length > 0) {
       throw new Error(
         `Dependency Track Policy Check Failed: Required parameters are missing.\n` +
-        `Missing: ${missingParams.join(', ')}\n` +
-        `Please set these parameters in your workflow configuration.`
+          `Missing: ${missingParams.join(', ')}\n` +
+          `Please set these parameters in your workflow configuration.`
       );
     }
 
     if (invalidParams.length > 0) {
       throw new Error(
         `Dependency Track Policy Check Failed: Invalid parameter values.\n` +
-        `Invalid: ${invalidParams.join(', ')}\n` +
-        `Please check your parameter values and try again.`
+          `Invalid: ${invalidParams.join(', ')}\n` +
+          `Please check your parameter values and try again.`
       );
     }
   }
@@ -221,33 +224,36 @@ export class DepTrackPolicyCheck extends PolicyCheck {
 
       // Validate configuration before running
       this.validatePolicyConfiguration();
-      
+
       const args = await this.argumentBuilder.build();
       const options = {
         failOnStdErr: false,
         ignoreReturnCode: true,
-        silent: true  // Capture output silently, then selectively display
+        silent: true // Capture output silently, then selectively display
       };
 
       const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
-      
+
       // Display stdout (policy results) unless it's empty
       if (stdout && stdout.trim()) {
         core.info(stdout);
       }
-      
+
       // Only display stderr if it's a real error, not informational messages
       if (stderr && !this.isInformationalMessage(stderr)) {
         core.error(stderr); // Display real errors to user
       }
       let summary = stdout;
       let details = stderr;
-    
+
       if (exitCode === 0) {
         let successMessage = '### :white_check_mark: Policy Pass \n #### No policy violations were found';
         if (!this.uploadAttempted) {
-          core.warning('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
-          successMessage += '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. Results may not reflect latest changes.';
+          core.warning(
+            'No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues'
+          );
+          successMessage +=
+            '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. Results may not reflect latest changes.';
           successMessage += this.getUploadConfigurationHelp();
         }
         await this.success(successMessage, undefined);
@@ -273,8 +279,11 @@ export class DepTrackPolicyCheck extends PolicyCheck {
 
       // exitCode === 2 means policy violations found
       if (!this.uploadAttempted) {
-        core.warning('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
-        const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.';
+        core.warning(
+          'Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated'
+        );
+        const uploadWarning =
+          '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.';
         const configHelp = this.getUploadConfigurationHelp();
         details = stderr + uploadWarning + configHelp;
       }
@@ -284,7 +293,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
         const projectLink = `\n\nView project in Dependency Track [here](${inputs.DEPENDENCY_TRACK_URL}/projects/${inputs.DEPENDENCY_TRACK_PROJECT_ID}).`;
         details = details + projectLink;
       }
-      
+
       const { id } = await this.uploadArtifact(stdout);
       core.debug(`Dependency Track Artifact ID: ${id}`);
       if (id) {
@@ -328,7 +337,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       '• Set `deptrack.upload: true` in your workflow',
       '• Configure required parameters:',
       '  - `deptrack.url`',
-      '  - `deptrack.apikey`', 
+      '  - `deptrack.apikey`',
       '  - `deptrack.projectid` OR (`deptrack.projectname` + `deptrack.projectversion`)'
     ].join('\n');
   }

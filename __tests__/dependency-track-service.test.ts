@@ -85,7 +85,7 @@ describe('Dependency track service', () => {
 
     const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
     const result = (service as any).validateConfiguration();
-    
+
     expect(result).toBe(false);
     expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Required parameters are missing'));
     warningSpy.mockRestore();
@@ -107,7 +107,7 @@ describe('Dependency track service', () => {
 
     const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
     const result = (service as any).validateConfiguration();
-    
+
     expect(result).toBe(false);
     expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Project identification is incomplete'));
     warningSpy.mockRestore();
@@ -129,7 +129,7 @@ describe('Dependency track service', () => {
 
     const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
     const result = (service as any).validateConfiguration();
-    
+
     expect(result).toBe(false);
     expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Project identification is incomplete'));
     warningSpy.mockRestore();
@@ -145,10 +145,10 @@ describe('Dependency track service', () => {
       projectName: dependencyTrackProjectName,
       projectVersion: dependencyTrackProjectVersion
     });
-    
+
     const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
     const result = (service as any).validateConfiguration();
-    
+
     expect(result).toBe(false);
     expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid parameter values'));
     warningSpy.mockRestore();
@@ -164,10 +164,10 @@ describe('Dependency track service', () => {
       projectName: dependencyTrackProjectName,
       projectVersion: dependencyTrackProjectVersion
     });
-    
+
     const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
     const result = (service as any).validateConfiguration();
-    
+
     expect(result).toBe(false);
     expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid parameter values'));
     warningSpy.mockRestore();
@@ -183,10 +183,10 @@ describe('Dependency track service', () => {
       projectName: dependencyTrackProjectName,
       projectVersion: dependencyTrackProjectVersion
     });
-    
+
     const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
     const result = (service as any).validateConfiguration();
-    
+
     expect(result).toBe(false);
     expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid parameter values'));
     warningSpy.mockRestore();
@@ -202,10 +202,10 @@ describe('Dependency track service', () => {
       projectName: dependencyTrackProjectName,
       projectVersion: dependencyTrackProjectVersion
     });
-    
+
     const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
     const result = (service as any).validateConfiguration();
-    
+
     expect(result).toBe(false);
     expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Required parameters are missing'));
     warningSpy.mockRestore();
@@ -261,7 +261,7 @@ describe('Dependency track service', () => {
   it('should return validation error when upload fails due to validation errors', async () => {
     const service = new DependencyTrackService({
       enabled: true,
-      url: '',  // Invalid URL to trigger validation error
+      url: '', // Invalid URL to trigger validation error
       apiKey: dependencyTrackAPIKey,
       projectId: dependencyTrackProjectID,
       projectName: dependencyTrackProjectName,
@@ -278,16 +278,16 @@ describe('Dependency track service', () => {
     // Mock file system operations to fail
     jest.spyOn(require('fs').promises, 'stat').mockRejectedValue(new Error('File not found'));
     mockReadFile.mockRejectedValue(new Error('File not found'));
-    
+
     // Mock successful upload execution despite file read error
     mockGetExecOutput.mockResolvedValue({
       stdout: JSON.stringify({ token: 'upload-token', project_uuid: 'project-id' }),
       stderr: '',
       exitCode: 0
     });
-    
+
     const debugSpy = jest.spyOn(require('@actions/core'), 'debug').mockImplementation();
-    
+
     const service = new DependencyTrackService({
       enabled: true,
       url: dependencyTrackURL,
@@ -298,7 +298,7 @@ describe('Dependency track service', () => {
     });
 
     const result = await service.uploadToDependencyTrack();
-    
+
     // Should still succeed because file read errors are only for metadata
     expect(result.success).toBe(true);
     expect(result.enabled).toBe(true);
@@ -307,7 +307,7 @@ describe('Dependency track service', () => {
     expect(result.componentsCount).toBeUndefined();
     // Should have logged the debug message about file read error
     expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Could not read SBOM file details'));
-    
+
     debugSpy.mockRestore();
   });
 
@@ -315,13 +315,13 @@ describe('Dependency track service', () => {
     // Mock file system operations
     const mockStats = { size: 2048 };
     const mockCycloneDxData = {
-      bomFormat: "CycloneDX",
-      components: [{ name: "test-comp" }, { name: "test-comp2" }]
+      bomFormat: 'CycloneDX',
+      components: [{ name: 'test-comp' }, { name: 'test-comp2' }]
     };
-    
+
     jest.spyOn(require('fs').promises, 'stat').mockResolvedValue(mockStats);
     mockReadFile.mockResolvedValue(JSON.stringify(mockCycloneDxData));
-    
+
     mockGetExecOutput.mockResolvedValue({
       stdout: JSON.stringify({ token: 'upload-token', project_uuid: 'project-id' }),
       stderr: '',
@@ -375,7 +375,7 @@ describe('Dependency track service', () => {
       mockGetExecOutput.mockResolvedValue({
         stdout: '{"token": "test-token", "project_uuid": "test-uuid"}',
         stderr: 'Warning: Connection to sensitive-server.com:8080 with API key abc123',
-        exitCode: 0  // Success but with warning stderr
+        exitCode: 0 // Success but with warning stderr
       });
 
       const service = new DependencyTrackService({
@@ -395,10 +395,14 @@ describe('Dependency track service', () => {
       // Should return true since exitCode is 0 (success with warnings)
       expect(result.success).toBe(true);
       // Should log raw stderr to debug only
-      expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Warning: Connection to sensitive-server.com:8080'));
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Warning: Connection to sensitive-server.com:8080')
+      );
       // Should show warning about stderr content
-      expect(warningSpy).toHaveBeenCalledWith('Dependency Track upload completed with warnings. Check debug logs for details.');
-      
+      expect(warningSpy).toHaveBeenCalledWith(
+        'Dependency Track upload completed with warnings. Check debug logs for details.'
+      );
+
       debugSpy.mockRestore();
       warningSpy.mockRestore();
     });
@@ -407,7 +411,7 @@ describe('Dependency track service', () => {
       mockGetExecOutput.mockResolvedValue({
         stdout: '{"token": "test-token", "project_uuid": "test-uuid"}',
         stderr: 'Reading SBOM file: ./scanoss-cyclonedx.json',
-        exitCode: 0  // Success with harmless info message
+        exitCode: 0 // Success with harmless info message
       });
 
       const service = new DependencyTrackService({
@@ -430,7 +434,7 @@ describe('Dependency track service', () => {
       expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Reading SBOM file:'));
       // Should NOT show warning for harmless info messages
       expect(warningSpy).not.toHaveBeenCalled();
-      
+
       debugSpy.mockRestore();
       warningSpy.mockRestore();
     });
@@ -469,7 +473,7 @@ describe('Dependency track service', () => {
       // Test the private parseUploadError method via reflection
       const parseMethod = (service as any).parseUploadError.bind(service);
       const result = parseMethod('Connection refused to server');
-      
+
       expect(result).toContain('Cannot connect to Dependency Track server');
       expect(result).toContain('Server is not reachable');
       expect(result).not.toContain('Connection refused to server'); // Raw stderr should not be in result
@@ -487,7 +491,7 @@ describe('Dependency track service', () => {
 
       const parseMethod = (service as any).parseUploadError.bind(service);
       const result = parseMethod('401 Unauthorized invalid api key abc123');
-      
+
       expect(result).toContain('Authentication failed with Dependency Track server');
       expect(result).toContain('Invalid or missing API key');
       expect(result).not.toContain('401 Unauthorized invalid api key abc123');
@@ -505,7 +509,7 @@ describe('Dependency track service', () => {
 
       const parseMethod = (service as any).parseUploadError.bind(service);
       const result = parseMethod('Request timed out after 30 seconds');
-      
+
       expect(result).toContain('Connection to Dependency Track server timed out');
       expect(result).toContain('Server is too slow to respond');
       expect(result).not.toContain('timed out after 30 seconds');
@@ -523,7 +527,7 @@ describe('Dependency track service', () => {
 
       const parseMethod = (service as any).parseUploadError.bind(service);
       const result = parseMethod('SSL certificate verification failed');
-      
+
       expect(result).toContain('SSL/TLS connection error with Dependency Track server');
       expect(result).toContain('SSL certificate validation failed');
       expect(result).not.toContain('SSL certificate verification failed');
@@ -541,7 +545,7 @@ describe('Dependency track service', () => {
 
       const parseMethod = (service as any).parseUploadError.bind(service);
       const result = parseMethod('404 Not Found - endpoint does not exist');
-      
+
       expect(result).toContain('Dependency Track server endpoint not found');
       expect(result).toContain('Server endpoint does not exist');
       expect(result).not.toContain('404 Not Found - endpoint does not exist');
@@ -559,7 +563,7 @@ describe('Dependency track service', () => {
 
       const parseMethod = (service as any).parseUploadError.bind(service);
       const result = parseMethod('Project abc123 not found in system');
-      
+
       expect(result).toContain('Project not found in Dependency Track');
       expect(result).toContain('Verify project exists');
       expect(result).not.toContain('Project abc123 not found in system');
@@ -577,7 +581,7 @@ describe('Dependency track service', () => {
 
       const parseMethod = (service as any).parseUploadError.bind(service);
       const result = parseMethod('403 Forbidden - insufficient permissions');
-      
+
       expect(result).toContain('Access forbidden to Dependency Track resource');
       expect(result).toContain('Insufficient permissions');
       expect(result).not.toContain('403 Forbidden - insufficient permissions');
@@ -595,7 +599,7 @@ describe('Dependency track service', () => {
 
       const parseMethod = (service as any).parseUploadError.bind(service);
       const result = parseMethod('Some unexpected error occurred');
-      
+
       expect(result).toContain('Dependency Track upload failed with error');
       expect(result).toContain('Some unexpected error occurred');
       expect(result).toContain('Troubleshooting');

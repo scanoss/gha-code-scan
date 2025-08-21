@@ -43,7 +43,7 @@ export interface DependencyTrackOptions {
  * Handles SBOM upload and project management within Dependency Track instances.
  */
 export class DependencyTrackService {
-  private readonly MINIMUM_APIKEY_LENGTH = 10
+  private readonly MINIMUM_APIKEY_LENGTH = 10;
   private options: DependencyTrackOptions;
 
   constructor(options?: DependencyTrackOptions) {
@@ -90,8 +90,8 @@ export class DependencyTrackService {
     if (missingParams.length > 0) {
       core.warning(
         `Dependency Track upload skipped: Required parameters are missing.\n` +
-        `Missing: ${missingParams.join(', ')}\n` +
-        `Please set these parameters in your workflow configuration.`
+          `Missing: ${missingParams.join(', ')}\n` +
+          `Please set these parameters in your workflow configuration.`
       );
       return false;
     }
@@ -99,8 +99,8 @@ export class DependencyTrackService {
     if (invalidParams.length > 0) {
       core.warning(
         `Dependency Track upload skipped: Invalid parameter values.\n` +
-        `Invalid: ${invalidParams.join(', ')}\n` +
-        `Please check your parameter values and try again.`
+          `Invalid: ${invalidParams.join(', ')}\n` +
+          `Please check your parameter values and try again.`
       );
       return false;
     }
@@ -115,15 +115,14 @@ export class DependencyTrackService {
       if (missingProjectParams.length > 0) {
         core.warning(
           `Dependency Track upload skipped: Project identification is incomplete.\n` +
-          `You must provide EITHER:\n` +
-          `  • deptrack.projectid (for existing projects), OR\n` +
-          `  • Both deptrack.projectname AND deptrack.projectversion (to create/find projects)\n\n` +
-          `Missing: ${missingProjectParams.join(', ')}`
+            `You must provide EITHER:\n` +
+            `  • deptrack.projectid (for existing projects), OR\n` +
+            `  • Both deptrack.projectname AND deptrack.projectversion (to create/find projects)\n\n` +
+            `Missing: ${missingProjectParams.join(', ')}`
         );
         return false;
       }
     }
-    
     return true;
   }
 
@@ -133,7 +132,6 @@ export class DependencyTrackService {
    */
   async uploadToDependencyTrack(): Promise<DependencyTrackUploadResult> {
     const startTime = Date.now();
-    
     try {
       if (!this.options.enabled) {
         core.debug('Dependency Track upload is disabled');
@@ -142,7 +140,6 @@ export class DependencyTrackService {
           enabled: false
         };
       }
-      
       if (!this.validateConfiguration()) {
         return {
           success: false,
@@ -150,15 +147,12 @@ export class DependencyTrackService {
           error: 'Configuration validation failed'
         };
       }
-
       // Get file information before upload
       let fileSize: number | undefined;
       let componentsCount: number | undefined;
-      
       try {
         const stats = await fs.promises.stat(CYCLONEDX_FILE_NAME);
         fileSize = stats.size;
-        
         // Try to get component count from CycloneDX file
         const cycloneDxContent = await fs.promises.readFile(CYCLONEDX_FILE_NAME, 'utf-8');
         const cycloneDxData = JSON.parse(cycloneDxContent);
@@ -166,11 +160,9 @@ export class DependencyTrackService {
       } catch (fileError) {
         core.debug(`Could not read SBOM file details: ${fileError}`);
       }
-
       core.info('Starting Dependency Track upload process...');
       const uploadError = await this.uploadCycloneDXToDependencyTrack();
       const uploadTime = (Date.now() - startTime) / 1000;
-      
       if (uploadError) {
         core.error(uploadError.message);
         return {
@@ -184,7 +176,6 @@ export class DependencyTrackService {
           uploadTime
         };
       }
-      
       return {
         success: true,
         enabled: true,
@@ -207,28 +198,21 @@ export class DependencyTrackService {
       };
     }
   }
-
-  /**
-   * Legacy method for backward compatibility - returns boolean success status
-   * @deprecated Use uploadToDependencyTrack() which returns DependencyTrackUploadResult
-   */
-  async uploadToDependencyTrackLegacy(): Promise<boolean> {
-    const result = await this.uploadToDependencyTrack();
-    return result.success;
-  }
-
   /**
    * Parse upload error and return appropriate error message
    */
   private parseUploadError(stderr: string): string {
     const lowerStderr = stderr.toLowerCase();
-    
     // Determine error type based on stderr content
     const getErrorType = (): string => {
       if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
         return 'CONNECTION_ERROR';
       }
-      if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized') || lowerStderr.includes('invalid api key')) {
+      if (
+        lowerStderr.includes('401') ||
+        lowerStderr.includes('unauthorized') ||
+        lowerStderr.includes('invalid api key')
+      ) {
         return 'AUTH_ERROR';
       }
       if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
@@ -248,57 +232,71 @@ export class DependencyTrackService {
       }
       return 'GENERIC_ERROR';
     };
-
     switch (getErrorType()) {
       case 'CONNECTION_ERROR':
-        return `Cannot connect to Dependency Track server.\n` +
+        return (
+          `Cannot connect to Dependency Track server.\n` +
           `• URL: ${this.options.url}\n` +
           `• Issue: Server is not reachable\n` +
-          `• Solutions: Verify the URL, check network connectivity, ensure server is running`;
-          
+          `• Solutions: Verify the URL, check network connectivity, ensure server is running`
+        );
       case 'AUTH_ERROR':
-        return `Authentication failed with Dependency Track server.\n` +
+        return (
+          `Authentication failed with Dependency Track server.\n` +
           `• URL: ${this.options.url}\n` +
           `• Issue: Invalid or missing API key\n` +
-          `• Solutions: Verify your API key, check user permissions in Dependency Track`;
-          
+          `• Solutions: Verify your API key, check user permissions in Dependency Track`
+        );
+
       case 'NOT_FOUND_ERROR':
-        return `Dependency Track server endpoint not found.\n` +
+        return (
+          `Dependency Track server endpoint not found.\n` +
           `• URL: ${this.options.url}\n` +
           `• Issue: Server endpoint does not exist\n` +
-          `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`;
-          
+          `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`
+        );
+
       case 'TIMEOUT_ERROR':
-        return `Connection to Dependency Track server timed out.\n` +
+        return (
+          `Connection to Dependency Track server timed out.\n` +
           `• URL: ${this.options.url}\n` +
           `• Issue: Server is too slow to respond\n` +
-          `• Solutions: Check network connectivity, verify server performance, try again later`;
-          
+          `• Solutions: Check network connectivity, verify server performance, try again later`
+        );
+
       case 'SSL_ERROR':
-        return `SSL/TLS connection error with Dependency Track server.\n` +
+        return (
+          `SSL/TLS connection error with Dependency Track server.\n` +
           `• URL: ${this.options.url}\n` +
           `• Issue: SSL certificate validation failed\n` +
-          `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`;
-          
+          `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`
+        );
+
       case 'PROJECT_NOT_FOUND':
-        return `Project not found in Dependency Track.\n` +
+        return (
+          `Project not found in Dependency Track.\n` +
           `• Project ID: ${this.options.projectId || 'Not specified'}\n` +
           `• Project Name: ${this.options.projectName || 'Not specified'}\n` +
-          `• Solutions: Verify project exists, check project ID/name, create project first`;
-          
+          `• Solutions: Verify project exists, check project ID/name, create project first`
+        );
+
       case 'FORBIDDEN_ERROR':
-        return `Access forbidden to Dependency Track resource.\n` +
+        return (
+          `Access forbidden to Dependency Track resource.\n` +
           `• URL: ${this.options.url}\n` +
           `• Issue: Insufficient permissions\n` +
-          `• Solutions: Check API key permissions, verify user role in Dependency Track`;
-          
+          `• Solutions: Check API key permissions, verify user role in Dependency Track`
+        );
+
       default:
-        return `Dependency Track upload failed with error:\n${stderr}\n\n` +
+        return (
+          `Dependency Track upload failed with error:\n${stderr}\n\n` +
           `Troubleshooting:\n` +
           `• Verify URL: ${this.options.url}\n` +
           `• Check that the server is running and accessible\n` +
           `• Ensure API key is valid and has proper permissions\n` +
-          `• Verify project exists or can be created automatically`;
+          `• Verify project exists or can be created automatically`
+        );
     }
   }
 
@@ -330,7 +328,7 @@ export class DependencyTrackService {
     const options = {
       failOnStdErr: false,
       ignoreReturnCode: true,
-      silent: true  // Suppress automatic output, we'll handle errors cleanly
+      silent: true // Suppress automatic output, we'll handle errors cleanly
     };
 
     const { stderr, stdout, exitCode } = await exec.getExecOutput(
@@ -338,34 +336,36 @@ export class DependencyTrackService {
       this.buildDependencyTrackUploadParameters(),
       options
     );
-    
+
     if (exitCode !== 0) {
       let errorMessage;
-      
+
       if (stderr) {
         errorMessage = this.parseUploadError(stderr);
       } else {
-        errorMessage = `Dependency Track upload failed (exit code ${exitCode}).\n` +
+        errorMessage =
+          `Dependency Track upload failed (exit code ${exitCode}).\n` +
           `• URL: ${this.options.url}\n` +
           `• Check server connectivity and configuration`;
       }
-      
+
       return new Error(errorMessage);
     }
-    
+
     // Upload succeeded - show success message
     core.info('CycloneDX successfully uploaded to Dependency Track');
-    
+
     if (stderr) {
       // Log stderr for debugging but don't treat as error if exitCode is 0
       core.debug(`Dependency Track upload stderr: ${stderr}`);
-      
+
       // Filter out harmless informational messages
       const trimmedStderr = stderr.trim();
-      const isHarmlessInfo = trimmedStderr.startsWith('Reading SBOM file:') ||
-                            trimmedStderr.includes('Reading SBOM file:') ||
-                            trimmedStderr.match(/^Reading .+ file:/);
-      
+      const isHarmlessInfo =
+        trimmedStderr.startsWith('Reading SBOM file:') ||
+        trimmedStderr.includes('Reading SBOM file:') ||
+        trimmedStderr.match(/^Reading .+ file:/);
+
       if (!isHarmlessInfo) {
         core.warning('Dependency Track upload completed with warnings. Check debug logs for details.');
       }

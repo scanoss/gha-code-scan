@@ -60,7 +60,7 @@ export async function run(): Promise<void> {
 
     // 3: Dependency Track
     const uploadResult = await dependencyTrackService.uploadToDependencyTrack();
-    
+
     // 3.1: Report Dependency Track upload status
     if (inputs.DEPENDENCY_TRACK_ENABLED) {
       const checkRunId = await dependencyTrackStatusService.reportUploadStatus(uploadResult);

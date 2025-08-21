@@ -36,7 +36,7 @@ function validateFilename(filename: string | undefined): string {
 
   // Normalize the path to handle any path traversal attempts
   const normalizedPath = path.normalize(filename);
-  
+
   // Check for directory traversal attempts
   if (normalizedPath.includes('..') || normalizedPath.startsWith('/') || normalizedPath.includes('\\')) {
     core.warning(`Invalid filename detected: ${filename}. Using default: results.json`);
@@ -45,7 +45,7 @@ function validateFilename(filename: string | undefined): string {
 
   // Extract just the filename (no directory components)
   const basename = path.basename(normalizedPath);
-  
+
   // Ensure it's a valid filename (alphanumeric, dots, dashes, underscores)
   const safeFilenameRegex = /^[a-zA-Z0-9._-]+$/;
   if (!safeFilenameRegex.test(basename)) {
@@ -55,7 +55,7 @@ function validateFilename(filename: string | undefined): string {
 
   // Ensure it has a proper extension
   if (!basename.includes('.')) {
-    return basename + '.json';
+    return `${basename}.json`;
   }
 
   return basename;
@@ -70,11 +70,11 @@ function validateFilename(filename: string | undefined): string {
 /** Comma-separated list of policy names to execute */
 export const POLICIES = core.getInput('policies');
 /** Whether policy failures should halt the workflow (default: true) */
-export const POLICIES_HALT_ON_FAILURE = ! (core.getInput('policies.halt_on_failure') === 'false');
+export const POLICIES_HALT_ON_FAILURE = !(core.getInput('policies.halt_on_failure') === 'false');
 /** Whether technical errors should halt the workflow (default: true) */
-export const HALT_ON_ERROR = ! (core.getInput('halt_on_error') === 'false');
+export const HALT_ON_ERROR = !(core.getInput('halt_on_error') === 'false');
 
-// Dependency Scanning Configuration  
+// Dependency Scanning Configuration
 /** Enable dependency scanning functionality */
 export const DEPENDENCIES_ENABLED = core.getInput('dependencies.enabled') === 'true';
 /** Dependency scope filter (prod/dev) */
@@ -130,16 +130,22 @@ export const DEPENDENCY_TRACK_URL = core.getInput('deptrack.url');
 /** Dependency Track API key */
 export const DEPENDENCY_TRACK_API_KEY = core.getInput('deptrack.apikey');
 /** Dependency Track project ID (mutable) */
+// eslint-disable-next-line import/no-mutable-exports
 export let DEPENDENCY_TRACK_PROJECT_ID = core.getInput('deptrack.projectid');
 /** Dependency Track project name */
 export const DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('deptrack.projectname');
 /** Dependency Track project version */
 export const DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('deptrack.projectversion');
 /** Upload token received from Dependency Track (set at runtime) */
+// eslint-disable-next-line import/no-mutable-exports
 export let DEPENDENCY_TRACK_UPLOAD_TOKEN = '';
 
 // Setter Functions
 /** Sets the Dependency Track upload token received from API */
-export const setDependencyTrackUploadToken = (version: string) => {   DEPENDENCY_TRACK_UPLOAD_TOKEN = version; };
+export const setDependencyTrackUploadToken = (version: string): void => {
+  DEPENDENCY_TRACK_UPLOAD_TOKEN = version;
+};
 /** Sets the Dependency Track project ID received from API */
-export const setDependencyTrackProjectId = (id: string) => {   DEPENDENCY_TRACK_PROJECT_ID = id; };
+export const setDependencyTrackProjectId = (id: string): void => {
+  DEPENDENCY_TRACK_PROJECT_ID = id;
+};

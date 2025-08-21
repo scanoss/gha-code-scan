@@ -24,7 +24,6 @@
 import { context, getOctokit } from '@actions/github';
 import * as core from '@actions/core';
 import { getSHA, isPullRequest, createCommentOnPR, getFirstRunId } from '../src/utils/github.utils';
-import * as inputs from '../src/app.input';
 
 // Mock external dependencies
 jest.mock('@actions/github');
@@ -61,9 +60,9 @@ describe('GitHub Utils', () => {
     it('should return context sha for non-pull request events', () => {
       (context.eventName as any) = 'push';
       (context.sha as any) = 'push-sha-123';
-      
+
       const result = getSHA();
-      
+
       expect(result).toBe('push-sha-123');
     });
 
@@ -76,9 +75,9 @@ describe('GitHub Utils', () => {
           }
         }
       };
-      
+
       const result = getSHA();
-      
+
       expect(result).toBe('pr-head-sha-456');
     });
 
@@ -90,9 +89,9 @@ describe('GitHub Utils', () => {
         }
       };
       (context.sha as any) = 'fallback-sha-789';
-      
+
       const result = getSHA();
-      
+
       expect(result).toBe('fallback-sha-789');
     });
   });
@@ -100,25 +99,25 @@ describe('GitHub Utils', () => {
   describe('isPullRequest', () => {
     it('should return true for pull_request event', () => {
       (context.eventName as any) = 'pull_request';
-      
+
       const result = isPullRequest();
-      
+
       expect(result).toBe(true);
     });
 
     it('should return false for non-pull request events', () => {
       (context.eventName as any) = 'push';
-      
+
       const result = isPullRequest();
-      
+
       expect(result).toBe(false);
     });
 
     it('should return false for workflow_dispatch event', () => {
       (context.eventName as any) = 'workflow_dispatch';
-      
+
       const result = isPullRequest();
-      
+
       expect(result).toBe(false);
     });
   });
@@ -198,7 +197,7 @@ describe('GitHub Utils', () => {
       (context.runId as any) = 12345;
       (context.repo as any) = { owner: 'test-owner', repo: 'test-repo' };
       (context.sha as any) = 'test-sha-123';
-      
+
       // Mock current workflow run
       mockOctokit.rest.actions.getWorkflowRun.mockResolvedValue({
         data: {
@@ -231,7 +230,7 @@ describe('GitHub Utils', () => {
     it('should return current runId if no first run is found', async () => {
       (context.eventName as any) = 'workflow_dispatch';
       (context.runId as any) = 12345;
-      
+
       mockOctokit.rest.actions.getWorkflowRun.mockResolvedValue({
         data: {
           workflow_id: 'test-workflow',
@@ -253,7 +252,7 @@ describe('GitHub Utils', () => {
     it('should throw API errors (no error handling in implementation)', async () => {
       (context.eventName as any) = 'workflow_dispatch';
       (context.runId as any) = 12345;
-      
+
       mockOctokit.rest.actions.getWorkflowRun.mockRejectedValue(new Error('API Error'));
 
       await expect(getFirstRunId()).rejects.toThrow('API Error');

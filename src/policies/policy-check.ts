@@ -173,7 +173,6 @@ export abstract class PolicyCheck {
     await this.finish(summary, text);
   }
 
-
   /**
    * Handles technical errors during policy check execution.
    */

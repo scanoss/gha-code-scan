@@ -148,7 +148,7 @@ export interface Options {
  * @author [SCANOSS]
  */
 export class ScanService {
-  private options: Options;
+  private readonly options: Options;
   private DEFAULT_SETTING_FILE_PATH = 'scanoss.json';
   constructor(options?: Options) {
     this.options = options || {
@@ -194,7 +194,6 @@ export class ScanService {
 
     const args = await this.buildArgs();
     const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
-    
     if (exitCode !== 0) {
       core.warning(`Scan execution completed with exit code ${exitCode}`);
       if (stderr) {

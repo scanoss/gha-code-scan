@@ -35,8 +35,7 @@ export class ScanOssService {
   /**
    * Build scanoss-py CycloneDX conversion parameters */
   private buildCycloneDXParameters(): string[] {
-    // TODO fix
-    const args = [
+    return [
       'run',
       '-v',
       `${inputs.REPO_DIR}:/scanoss`,
@@ -49,7 +48,6 @@ export class ScanOssService {
       '--output',
       `./${CYCLONEDX_FILE_NAME}`
     ];
-    return args;
   }
 
   /**
@@ -68,7 +66,6 @@ export class ScanOssService {
       if (exitCode !== 0) {
         return new Error(`Error converting scan results into CycloneDX format`);
       }
-      
       // Check if CycloneDX file was actually created before trying to upload it
       try {
         const fs = await import('fs');

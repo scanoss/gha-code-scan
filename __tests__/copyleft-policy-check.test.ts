@@ -84,7 +84,8 @@ describe('CopyleftPolicyCheck', () => {
 
     // Mock exec.getExecOutput to simulate copyleft license violations found
     jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
-      stdout: '## Copyleft Policy Violations\n\n- GPL-2.0-only license found in crc32c.c\n- GPL-2.0-only license found in json.c',
+      stdout:
+        '## Copyleft Policy Violations\n\n- GPL-2.0-only license found in crc32c.c\n- GPL-2.0-only license found in json.c',
       stderr: 'Policy violations detected',
       exitCode: 2
     });
@@ -166,7 +167,8 @@ describe('CopyleftPolicyCheck', () => {
 
     // Mock exec.getExecOutput to simulate violations when only MIT/Apache-2.0 are allowed
     jest.spyOn(exec, 'getExecOutput').mockResolvedValue({
-      stdout: '## License Policy Violations\n\n- GPL-2.0-only license found but not in explicit allow list\n- BSD-2-Clause license found but not in explicit allow list',
+      stdout:
+        '## License Policy Violations\n\n- GPL-2.0-only license found but not in explicit allow list\n- BSD-2-Clause license found but not in explicit allow list',
       stderr: 'License violations detected - only MIT,Apache-2.0 allowed',
       exitCode: 2
     });
@@ -209,12 +211,14 @@ describe('CopyleftPolicyCheck', () => {
     const copyleftPolicyCheck = new CopyleftPolicyCheck();
     await copyleftPolicyCheck.start(1);
     await copyleftPolicyCheck.run();
-    
+
     expect(copyleftPolicyCheck.conclusion).toEqual(CONCLUSION.Neutral);
     // Verify error message sanitization
-    expect(debugSpy).toHaveBeenCalledWith('Copyleft policy check stderr: Docker connection failed with sensitive API details');
+    expect(debugSpy).toHaveBeenCalledWith(
+      'Copyleft policy check stderr: Docker connection failed with sensitive API details'
+    );
     expect(warningSpy).toHaveBeenCalledWith('Copyleft policy check encountered an error');
-    
+
     debugSpy.mockRestore();
     warningSpy.mockRestore();
   }, 10000);

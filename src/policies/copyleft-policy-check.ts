@@ -63,8 +63,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     if (exitCode === 0) {
       await this.success('### :white_check_mark: Policy Pass \n #### No copyleft licenses were found', undefined);
       return;
-    }
-    else if (exitCode === 1) {
+    } else if (exitCode === 1) {
       // Technical error occurred
       core.warning('Copyleft policy check encountered an error');
       core.debug(`Copyleft policy check stderr: ${stderr}`);

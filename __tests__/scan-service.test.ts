@@ -121,41 +121,41 @@ describe('ScanService', () => {
     appInput.OUTPUT_FILEPATH = 'test-results.json';
     const TEST_DIR = __dirname;
     const resultPath = path.join(TEST_DIR, 'data', 'test-results.json');
-    
+
     // Mock the scan results from the existing test data
     const mockScanResults = {
-      "package.json": [
+      'package.json': [
         {
-          "dependencies": [
+          dependencies: [
             {
-              "component": "@grpc/grpc-js",
-              "licenses": [
+              component: '@grpc/grpc-js',
+              licenses: [
                 {
-                  "is_spdx_approved": true,
-                  "name": "Apache-2.0",
-                  "spdx_id": "Apache-2.0"
+                  is_spdx_approved: true,
+                  name: 'Apache-2.0',
+                  spdx_id: 'Apache-2.0'
                 }
               ],
-              "purl": "pkg:npm/%40grpc/grpc-js",
-              "url": "https://www.npmjs.com/package/%40grpc/grpc-js",
-              "version": "1.12.2"
+              purl: 'pkg:npm/%40grpc/grpc-js',
+              url: 'https://www.npmjs.com/package/%40grpc/grpc-js',
+              version: '1.12.2'
             },
             {
-              "component": "abort-controller",
-              "licenses": [
+              component: 'abort-controller',
+              licenses: [
                 {
-                  "is_spdx_approved": true,
-                  "name": "MIT",
-                  "spdx_id": "MIT"
+                  is_spdx_approved: true,
+                  name: 'MIT',
+                  spdx_id: 'MIT'
                 }
               ],
-              "purl": "pkg:npm/abort-controller",
-              "url": "https://www.npmjs.com/package/abort-controller",
-              "version": "3.0.0"
+              purl: 'pkg:npm/abort-controller',
+              url: 'https://www.npmjs.com/package/abort-controller',
+              version: '3.0.0'
             }
           ],
-          "id": "dependency",
-          "status": "pending"
+          id: 'dependency',
+          status: 'pending'
         }
       ]
     };

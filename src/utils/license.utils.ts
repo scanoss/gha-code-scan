@@ -30,7 +30,6 @@ import * as core from '@actions/core';
 export class LicenseUtil {
   private BASE_OSADL_URL = 'https://spdx.org/licenses';
   private HTML = 'html';
-  
   /**
    * Initializes the license utility with copyleft license configurations.
    */

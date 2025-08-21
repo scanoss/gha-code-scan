@@ -26,7 +26,6 @@ import { ScanOssService } from '../src/services/scanoss.service';
 import { CYCLONEDX_FILE_NAME } from '../src/app.output';
 import * as exec from '@actions/exec';
 import * as core from '@actions/core';
-import * as fs from 'fs';
 
 // Mock external dependencies
 jest.mock('@actions/exec');
@@ -97,7 +96,7 @@ describe('Scanoss service tests', () => {
   describe('scanResultsToCycloneDX', () => {
     it('should successfully convert results to CycloneDX format', async () => {
       const { uploadToArtifacts } = require('../src/services/github.service');
-      
+
       mockGetExecOutput.mockResolvedValue({
         stdout: 'Conversion successful',
         stderr: '',
@@ -152,7 +151,9 @@ describe('Scanoss service tests', () => {
       const result = await scanossService.scanResultsToCycloneDX();
 
       expect(result).toBeUndefined();
-      expect(infoSpy).toHaveBeenCalledWith('CycloneDX conversion completed but no file generated (likely empty repository)');
+      expect(infoSpy).toHaveBeenCalledWith(
+        'CycloneDX conversion completed but no file generated (likely empty repository)'
+      );
 
       infoSpy.mockRestore();
     });
@@ -172,7 +173,7 @@ describe('Scanoss service tests', () => {
 
     it('should handle file upload failure gracefully', async () => {
       const { uploadToArtifacts } = require('../src/services/github.service');
-      
+
       mockGetExecOutput.mockResolvedValue({
         stdout: 'Conversion successful',
         stderr: '',
@@ -186,7 +187,9 @@ describe('Scanoss service tests', () => {
       const result = await scanossService.scanResultsToCycloneDX();
 
       expect(result).toBeUndefined();
-      expect(infoSpy).toHaveBeenCalledWith('CycloneDX conversion completed but no file generated (likely empty repository)');
+      expect(infoSpy).toHaveBeenCalledWith(
+        'CycloneDX conversion completed but no file generated (likely empty repository)'
+      );
 
       infoSpy.mockRestore();
     });

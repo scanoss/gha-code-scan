@@ -123746,7 +123746,7 @@ function validateFilename(filename) {
     }
     // Ensure it has a proper extension
     if (!basename.includes('.')) {
-        return basename + '.json';
+        return `${basename}.json`;
     }
     return basename;
 }
@@ -123761,7 +123761,7 @@ exports.POLICIES = core.getInput('policies');
 exports.POLICIES_HALT_ON_FAILURE = !(core.getInput('policies.halt_on_failure') === 'false');
 /** Whether technical errors should halt the workflow (default: true) */
 exports.HALT_ON_ERROR = !(core.getInput('halt_on_error') === 'false');
-// Dependency Scanning Configuration  
+// Dependency Scanning Configuration
 /** Enable dependency scanning functionality */
 exports.DEPENDENCIES_ENABLED = core.getInput('dependencies.enabled') === 'true';
 /** Dependency scope filter (prod/dev) */
@@ -123812,19 +123812,25 @@ exports.DEPENDENCY_TRACK_URL = core.getInput('deptrack.url');
 /** Dependency Track API key */
 exports.DEPENDENCY_TRACK_API_KEY = core.getInput('deptrack.apikey');
 /** Dependency Track project ID (mutable) */
+// eslint-disable-next-line import/no-mutable-exports
 exports.DEPENDENCY_TRACK_PROJECT_ID = core.getInput('deptrack.projectid');
 /** Dependency Track project name */
 exports.DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('deptrack.projectname');
 /** Dependency Track project version */
 exports.DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('deptrack.projectversion');
 /** Upload token received from Dependency Track (set at runtime) */
+// eslint-disable-next-line import/no-mutable-exports
 exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = '';
 // Setter Functions
 /** Sets the Dependency Track upload token received from API */
-const setDependencyTrackUploadToken = (version) => { exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = version; };
+const setDependencyTrackUploadToken = (version) => {
+    exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = version;
+};
 exports.setDependencyTrackUploadToken = setDependencyTrackUploadToken;
 /** Sets the Dependency Track project ID received from API */
-const setDependencyTrackProjectId = (id) => { exports.DEPENDENCY_TRACK_PROJECT_ID = id; };
+const setDependencyTrackProjectId = (id) => {
+    exports.DEPENDENCY_TRACK_PROJECT_ID = id;
+};
 exports.setDependencyTrackProjectId = setDependencyTrackProjectId;
 
 
@@ -124802,7 +124808,8 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                 let successMessage = '### :white_check_mark: Policy Pass \n #### No policy violations were found';
                 if (!this.uploadAttempted) {
                     core.warning('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
-                    successMessage += '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. Results may not reflect latest changes.';
+                    successMessage +=
+                        '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. Results may not reflect latest changes.';
                     successMessage += this.getUploadConfigurationHelp();
                 }
                 await this.success(successMessage, undefined);
@@ -125324,7 +125331,7 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         // exitCode === 2 means policy violations found
         // Combine stdout (summary) and stderr (details) for comprehensive reporting
         if (stderr) {
-            details = stdout + '\n\n' + stderr;
+            details = `${stdout}\n\n${stderr}`;
         }
         else {
             details = stdout;
@@ -125512,6 +125519,7 @@ class DependencyTrackStatusService {
     async reportUploadStatus(result) {
         try {
             const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+            // eslint-disable-next-line @typescript-eslint/await-thenable
             const sha = await (0, github_utils_1.getSHA)();
             let conclusion;
             let title;
@@ -125555,10 +125563,7 @@ class DependencyTrackStatusService {
      * Creates details text for successful upload
      */
     createSuccessDetails(result) {
-        const details = [
-            '**Upload Details:**',
-            `• Project Name: ${result.projectName || 'Unknown'}`,
-        ];
+        const details = ['**Upload Details:**', `• Project Name: ${result.projectName || 'Unknown'}`];
         if (result.projectVersion) {
             details.push(`• Project Version: ${result.projectVersion}`);
         }
@@ -125582,10 +125587,7 @@ class DependencyTrackStatusService {
      * Creates details text for failed upload
      */
     createFailureDetails(result) {
-        const details = [
-            '**Upload Details:**',
-            `• Server: ${inputs.DEPENDENCY_TRACK_URL}`,
-        ];
+        const details = ['**Upload Details:**', `• Server: ${inputs.DEPENDENCY_TRACK_URL}`];
         if (result.error) {
             details.push(`• Error: ${result.error}`);
         }
@@ -125811,14 +125813,6 @@ class DependencyTrackService {
         }
     }
     /**
-     * Legacy method for backward compatibility - returns boolean success status
-     * @deprecated Use uploadToDependencyTrack() which returns DependencyTrackUploadResult
-     */
-    async uploadToDependencyTrackLegacy() {
-        const result = await this.uploadToDependencyTrack();
-        return result.success;
-    }
-    /**
      * Parse upload error and return appropriate error message
      */
     parseUploadError(stderr) {
@@ -125828,7 +125822,9 @@ class DependencyTrackService {
             if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
                 return 'CONNECTION_ERROR';
             }
-            if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized') || lowerStderr.includes('invalid api key')) {
+            if (lowerStderr.includes('401') ||
+                lowerStderr.includes('unauthorized') ||
+                lowerStderr.includes('invalid api key')) {
                 return 'AUTH_ERROR';
             }
             if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
@@ -125850,47 +125846,47 @@ class DependencyTrackService {
         };
         switch (getErrorType()) {
             case 'CONNECTION_ERROR':
-                return `Cannot connect to Dependency Track server.\n` +
+                return (`Cannot connect to Dependency Track server.\n` +
                     `• URL: ${this.options.url}\n` +
                     `• Issue: Server is not reachable\n` +
-                    `• Solutions: Verify the URL, check network connectivity, ensure server is running`;
+                    `• Solutions: Verify the URL, check network connectivity, ensure server is running`);
             case 'AUTH_ERROR':
-                return `Authentication failed with Dependency Track server.\n` +
+                return (`Authentication failed with Dependency Track server.\n` +
                     `• URL: ${this.options.url}\n` +
                     `• Issue: Invalid or missing API key\n` +
-                    `• Solutions: Verify your API key, check user permissions in Dependency Track`;
+                    `• Solutions: Verify your API key, check user permissions in Dependency Track`);
             case 'NOT_FOUND_ERROR':
-                return `Dependency Track server endpoint not found.\n` +
+                return (`Dependency Track server endpoint not found.\n` +
                     `• URL: ${this.options.url}\n` +
                     `• Issue: Server endpoint does not exist\n` +
-                    `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`;
+                    `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`);
             case 'TIMEOUT_ERROR':
-                return `Connection to Dependency Track server timed out.\n` +
+                return (`Connection to Dependency Track server timed out.\n` +
                     `• URL: ${this.options.url}\n` +
                     `• Issue: Server is too slow to respond\n` +
-                    `• Solutions: Check network connectivity, verify server performance, try again later`;
+                    `• Solutions: Check network connectivity, verify server performance, try again later`);
             case 'SSL_ERROR':
-                return `SSL/TLS connection error with Dependency Track server.\n` +
+                return (`SSL/TLS connection error with Dependency Track server.\n` +
                     `• URL: ${this.options.url}\n` +
                     `• Issue: SSL certificate validation failed\n` +
-                    `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`;
+                    `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`);
             case 'PROJECT_NOT_FOUND':
-                return `Project not found in Dependency Track.\n` +
+                return (`Project not found in Dependency Track.\n` +
                     `• Project ID: ${this.options.projectId || 'Not specified'}\n` +
                     `• Project Name: ${this.options.projectName || 'Not specified'}\n` +
-                    `• Solutions: Verify project exists, check project ID/name, create project first`;
+                    `• Solutions: Verify project exists, check project ID/name, create project first`);
             case 'FORBIDDEN_ERROR':
-                return `Access forbidden to Dependency Track resource.\n` +
+                return (`Access forbidden to Dependency Track resource.\n` +
                     `• URL: ${this.options.url}\n` +
                     `• Issue: Insufficient permissions\n` +
-                    `• Solutions: Check API key permissions, verify user role in Dependency Track`;
+                    `• Solutions: Check API key permissions, verify user role in Dependency Track`);
             default:
-                return `Dependency Track upload failed with error:\n${stderr}\n\n` +
+                return (`Dependency Track upload failed with error:\n${stderr}\n\n` +
                     `Troubleshooting:\n` +
                     `• Verify URL: ${this.options.url}\n` +
                     `• Check that the server is running and accessible\n` +
                     `• Ensure API key is valid and has proper permissions\n` +
-                    `• Verify project exists or can be created automatically`;
+                    `• Verify project exists or can be created automatically`);
         }
     }
     /**
@@ -125929,9 +125925,10 @@ class DependencyTrackService {
                 errorMessage = this.parseUploadError(stderr);
             }
             else {
-                errorMessage = `Dependency Track upload failed (exit code ${exitCode}).\n` +
-                    `• URL: ${this.options.url}\n` +
-                    `• Check server connectivity and configuration`;
+                errorMessage =
+                    `Dependency Track upload failed (exit code ${exitCode}).\n` +
+                        `• URL: ${this.options.url}\n` +
+                        `• Check server connectivity and configuration`;
             }
             return new Error(errorMessage);
         }
@@ -126243,7 +126240,7 @@ async function generateJobSummary(policies, uploadResult) {
         else {
             statusIcon = ':x:';
         }
-        // Generate link to GitHub status check details 
+        // Generate link to GitHub status check details
         // Use specific job ID if available, otherwise fallback to general run page
         let statusCheckUrl;
         if (uploadResult.checkRunId) {
@@ -126680,8 +126677,7 @@ class ScanOssService {
     /**
      * Build scanoss-py CycloneDX conversion parameters */
     buildCycloneDXParameters() {
-        // TODO fix
-        const args = [
+        return [
             'run',
             '-v',
             `${inputs.REPO_DIR}:/scanoss`,
@@ -126694,7 +126690,6 @@ class ScanOssService {
             '--output',
             `./${app_output_1.CYCLONEDX_FILE_NAME}`
         ];
-        return args;
     }
     /**
      * Converts SCANOSS results to CycloneDX format using scanoss-py.

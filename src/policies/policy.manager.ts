@@ -35,7 +35,7 @@ type PolicyRegistry = Record<string, new () => PolicyCheck>;
  * Provides access to registered policy checks and handles policy instantiation.
  */
 export class PolicyManager {
-  private policyRegistry: PolicyRegistry;
+  private readonly policyRegistry: PolicyRegistry;
 
   constructor(policyRegistry?: PolicyRegistry) {
     this.policyRegistry = policyRegistry || {
@@ -53,7 +53,6 @@ export class PolicyManager {
    * @param policiesNames - Array of policy names to instantiate. If not provided, uses POLICIES from app input.
    */
   getPolicies(policiesNames?: string[]): PolicyCheck[] {
-
     core.info(`Policy Names: ${policiesNames}`);
     core.debug(`Policy Registry: ${this.policyRegistry}`);
 

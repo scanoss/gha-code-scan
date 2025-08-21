@@ -22,7 +22,6 @@
 */
 
 import { LicenseUtil } from '../src/utils/license.utils';
-import * as core from '@actions/core';
 
 // Mock external dependencies
 jest.mock('@actions/core');
@@ -89,7 +88,7 @@ describe('License Utils', () => {
 
       const { LicenseUtil: MockedLicenseUtil } = require('../src/utils/license.utils');
       const util = new MockedLicenseUtil();
-      
+
       // Test that the utility is instantiated correctly with default configuration
       expect(util).toBeDefined();
       expect(util).toBeInstanceOf(MockedLicenseUtil);
