@@ -25,6 +25,7 @@ import * as core from '@actions/core';
 import { CONCLUSION, PolicyCheck } from '../policies/policy-check';
 import { generateTable } from '../utils/markdown.utils';
 import { context } from '@actions/github';
+import { getFirstRunId } from '../utils/github.utils';
 import { licenseUtil } from '../utils/license.utils';
 import { isOverMaxCharacterLimitAPI } from './github.service';
 import { getLicenseSummary, License } from './license.service';
@@ -112,7 +113,7 @@ export async function generateJobSummary(policies: PolicyCheck[], uploadResult?:
     return generateTable(HEADERS, ROWS);
   };
 
-  const StatusChecksTable = (uploadResult?: DependencyTrackUploadResult): string => {
+  const StatusChecksTable = async (uploadResult?: DependencyTrackUploadResult): Promise<string> => {
     if (!uploadResult) {
       return '';
     }
@@ -129,8 +130,9 @@ export async function generateJobSummary(policies: PolicyCheck[], uploadResult?:
       statusIcon = ':x:';
     }
 
-    // Generate link to GitHub status check details
-    const statusCheckUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+    // Generate link to GitHub status check details using the first run ID (like policy checks do)
+    const firstRunId = await getFirstRunId();
+    const statusCheckUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${firstRunId}`;
     
     ROWS.push(['Dependency Track Upload', statusIcon, `[More Details](${statusCheckUrl})`]);
 
@@ -174,7 +176,7 @@ export async function generateJobSummary(policies: PolicyCheck[], uploadResult?:
 
   // Add Details section if upload result is provided
   if (uploadResult) {
-    const statusChecksTable = StatusChecksTable(uploadResult);
+    const statusChecksTable = await StatusChecksTable(uploadResult);
     const linksTable = LinksTable(uploadResult);
     
     if (statusChecksTable || linksTable) {

@@ -126149,6 +126149,7 @@ const core = __importStar(__nccwpck_require__(42186));
 const policy_check_1 = __nccwpck_require__(63702);
 const markdown_utils_1 = __nccwpck_require__(96011);
 const github_1 = __nccwpck_require__(95438);
+const github_utils_1 = __nccwpck_require__(17889);
 const license_utils_1 = __nccwpck_require__(52210);
 const github_service_1 = __nccwpck_require__(43123);
 const license_service_1 = __nccwpck_require__(54621);
@@ -126225,7 +126226,7 @@ async function generateJobSummary(policies, uploadResult) {
         });
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
-    const StatusChecksTable = (uploadResult) => {
+    const StatusChecksTable = async (uploadResult) => {
         if (!uploadResult) {
             return '';
         }
@@ -126241,8 +126242,9 @@ async function generateJobSummary(policies, uploadResult) {
         else {
             statusIcon = ':x:';
         }
-        // Generate link to GitHub status check details
-        const statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId}`;
+        // Generate link to GitHub status check details using the first run ID (like policy checks do)
+        const firstRunId = await (0, github_utils_1.getFirstRunId)();
+        const statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}`;
         ROWS.push(['Dependency Track Upload', statusIcon, `[More Details](${statusCheckUrl})`]);
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
@@ -126275,7 +126277,7 @@ async function generateJobSummary(policies, uploadResult) {
         .addRaw(PoliciesTable(policies));
     // Add Details section if upload result is provided
     if (uploadResult) {
-        const statusChecksTable = StatusChecksTable(uploadResult);
+        const statusChecksTable = await StatusChecksTable(uploadResult);
         const linksTable = LinksTable(uploadResult);
         if (statusChecksTable || linksTable) {
             summary.addSeparator().addHeading('Details', 3);
