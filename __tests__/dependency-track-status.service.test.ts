@@ -149,13 +149,13 @@ describe('DependencyTrackStatusService', () => {
         output: {
           title: 'Dependency Track upload is disabled',
           summary: '### ⚪ Dependency Track Upload \n #### Upload is disabled',
-          text: expect.stringContaining('**Status:** Skipped (dependencytrack.enabled=false)')
+          text: expect.stringContaining('**Status:** Skipped (deptrack.upload=false)')
         }
       });
 
       const callArgs = mockOctokit.rest.checks.create.mock.calls[0][0];
       expect(callArgs.output.text).toContain('**To enable Dependency Track upload:**');
-      expect(callArgs.output.text).toContain('• Set `dependencytrack.enabled: true` in your workflow');
+      expect(callArgs.output.text).toContain('• Set `deptrack.upload: true` in your workflow');
     });
 
     it('should handle minimal success result', async () => {

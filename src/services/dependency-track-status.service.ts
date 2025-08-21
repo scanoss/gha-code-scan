@@ -168,14 +168,14 @@ export class DependencyTrackStatusService {
    */
   private createDisabledDetails(): string {
     return [
-      '**Status:** Skipped (dependencytrack.enabled=false)',
+      '**Status:** Skipped (deptrack.upload=false)',
       '',
       '**To enable Dependency Track upload:**',
-      '• Set `dependencytrack.enabled: true` in your workflow',
+      '• Set `deptrack.upload: true` in your workflow',
       '• Configure required parameters:',
-      '  - `dependencytrack.url`',
-      '  - `dependencytrack.apikey`', 
-      '  - `dependencytrack.projectid` OR (`dependencytrack.projectname` + `dependencytrack.projectversion`)'
+      '  - `deptrack.url`',
+      '  - `deptrack.apikey`', 
+      '  - `deptrack.projectid` OR (`deptrack.projectname` + `deptrack.projectversion`)'
     ].join('\n');
   }
 }

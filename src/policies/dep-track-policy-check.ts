@@ -161,33 +161,33 @@ export class DepTrackPolicyCheck extends PolicyCheck {
 
     // Check required parameters from app.input
     if (!inputs.DEPENDENCY_TRACK_URL) {
-      missingParams.push('dependencytrack.url');
+      missingParams.push('deptrack.url');
     } else {
       // Validate URL format
       try {
         const url = new URL(inputs.DEPENDENCY_TRACK_URL);
         if (!['http:', 'https:'].includes(url.protocol)) {
-          invalidParams.push('dependencytrack.url (must use http:// or https://)');
+          invalidParams.push('deptrack.url (must use http:// or https://)');
         }
       } catch (error) {
-        invalidParams.push('dependencytrack.url (invalid URL format)');
+        invalidParams.push('deptrack.url (invalid URL format)');
       }
     }
 
     if (!inputs.DEPENDENCY_TRACK_API_KEY) {
-      missingParams.push('dependencytrack.apikey');
+      missingParams.push('deptrack.apikey');
     } else if (inputs.DEPENDENCY_TRACK_API_KEY.length < MINIMUM_API_KEY_LENGTH) {
-      invalidParams.push('dependencytrack.apikey (appears to be too short)');
+      invalidParams.push('deptrack.apikey (appears to be too short)');
     }
 
     // Check project identification
     if (!inputs.DEPENDENCY_TRACK_PROJECT_ID && !inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN) {
       const missingProjectParams: string[] = [];
       if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME && !inputs.DEPENDENCY_TRACK_PROJECT_VERSION) {
-        missingProjectParams.push('Either dependencytrack.projectid or BOTH dependencytrack.projectname AND dependencytrack.projectversion');
+        missingProjectParams.push('Either deptrack.projectid or BOTH deptrack.projectname AND deptrack.projectversion');
       }
-      else if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME) missingProjectParams.push('dependencytrack.projectname');
-      else if (!inputs.DEPENDENCY_TRACK_PROJECT_VERSION) missingProjectParams.push('dependencytrack.projectversion');
+      else if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME) missingProjectParams.push('deptrack.projectname');
+      else if (!inputs.DEPENDENCY_TRACK_PROJECT_VERSION) missingProjectParams.push('deptrack.projectversion');
 
       if (missingProjectParams.length > 0) {
         missingParams.push(...missingProjectParams);

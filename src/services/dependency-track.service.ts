@@ -67,24 +67,24 @@ export class DependencyTrackService {
 
     // Check required parameters
     if (!this.options.url) {
-      missingParams.push('dependencytrack.url');
+      missingParams.push('deptrack.url');
     } else {
       // Validate URL format
       try {
         const url = new URL(this.options.url);
         if (!['http:', 'https:'].includes(url.protocol)) {
-          invalidParams.push('dependencytrack.url (must use http:// or https://)');
+          invalidParams.push('deptrack.url (must use http:// or https://)');
         }
       } catch (error) {
-        invalidParams.push('dependencytrack.url (invalid URL format)');
+        invalidParams.push('deptrack.url (invalid URL format)');
       }
     }
 
     if (!this.options.apiKey) {
-      missingParams.push('dependencytrack.apikey');
+      missingParams.push('deptrack.apikey');
     } else if (this.options.apiKey.length < this.MINIMUM_APIKEY_LENGTH) {
       // Basic API key validation - Dependency Track API keys are typically longer
-      invalidParams.push('dependencytrack.apikey (appears to be too short)');
+      invalidParams.push('deptrack.apikey (appears to be too short)');
     }
 
     if (missingParams.length > 0) {
@@ -109,15 +109,15 @@ export class DependencyTrackService {
     if (!this.options.projectId) {
       const missingProjectParams: string[] = [];
 
-      if (!this.options.projectName) missingProjectParams.push('dependencytrack.projectname');
-      if (!this.options.projectVersion) missingProjectParams.push('dependencytrack.projectversion');
+      if (!this.options.projectName) missingProjectParams.push('deptrack.projectname');
+      if (!this.options.projectVersion) missingProjectParams.push('deptrack.projectversion');
 
       if (missingProjectParams.length > 0) {
         core.warning(
           `Dependency Track upload skipped: Project identification is incomplete.\n` +
           `You must provide EITHER:\n` +
-          `  • dependencytrack.projectid (for existing projects), OR\n` +
-          `  • Both dependencytrack.projectname AND dependencytrack.projectversion (to create/find projects)\n\n` +
+          `  • deptrack.projectid (for existing projects), OR\n` +
+          `  • Both deptrack.projectname AND deptrack.projectversion (to create/find projects)\n\n` +
           `Missing: ${missingProjectParams.join(', ')}`
         );
         return false;

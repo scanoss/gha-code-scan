@@ -80,23 +80,23 @@ inputs:
     description: 'Enable debugging on scanoss.py'
     default: 'false'
     required: false
-  dependencytrack.enabled:
+  deptrack.upload:
     description: 'Enable Dependency Track upload'
     default: 'false'
     required: false
-  dependencytrack.url:
+  deptrack.url:
     description: 'Dependency Track base URL'
     required: false
-  dependencytrack.apikey:
+  deptrack.apikey:
     description: 'Dependency Track API key'
     required: false
-  dependencytrack.projectid:
+  deptrack.projectid:
     description: 'Dependency Track project UUID'
     required: false
-  dependencytrack.projectname:
+  deptrack.projectname:
     description: 'Dependency Track project name'
     required: false
-  dependencytrack.projectversion:
+  deptrack.projectversion:
     description: 'Dependency Track project version'
     required: false
 

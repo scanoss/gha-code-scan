@@ -124,17 +124,17 @@ export const DEBUG = core.getInput('debug') === 'true';
 
 // Dependency Track Configuration
 /** Enable Dependency Track integration */
-export const DEPENDENCY_TRACK_ENABLED = core.getInput('dependencytrack.enabled') === 'true';
+export const DEPENDENCY_TRACK_ENABLED = core.getInput('deptrack.upload') === 'true';
 /** Dependency Track server URL */
-export const DEPENDENCY_TRACK_URL = core.getInput('dependencytrack.url');
+export const DEPENDENCY_TRACK_URL = core.getInput('deptrack.url');
 /** Dependency Track API key */
-export const DEPENDENCY_TRACK_API_KEY = core.getInput('dependencytrack.apikey');
+export const DEPENDENCY_TRACK_API_KEY = core.getInput('deptrack.apikey');
 /** Dependency Track project ID (mutable) */
-export let DEPENDENCY_TRACK_PROJECT_ID = core.getInput('dependencytrack.projectid');
+export let DEPENDENCY_TRACK_PROJECT_ID = core.getInput('deptrack.projectid');
 /** Dependency Track project name */
-export const DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('dependencytrack.projectname');
+export const DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('deptrack.projectname');
 /** Dependency Track project version */
-export const DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('dependencytrack.projectversion');
+export const DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('deptrack.projectversion');
 /** Upload token received from Dependency Track (set at runtime) */
 export let DEPENDENCY_TRACK_UPLOAD_TOKEN = '';
 

@@ -123806,17 +123806,17 @@ exports.EXECUTABLE = 'docker';
 exports.DEBUG = core.getInput('debug') === 'true';
 // Dependency Track Configuration
 /** Enable Dependency Track integration */
-exports.DEPENDENCY_TRACK_ENABLED = core.getInput('dependencytrack.enabled') === 'true';
+exports.DEPENDENCY_TRACK_ENABLED = core.getInput('deptrack.upload') === 'true';
 /** Dependency Track server URL */
-exports.DEPENDENCY_TRACK_URL = core.getInput('dependencytrack.url');
+exports.DEPENDENCY_TRACK_URL = core.getInput('deptrack.url');
 /** Dependency Track API key */
-exports.DEPENDENCY_TRACK_API_KEY = core.getInput('dependencytrack.apikey');
+exports.DEPENDENCY_TRACK_API_KEY = core.getInput('deptrack.apikey');
 /** Dependency Track project ID (mutable) */
-exports.DEPENDENCY_TRACK_PROJECT_ID = core.getInput('dependencytrack.projectid');
+exports.DEPENDENCY_TRACK_PROJECT_ID = core.getInput('deptrack.projectid');
 /** Dependency Track project name */
-exports.DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('dependencytrack.projectname');
+exports.DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('deptrack.projectname');
 /** Dependency Track project version */
-exports.DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('dependencytrack.projectversion');
+exports.DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('deptrack.projectversion');
 /** Upload token received from Dependency Track (set at runtime) */
 exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = '';
 // Setter Functions
@@ -124727,36 +124727,36 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
         const invalidParams = [];
         // Check required parameters from app.input
         if (!inputs.DEPENDENCY_TRACK_URL) {
-            missingParams.push('dependencytrack.url');
+            missingParams.push('deptrack.url');
         }
         else {
             // Validate URL format
             try {
                 const url = new URL(inputs.DEPENDENCY_TRACK_URL);
                 if (!['http:', 'https:'].includes(url.protocol)) {
-                    invalidParams.push('dependencytrack.url (must use http:// or https://)');
+                    invalidParams.push('deptrack.url (must use http:// or https://)');
                 }
             }
             catch (error) {
-                invalidParams.push('dependencytrack.url (invalid URL format)');
+                invalidParams.push('deptrack.url (invalid URL format)');
             }
         }
         if (!inputs.DEPENDENCY_TRACK_API_KEY) {
-            missingParams.push('dependencytrack.apikey');
+            missingParams.push('deptrack.apikey');
         }
         else if (inputs.DEPENDENCY_TRACK_API_KEY.length < MINIMUM_API_KEY_LENGTH) {
-            invalidParams.push('dependencytrack.apikey (appears to be too short)');
+            invalidParams.push('deptrack.apikey (appears to be too short)');
         }
         // Check project identification
         if (!inputs.DEPENDENCY_TRACK_PROJECT_ID && !inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN) {
             const missingProjectParams = [];
             if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME && !inputs.DEPENDENCY_TRACK_PROJECT_VERSION) {
-                missingProjectParams.push('Either dependencytrack.projectid or BOTH dependencytrack.projectname AND dependencytrack.projectversion');
+                missingProjectParams.push('Either deptrack.projectid or BOTH deptrack.projectname AND deptrack.projectversion');
             }
             else if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME)
-                missingProjectParams.push('dependencytrack.projectname');
+                missingProjectParams.push('deptrack.projectname');
             else if (!inputs.DEPENDENCY_TRACK_PROJECT_VERSION)
-                missingProjectParams.push('dependencytrack.projectversion');
+                missingProjectParams.push('deptrack.projectversion');
             if (missingProjectParams.length > 0) {
                 missingParams.push(...missingProjectParams);
             }
@@ -125588,14 +125588,14 @@ class DependencyTrackStatusService {
      */
     createDisabledDetails() {
         return [
-            '**Status:** Skipped (dependencytrack.enabled=false)',
+            '**Status:** Skipped (deptrack.upload=false)',
             '',
             '**To enable Dependency Track upload:**',
-            '• Set `dependencytrack.enabled: true` in your workflow',
+            '• Set `deptrack.upload: true` in your workflow',
             '• Configure required parameters:',
-            '  - `dependencytrack.url`',
-            '  - `dependencytrack.apikey`',
-            '  - `dependencytrack.projectid` OR (`dependencytrack.projectname` + `dependencytrack.projectversion`)'
+            '  - `deptrack.url`',
+            '  - `deptrack.apikey`',
+            '  - `deptrack.projectid` OR (`deptrack.projectname` + `deptrack.projectversion`)'
         ].join('\n');
     }
 }
@@ -125692,26 +125692,26 @@ class DependencyTrackService {
         const invalidParams = [];
         // Check required parameters
         if (!this.options.url) {
-            missingParams.push('dependencytrack.url');
+            missingParams.push('deptrack.url');
         }
         else {
             // Validate URL format
             try {
                 const url = new URL(this.options.url);
                 if (!['http:', 'https:'].includes(url.protocol)) {
-                    invalidParams.push('dependencytrack.url (must use http:// or https://)');
+                    invalidParams.push('deptrack.url (must use http:// or https://)');
                 }
             }
             catch (error) {
-                invalidParams.push('dependencytrack.url (invalid URL format)');
+                invalidParams.push('deptrack.url (invalid URL format)');
             }
         }
         if (!this.options.apiKey) {
-            missingParams.push('dependencytrack.apikey');
+            missingParams.push('deptrack.apikey');
         }
         else if (this.options.apiKey.length < this.MINIMUM_APIKEY_LENGTH) {
             // Basic API key validation - Dependency Track API keys are typically longer
-            invalidParams.push('dependencytrack.apikey (appears to be too short)');
+            invalidParams.push('deptrack.apikey (appears to be too short)');
         }
         if (missingParams.length > 0) {
             core.warning(`Dependency Track upload skipped: Required parameters are missing.\n` +
@@ -125729,14 +125729,14 @@ class DependencyTrackService {
         if (!this.options.projectId) {
             const missingProjectParams = [];
             if (!this.options.projectName)
-                missingProjectParams.push('dependencytrack.projectname');
+                missingProjectParams.push('deptrack.projectname');
             if (!this.options.projectVersion)
-                missingProjectParams.push('dependencytrack.projectversion');
+                missingProjectParams.push('deptrack.projectversion');
             if (missingProjectParams.length > 0) {
                 core.warning(`Dependency Track upload skipped: Project identification is incomplete.\n` +
                     `You must provide EITHER:\n` +
-                    `  • dependencytrack.projectid (for existing projects), OR\n` +
-                    `  • Both dependencytrack.projectname AND dependencytrack.projectversion (to create/find projects)\n\n` +
+                    `  • deptrack.projectid (for existing projects), OR\n` +
+                    `  • Both deptrack.projectname AND deptrack.projectversion (to create/find projects)\n\n` +
                     `Missing: ${missingProjectParams.join(', ')}`);
                 return false;
             }
