@@ -87,7 +87,7 @@ describe('DependencyTrackStatusService', () => {
         conclusion: 'success',
         output: {
           title: 'SBOM successfully uploaded to Dependency Track',
-          summary: '### ✅ Dependency Track Upload \n #### SBOM successfully uploaded to Dependency Track',
+          summary: '### ✅ Dependency Track Upload\n#### SBOM successfully uploaded to Dependency Track',
           text: expect.stringContaining('**Upload Details:**')
         }
       });
@@ -123,7 +123,7 @@ describe('DependencyTrackStatusService', () => {
         conclusion: 'failure',
         output: {
           title: 'Failed to upload SBOM to Dependency Track',
-          summary: '### ❌ Dependency Track Upload \n #### Failed to upload SBOM to Dependency Track',
+          summary: '### ❌ Dependency Track Upload\n#### Failed to upload SBOM to Dependency Track',
           text: expect.stringContaining('**Upload Details:**')
         }
       });
@@ -151,7 +151,7 @@ describe('DependencyTrackStatusService', () => {
         conclusion: 'success',
         output: {
           title: 'SBOM successfully uploaded to Dependency Track',
-          summary: '### ✅ Dependency Track Upload \n #### SBOM successfully uploaded to Dependency Track',
+          summary: '### ✅ Dependency Track Upload\n#### SBOM successfully uploaded to Dependency Track',
           text: expect.stringContaining('• Project Name: minimal-project')
         }
       });

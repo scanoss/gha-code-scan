@@ -23,7 +23,7 @@ jobs:
       - name: Determine Tag
         id: taggerVersion
         run: |
-          app_version=$(cat package.json | jq '.version' | tr -d '"')
+          app_version=$(jq -r '.version' package.json)
           echo "New Proposed tag: $app_version"
           echo "package_app_version=$app_version" >> $GITHUB_ENV
 
@@ -32,7 +32,7 @@ jobs:
         id: taggerApply
         run: |
           echo "Applying tag ${{env.package_app_version}} ..."
-          git tag "${{env.package_app_version}}"
+          git tag "${{ env.package_app_version }}"
           echo "Pushing changes..."
           git push --tags
 
