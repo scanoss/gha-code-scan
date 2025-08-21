@@ -123965,7 +123965,10 @@ async function run() {
         const uploadResult = await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
         // 3.1: Report Dependency Track upload status
         if (inputs.DEPENDENCY_TRACK_ENABLED) {
-            await dependency_track_status_service_1.dependencyTrackStatusService.reportUploadStatus(uploadResult);
+            const checkRunId = await dependency_track_status_service_1.dependencyTrackStatusService.reportUploadStatus(uploadResult);
+            if (checkRunId) {
+                uploadResult.checkRunId = checkRunId;
+            }
         }
         // 4: run policies
         for (const policy of policies) {
@@ -125488,6 +125491,7 @@ class DependencyTrackStatusService {
     checkName = `${app_config_1.STATUS_NAME}: Dependency Track Upload`;
     /**
      * Reports the Dependency Track upload status as a GitHub check run
+     * Returns the created check run ID for linking purposes
      */
     async reportUploadStatus(result) {
         try {
@@ -125515,7 +125519,7 @@ class DependencyTrackStatusService {
                 summary = '### ❌ Dependency Track Upload \n #### Failed to upload SBOM to Dependency Track';
                 text = this.createFailureDetails(result);
             }
-            await octokit.rest.checks.create({
+            const response = await octokit.rest.checks.create({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
                 name: this.checkName,
@@ -125528,10 +125532,13 @@ class DependencyTrackStatusService {
                     text
                 }
             });
-            core.debug(`Dependency Track upload status check created: ${conclusion}`);
+            const checkRunId = response.data.id;
+            core.debug(`Dependency Track upload status check created: ${conclusion}, ID: ${checkRunId}`);
+            return checkRunId;
         }
         catch (error) {
             core.warning(`Failed to create Dependency Track upload status check: ${error}`);
+            return null;
         }
     }
     /**
@@ -126242,9 +126249,17 @@ async function generateJobSummary(policies, uploadResult) {
         else {
             statusIcon = ':x:';
         }
-        // Generate link to GitHub status check details using the first run ID (like policy checks do)
-        const firstRunId = await (0, github_utils_1.getFirstRunId)();
-        const statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}`;
+        // Generate link to GitHub status check details 
+        // Use specific job ID if available, otherwise fallback to general run page
+        let statusCheckUrl;
+        if (uploadResult.checkRunId) {
+            const firstRunId = await (0, github_utils_1.getFirstRunId)();
+            statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId}`;
+        }
+        else {
+            const firstRunId = await (0, github_utils_1.getFirstRunId)();
+            statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}`;
+        }
         ROWS.push(['Dependency Track Upload', statusIcon, `[More Details](${statusCheckUrl})`]);
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
