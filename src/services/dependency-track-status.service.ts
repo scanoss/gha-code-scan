@@ -38,6 +38,7 @@ export interface DependencyTrackUploadResult {
   fileSize?: number;
   componentsCount?: number;
   uploadTime?: number;
+  checkRunId?: number;
 }
 
 /**
@@ -48,8 +49,9 @@ export class DependencyTrackStatusService {
   
   /**
    * Reports the Dependency Track upload status as a GitHub check run
+   * Returns the created check run ID for linking purposes
    */
-  async reportUploadStatus(result: DependencyTrackUploadResult): Promise<void> {
+  async reportUploadStatus(result: DependencyTrackUploadResult): Promise<number | null> {
     try {
       const octokit = getOctokit(inputs.GITHUB_TOKEN);
       const sha = await getSHA();
@@ -76,7 +78,7 @@ export class DependencyTrackStatusService {
         text = this.createFailureDetails(result);
       }
 
-      await octokit.rest.checks.create({
+      const response = await octokit.rest.checks.create({
         owner: context.repo.owner,
         repo: context.repo.repo,
         name: this.checkName,
@@ -90,9 +92,12 @@ export class DependencyTrackStatusService {
         }
       });
 
-      core.debug(`Dependency Track upload status check created: ${conclusion}`);
+      const checkRunId = response.data.id;
+      core.debug(`Dependency Track upload status check created: ${conclusion}, ID: ${checkRunId}`);
+      return checkRunId;
     } catch (error) {
       core.warning(`Failed to create Dependency Track upload status check: ${error}`);
+      return null;
     }
   }
 

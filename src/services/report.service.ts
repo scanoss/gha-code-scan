@@ -130,9 +130,16 @@ export async function generateJobSummary(policies: PolicyCheck[], uploadResult?:
       statusIcon = ':x:';
     }
 
-    // Generate link to GitHub status check details using the first run ID (like policy checks do)
-    const firstRunId = await getFirstRunId();
-    const statusCheckUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${firstRunId}`;
+    // Generate link to GitHub status check details 
+    // Use specific job ID if available, otherwise fallback to general run page
+    let statusCheckUrl: string;
+    if (uploadResult.checkRunId) {
+      const firstRunId = await getFirstRunId();
+      statusCheckUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId}`;
+    } else {
+      const firstRunId = await getFirstRunId();
+      statusCheckUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${firstRunId}`;
+    }
     
     ROWS.push(['Dependency Track Upload', statusIcon, `[More Details](${statusCheckUrl})`]);
 

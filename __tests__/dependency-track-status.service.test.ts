@@ -38,7 +38,7 @@ jest.mock('../src/app.input', () => ({
 const mockOctokit = {
   rest: {
     checks: {
-      create: jest.fn()
+      create: jest.fn().mockResolvedValue({ data: { id: 12345 } })
     }
   }
 };
@@ -72,7 +72,9 @@ describe('DependencyTrackStatusService', () => {
         uploadTime: 1.5
       };
 
-      await service.reportUploadStatus(uploadResult);
+      const checkRunId = await service.reportUploadStatus(uploadResult);
+      
+      expect(checkRunId).toBe(12345);
 
       expect(mockOctokit.rest.checks.create).toHaveBeenCalledWith({
         owner: 'test-owner',
@@ -189,10 +191,14 @@ describe('DependencyTrackStatusService', () => {
       mockOctokit.rest.checks.create.mockRejectedValue(new Error('GitHub API error'));
       const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
 
-      await service.reportUploadStatus(uploadResult);
+      const checkRunId = await service.reportUploadStatus(uploadResult);
 
+      expect(checkRunId).toBeNull();
       expect(warningSpy).toHaveBeenCalledWith('Failed to create Dependency Track upload status check: Error: GitHub API error');
       warningSpy.mockRestore();
+      
+      // Reset mock to return success for other tests
+      mockOctokit.rest.checks.create.mockResolvedValue({ data: { id: 12345 } });
     });
 
     it('should include file size without components count', async () => {
