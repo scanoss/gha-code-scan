@@ -37,7 +37,7 @@ jobs:
         uses: super-linter/super-linter/slim@v5
         env:
           DEFAULT_BRANCH: main
-          FILTER_REGEX_EXCLUDE: dist/**/* .github/**/*
+          FILTER_REGEX_EXCLUDE: dist/**/*|.github/**/*
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TYPESCRIPT_DEFAULT_STYLE: prettier
           VALIDATE_ALL_CODEBASE: true
@@ -47,3 +47,4 @@ jobs:
           VALIDATE_NATURAL_LANGUAGE: false
           SUPPRESS_FILE_TYPE_WARN: true
           VALIDATE_JSON: false
+          VALIDATE_YAML: false

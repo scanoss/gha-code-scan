@@ -23,7 +23,7 @@ jobs:
       - name: Determine Tag
         id: taggerVersion
         run: |
-          app_version=$(jq -r '.version' package.json)
+          app_version=$(jq -r '.version' "package.json")
           echo "New Proposed tag: ${app_version}"
           echo "package_app_version=${app_version}" >> $GITHUB_ENV
 
