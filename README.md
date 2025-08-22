@@ -96,7 +96,7 @@ For example workflow runs, check out our
 | dependencies.scope         | Gets development or production dependencies (scopes: prod - dev)                                                                                         | Optional     | -                                    |
 | dependencies.scope.include | Custom list of dependency scopes to be included. Provide scopes as a comma-separated list.                                                               | Optional     | -                                    |
 | dependencies.scope.exclude | Custom list of dependency scopes to be excluded. Provide scopes as a comma-separated list.                                                               | Optional     | -                                    |
-| policies                   | List of policies separated by commas, options available are: copyleft, undeclared, dt (dependency track).                                                | Optional     | -                                    |
+| policies                   | List of policies separated by commas, options available are: copyleft (cpl), undeclared (und), depTrack (dt).                                            | Optional     | -                                    |
 | policies.halt_on_failure   | Halt check on policy failure. If set to false checks will not fail.                                                                                      | Optional     | `true`                               |
 | api.url                    | SCANOSS API URL                                                                                                                                          | Optional     | `https://api.osskb.org/scan/direct`  |
 | api.key                    | SCANOSS API Key                                                                                                                                          | Optional     | -                                    |
@@ -129,13 +129,13 @@ the output into your custom workflow
 ## Policy Checks
 The SCANOSS Code Scan Action includes three configurable policies:
 
-1. **Copyleft** (`copyleft`): This policy checks if any component or code snippet is associated with a copyleft license. If such a
+1. **Copyleft** (`copyleft or cpl`): This policy checks if any component or code snippet is associated with a copyleft license. If such a
    license is detected, the pull request (PR) is rejected. The default list of Copyleft licenses is defined in the following [file](https://github.com/scanoss/gha-code-scan/blob/main/src/utils/license.utils.ts).
 
-2. **Undeclared** (`undeclared`): This policy compares the components detected in the repository against those declared in scanoss.json
+2. **Undeclared** (`undeclared or und`): This policy compares the components detected in the repository against those declared in scanoss.json
    file (customizable through the settingsFilepath parameter). If there are undeclared components, the PR is rejected.
 
-3. **Dependency Track** (`dt`): This policy integrates with [Dependency Track](https://dependencytrack.org/) to check for security vulnerabilities, license violations, and policy compliance. It requires Dependency Track configuration parameters to be set.
+3. **Dependency Track** (`depTrack or dt`): This policy integrates with [Dependency Track](https://dependencytrack.org/) to check for security vulnerabilities, license violations, and policy compliance. It requires Dependency Track configuration parameters to be set.
 
 In this scenario, a classic policy is executed that will fail if copyleft licenses are found within the results:
 
