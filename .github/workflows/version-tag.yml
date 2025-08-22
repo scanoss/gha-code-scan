@@ -32,7 +32,7 @@ jobs:
         id: taggerApply
         run: |
           echo "Applying tag ${{ env.package_app_version }} ..."
-          git tag "${{ env.package_app_version }}"
+          git tag "v${{ env.package_app_version }}"
           echo "Pushing changes..."
           git push --tags
 
