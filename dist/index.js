@@ -123791,7 +123791,7 @@ exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 // Runtime Configuration
 /** Docker container image for scanoss-py execution */
-exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:latest';
+exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.31.4';
 /** Skip snippet generation during scan */
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 /** Enable file scanning */
@@ -123970,16 +123970,11 @@ async function run() {
         // 3: Dependency Track
         const uploadResult = await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
         // 3.1: Report Dependency Track upload status
-        if (inputs.DEPENDENCY_TRACK_ENABLED) {
-            const checkRunId = await dependency_track_status_service_1.dependencyTrackStatusService.reportUploadStatus(uploadResult);
-            if (checkRunId) {
-                uploadResult.checkRunId = checkRunId;
-            }
-        }
+        await dependency_track_status_service_1.dependencyTrackStatusService.reportUploadStatus(uploadResult);
         // 4: run policies
         for (const policy of policies) {
             if (policy instanceof dep_track_policy_check_1.DepTrackPolicyCheck) {
-                policy.setUploadAttempted(uploadResult.success);
+                policy.setUploadAttempted(uploadResult.success); // Warn if DT upload was disabled or failed
             }
             await policy.run();
         }
@@ -125517,10 +125512,13 @@ class DependencyTrackStatusService {
      * Returns the created check run ID for linking purposes
      */
     async reportUploadStatus(result) {
+        if (!result.enabled) {
+            return;
+        }
         try {
             const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
             // eslint-disable-next-line @typescript-eslint/await-thenable
-            const sha = await (0, github_utils_1.getSHA)();
+            const sha = await (0, github_utils_1.getSHA)(); // TODO review with Groh
             let conclusion;
             let title;
             let summary;
@@ -125550,13 +125548,11 @@ class DependencyTrackStatusService {
                     text
                 }
             });
-            const checkRunId = response.data.id;
-            core.debug(`Dependency Track upload status check created: ${conclusion}, ID: ${checkRunId}`);
-            return checkRunId;
+            core.debug(`Dependency Track upload status check created: ${conclusion}, ID: ${response.data.id}`);
+            result.checkRunId = response.data.id;
         }
         catch (error) {
             core.warning(`Failed to create Dependency Track upload status check: ${error}`);
-            return null;
         }
     }
     /**

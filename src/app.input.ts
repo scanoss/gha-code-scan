@@ -108,7 +108,7 @@ export const COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explic
 
 // Runtime Configuration
 /** Docker container image for scanoss-py execution */
-export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:latest';
+export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.31.4';
 /** Skip snippet generation during scan */
 export const SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 /** Enable file scanning */

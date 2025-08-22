@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added dependency track policy check
 - Added extra configuration validation
 - Added status check summary
+### Changed
+- Updated scanoss-py version to v1.31.4
 
 ## [1.1.0] - 2025-07-22
 ### Added

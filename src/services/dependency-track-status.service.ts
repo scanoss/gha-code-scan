@@ -51,11 +51,14 @@ export class DependencyTrackStatusService {
    * Reports the Dependency Track upload status as a GitHub check run
    * Returns the created check run ID for linking purposes
    */
-  async reportUploadStatus(result: DependencyTrackUploadResult): Promise<number | null> {
+  async reportUploadStatus(result: DependencyTrackUploadResult) {
+    if (!result.enabled) {
+      return
+    }
     try {
       const octokit = getOctokit(inputs.GITHUB_TOKEN);
       // eslint-disable-next-line @typescript-eslint/await-thenable
-      const sha = await getSHA();
+      const sha = await getSHA();  // TODO review with Groh
 
       let conclusion: 'success' | 'failure' | 'neutral';
       let title: string;
@@ -87,13 +90,10 @@ export class DependencyTrackStatusService {
           text
         }
       });
-
-      const checkRunId = response.data.id;
-      core.debug(`Dependency Track upload status check created: ${conclusion}, ID: ${checkRunId}`);
-      return checkRunId;
+      core.debug(`Dependency Track upload status check created: ${conclusion}, ID: ${response.data.id}`);
+      result.checkRunId = response.data.id;
     } catch (error) {
       core.warning(`Failed to create Dependency Track upload status check: ${error}`);
-      return null;
     }
   }
 

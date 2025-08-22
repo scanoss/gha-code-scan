@@ -103,7 +103,7 @@ For example workflow runs, check out our
 | licenses.copyleft.include  | List of Copyleft licenses to append to the default list. Provide licenses as a comma-separated list.                                                     | Optional     | -                                    |
 | licenses.copyleft.exclude  | List of Copyleft licenses to remove from default list. Provide licenses as a comma-separated list.                                                       | Optional     | -                                    |
 | licenses.copyleft.explicit | Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.                                                              | Optional     | -                                    |
-| runtimeContainer           | Runtime URL                                                                                                                                              | Optional     | `ghcr.io/scanoss/scanoss-py:v1.30.0` |
+| runtimeContainer           | Runtime URL                                                                                                                                              | Optional     | `ghcr.io/scanoss/scanoss-py:v1.31.4` |
 | skipSnippets               | Skip the generation of snippets. (scanFiles option must be enabled)                                                                                      | Optional     | `false`                              |
 | scanFiles                  | Enable or disable file and snippet scanning                                                                                                              | Optional     | `true`                               |
 | scanossSettings            | Settings file to use for scanning. See the SCANOSS settings [documentation](https://scanoss.readthedocs.io/projects/scanoss-py/en/latest/#settings-file) | Optional     | `true`                               |
@@ -172,11 +172,11 @@ When Dependency Track integration is enabled, you'll see these checks in your Gi
 - name: Run SCANOSS Code Scan with Dependency Track
   uses: scanoss/code-scan-action@v1
   with:
-    dependencytrack.enabled: true
-    dependencytrack.url: 'https://your-dt-instance.com'
-    dependencytrack.apikey: ${{ secrets.DT_API_KEY }}
-    dependencytrack.projectname: 'my-project'
-    dependencytrack.projectversion: '1.0.0'
+    deptrack.upload: true
+    deptrack.url: 'https://your-dt-instance.com'
+    deptrack.apikey: ${{ secrets.DT_API_KEY }}
+    deptrack.projectname: 'my-project'
+    deptrack.projectversion: '1.0.0'
 ```
 
 #### Advanced Configuration with Policies
@@ -185,10 +185,10 @@ When Dependency Track integration is enabled, you'll see these checks in your Gi
   uses: scanoss/code-scan-action@v1
   with:
     policies: copyleft, undeclared, dt  # Enable all policies including Dependency Track
-    dependencytrack.enabled: true
-    dependencytrack.url: 'https://your-dt-instance.com'
-    dependencytrack.apikey: ${{ secrets.DT_API_KEY }}
-    dependencytrack.projectid: 'existing-project-uuid'  # Use existing project
+    deptrack.upload: true
+    deptrack.url: 'https://your-dt-instance.com'
+    deptrack.apikey: ${{ secrets.DT_API_KEY }}
+    deptrack.projectid: 'existing-project-uuid'  # Use existing project
     policies.halt_on_failure: false  # Don't fail build on policy violations
 ```
 
@@ -237,15 +237,14 @@ jobs:
         with:
           policies: copyleft, undeclared, dt
           dependencies.enabled: true
-          dependencytrack.enabled: true
-          dependencytrack.url: 'https://your-dt-instance.com'
-          dependencytrack.apikey: ${{ secrets.DT_API_KEY }}
-          dependencytrack.projectname: 'my-project'
-          dependencytrack.projectversion: '1.0.0'
+          deptrack.upload: true
+          deptrack.url: 'https://your-dt-instance.com'
+          deptrack.apikey: ${{ secrets.DT_API_KEY }}
+          deptrack.projectname: 'my-project'
+          deptrack.projectversion: '1.0.0'
           # api-url: <YOUR_API_URL>
           # api-key: <YOUR_API_KEY>
-
-
+          
       - name: Print stdout scan command
         run: echo "${{ steps.scanoss-code-scan-step.outputs.stdout-scan-command }}"
 

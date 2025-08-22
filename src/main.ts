@@ -60,19 +60,13 @@ export async function run(): Promise<void> {
 
     // 3: Dependency Track
     const uploadResult = await dependencyTrackService.uploadToDependencyTrack();
-
     // 3.1: Report Dependency Track upload status
-    if (inputs.DEPENDENCY_TRACK_ENABLED) {
-      const checkRunId = await dependencyTrackStatusService.reportUploadStatus(uploadResult);
-      if (checkRunId) {
-        uploadResult.checkRunId = checkRunId;
-      }
-    }
+      await dependencyTrackStatusService.reportUploadStatus(uploadResult);
 
     // 4: run policies
     for (const policy of policies) {
       if (policy instanceof DepTrackPolicyCheck) {
-        policy.setUploadAttempted(uploadResult.success);
+        policy.setUploadAttempted(uploadResult.success);  // Warn if DT upload was disabled or failed
       }
       await policy.run();
     }

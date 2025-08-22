@@ -74,9 +74,9 @@ describe('DependencyTrackStatusService', () => {
         uploadTime: 1.5
       };
 
-      const checkRunId = await service.reportUploadStatus(uploadResult);
+       await service.reportUploadStatus(uploadResult);
 
-      expect(checkRunId).toBe(12345);
+      expect(uploadResult.checkRunId).toBe(12345);
 
       expect(mockOctokit.rest.checks.create).toHaveBeenCalledWith({
         owner: 'test-owner',
@@ -166,9 +166,9 @@ describe('DependencyTrackStatusService', () => {
       mockOctokit.rest.checks.create.mockRejectedValue(new Error('GitHub API error'));
       const warningSpy = jest.spyOn(core, 'warning').mockImplementation();
 
-      const checkRunId = await service.reportUploadStatus(uploadResult);
+      await service.reportUploadStatus(uploadResult);
 
-      expect(checkRunId).toBeNull();
+      expect(uploadResult.checkRunId).toBeUndefined();
       expect(warningSpy).toHaveBeenCalledWith(
         'Failed to create Dependency Track upload status check: Error: GitHub API error'
       );
