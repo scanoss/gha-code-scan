@@ -41,5 +41,5 @@ jobs:
 
       - name: Test
         id: npm-ci-test
-        run: npm run ci-test --runInBand
+        run: npm run ci-test -- --maxWorkers=2 --workerIdleMemoryLimit=512MB
 
