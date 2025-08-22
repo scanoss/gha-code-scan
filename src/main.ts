@@ -26,9 +26,12 @@ import { generateJobSummary, generatePRSummary } from './services/report.service
 import * as core from '@actions/core';
 import * as inputs from './app.input';
 import * as outputs from './app.output';
-
 import { scanService, uploadResults } from './services/scan.service';
 import { policyManager } from './policies/policy.manager';
+import { DepTrackPolicyCheck } from './policies/dep-track-policy-check';
+import { dependencyTrackService } from './services/dependency-track.service';
+import { dependencyTrackStatusService } from './services/dependency-track-status.service';
+import { scanossService } from './services/scanoss.service';
 
 /**
  * The main function for the action.
@@ -48,12 +51,23 @@ export async function run(): Promise<void> {
       await policy.start(firstRunId);
     }
 
-    // run scan
+    // 1: run scan
     const { stdout } = await scanService.scan();
     await uploadResults();
 
-    // run policies
+    // 2: Convert scan results to CycloneDX
+    await scanossService.scanResultsToCycloneDX();
+
+    // 3: Dependency Track
+    const uploadResult = await dependencyTrackService.uploadToDependencyTrack();
+    // 3.1: Report Dependency Track upload status
+    await dependencyTrackStatusService.reportUploadStatus(uploadResult);
+
+    // 4: run policies
     for (const policy of policies) {
+      if (policy instanceof DepTrackPolicyCheck) {
+        policy.setUploadAttempted(uploadResult.success); // Warn if DT upload was disabled or failed
+      }
       await policy.run();
     }
 
@@ -63,7 +77,8 @@ export async function run(): Promise<void> {
       await createCommentOnPR(report);
     }
 
-    await generateJobSummary(policies);
+    await generateJobSummary(policies, uploadResult);
+
     // set outputs for other workflow steps to use
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
     core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);

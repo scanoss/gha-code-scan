@@ -24,7 +24,13 @@
 import { ArgumentBuilder } from '../argument-builder';
 import { OUTPUT_FILEPATH, REPO_DIR, RUNTIME_CONTAINER, DEBUG } from '../../../app.input';
 
+/**
+ * Builds arguments for undeclared component inspection using scanoss-py.
+ */
 export class UndeclaredArgumentBuilder extends ArgumentBuilder {
+  /**
+   * Builds command arguments for detecting undeclared components.
+   */
   async build(): Promise<string[]> {
     return [
       'run',

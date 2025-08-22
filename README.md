@@ -96,19 +96,25 @@ For example workflow runs, check out our
 | dependencies.scope         | Gets development or production dependencies (scopes: prod - dev)                                                                                         | Optional     | -                                    |
 | dependencies.scope.include | Custom list of dependency scopes to be included. Provide scopes as a comma-separated list.                                                               | Optional     | -                                    |
 | dependencies.scope.exclude | Custom list of dependency scopes to be excluded. Provide scopes as a comma-separated list.                                                               | Optional     | -                                    |
-| policies                   | List of policies separated by commas, options available are: copyleft, undeclared.                                                                       | Optional     | -                                    |
+| policies                   | List of policies separated by commas, options available are: copyleft (cpl), undeclared (und), depTrack (dt).                                            | Optional     | -                                    |
 | policies.halt_on_failure   | Halt check on policy failure. If set to false checks will not fail.                                                                                      | Optional     | `true`                               |
 | api.url                    | SCANOSS API URL                                                                                                                                          | Optional     | `https://api.osskb.org/scan/direct`  |
 | api.key                    | SCANOSS API Key                                                                                                                                          | Optional     | -                                    |
 | licenses.copyleft.include  | List of Copyleft licenses to append to the default list. Provide licenses as a comma-separated list.                                                     | Optional     | -                                    |
 | licenses.copyleft.exclude  | List of Copyleft licenses to remove from default list. Provide licenses as a comma-separated list.                                                       | Optional     | -                                    |
 | licenses.copyleft.explicit | Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.                                                              | Optional     | -                                    |
-| runtimeContainer           | Runtime URL                                                                                                                                              | Optional     | `ghcr.io/scanoss/scanoss-py:v1.26.3` |
+| runtimeContainer           | Runtime URL                                                                                                                                              | Optional     | `ghcr.io/scanoss/scanoss-py:v1.31.4` |
 | skipSnippets               | Skip the generation of snippets. (scanFiles option must be enabled)                                                                                      | Optional     | `false`                              |
 | scanFiles                  | Enable or disable file and snippet scanning                                                                                                              | Optional     | `true`                               |
 | scanossSettings            | Settings file to use for scanning. See the SCANOSS settings [documentation](https://scanoss.readthedocs.io/projects/scanoss-py/en/latest/#settings-file) | Optional     | `true`                               |
 | settingsFilepath           | Filepath of the SCANOSS settings to be used for scanning                                                                                                 | Optional     | `scanoss.json`                       |
 | debug                      | Enable debugging                                                                                                                                         | Optional     | `false`                              |
+| deptrack.upload            | Enable automatic upload of scan results to Dependency Track                                                                                              | Optional     | `false`                              |
+| deptrack.url               | URL of the Dependency Track instance. Required when Dependency Track is enabled                                                                          | Required*    | -                                    |
+| deptrack.apikey            | Dependency Track API key. Required when Dependency Track is enabled                                                                                      | Required*    | -                                    |
+| deptrack.projectid         | UUID of an existing project in Dependency Track.<br/>Required when project name and version are not provided                                             | Required*    | -                                    |
+| deptrack.projectname       | Dependency track project name identifier. (will be created if it doesn't exist). Required when project ID is not provided                                | Optional     | -                                    |
+| deptrack.projectversion    | Dependency Track project Version identifier. Required when project ID is not provided                                                                    | Optional     | -                                    |
 
 ### Action Output Parameters
 
@@ -121,13 +127,15 @@ the output into your custom workflow
 | stdout-scan-command | Scanner command output   |
 
 ## Policy Checks
-The SCANOSS Code Scan Action includes two configurable policies:
+The SCANOSS Code Scan Action includes three configurable policies:
 
-1. Copyleft: This policy checks if any component or code snippet is associated with a copyleft license. If such a
+1. **Copyleft** (`copyleft or cpl`): This policy checks if any component or code snippet is associated with a copyleft license. If such a
    license is detected, the pull request (PR) is rejected. The default list of Copyleft licenses is defined in the following [file](https://github.com/scanoss/gha-code-scan/blob/main/src/utils/license.utils.ts).
 
-2. Undeclared: This policy compares the components detected in the repository against those declared in scanoss.json
+2. **Undeclared** (`undeclared or und`): This policy compares the components detected in the repository against those declared in scanoss.json
    file (customizable through the settingsFilepath parameter). If there are undeclared components, the PR is rejected.
+
+3. **Dependency Track** (`depTrack or dt`): This policy integrates with [Dependency Track](https://dependencytrack.org/) to check for security vulnerabilities, license violations, and policy compliance. It requires Dependency Track configuration parameters to be set.
 
 In this scenario, a classic policy is executed that will fail if copyleft licenses are found within the results:
 
@@ -136,6 +144,66 @@ In this scenario, a classic policy is executed that will fail if copyleft licens
 Additionally, if it is a Pull Request, a comment with a summary of the report will be automatically generated.
 
 ![Comments on PR](./.github/assets/img_pr_comment.png)
+
+## Dependency Track Integration
+
+The SCANOSS Code Scan Action provides comprehensive integration with [Dependency Track](https://dependencytrack.org/) for advanced vulnerability management and policy compliance:
+
+### Features
+
+- **Automatic SBOM Upload**: Converts scan results to CycloneDX format and uploads to your Dependency Track instance
+- **Upload Status Monitoring**: Creates a dedicated GitHub check to monitor upload success/failure with detailed diagnostics
+- **Policy Violation Scanning**: Checks your Dependency Track instance for security vulnerabilities, license violations, and policy compliance
+- **Project Management**: Automatically creates projects in Dependency Track or works with existing projects
+
+### GitHub Checks Created
+
+When Dependency Track integration is enabled, you'll see these checks in your GitHub Actions:
+
+1. **Status Check: Dependency Track Upload** - Shows upload status and diagnostics
+2. **Policy Check: Dependency Track** - Shows policy violations and security findings (if `dt` policy is enabled)
+3. **Policy Check: Copyleft** - License compliance (if `copyleft` policy is enabled)  
+4. **Policy Check: Undeclared** - Component declaration compliance (if `undeclared` policy is enabled)
+
+### Configuration
+
+#### Basic Configuration
+```yaml
+- name: Run SCANOSS Code Scan with Dependency Track
+  uses: scanoss/code-scan-action@v1
+  with:
+    deptrack.upload: true
+    deptrack.url: 'https://your-dt-instance.com'
+    deptrack.apikey: ${{ secrets.DT_API_KEY }}
+    deptrack.projectname: 'my-project'
+    deptrack.projectversion: '1.0.0'
+```
+
+#### Advanced Configuration with Policies
+```yaml
+- name: Run SCANOSS Code Scan with Full Dependency Track Integration
+  uses: scanoss/code-scan-action@v1
+  with:
+    policies: copyleft, undeclared, dt  # Enable all policies including Dependency Track
+    deptrack.upload: true
+    deptrack.url: 'https://your-dt-instance.com'
+    deptrack.apikey: ${{ secrets.DT_API_KEY }}
+    deptrack.projectid: 'existing-project-uuid'  # Use existing project
+    policies.halt_on_failure: false  # Don't fail build on policy violations
+```
+
+### Troubleshooting
+
+**Upload Status Check**: Click on the "Status Check: Dependency Track Upload" to see detailed diagnostics including:
+- Upload success/failure status
+- Project information and links
+- File size and component count
+- Detailed error messages with troubleshooting steps
+
+**Common Issues**:
+- **Authentication**: Verify your API key has proper permissions
+- **Network**: Ensure GitHub Actions can reach your Dependency Track instance
+- **Project Configuration**: Check that project name/version or project ID is correct
 
 ## Full example
 
@@ -167,12 +235,16 @@ jobs:
         id: scanoss-code-scan-step
         uses: scanoss/code-scan-action@v1
         with:
-          policies: copyleft, undeclared 
+          policies: copyleft, undeclared, dt
           dependencies.enabled: true
-          # api-url: <YOUR_API_URL>
-          # api-key: <YOUR_API_KEY>
-
-
+          deptrack.upload: true
+          deptrack.url: 'https://your-dt-instance.com'
+          deptrack.apikey: ${{ secrets.DT_API_KEY }}
+          deptrack.projectname: 'my-project'
+          deptrack.projectversion: '1.0.0'
+          # api.url: <YOUR_API_URL>
+          # api.key: <YOUR_API_KEY>
+          
       - name: Print stdout scan command
         run: echo "${{ steps.scanoss-code-scan-step.outputs.stdout-scan-command }}"
 

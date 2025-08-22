@@ -25,25 +25,45 @@ import { CopyleftPolicyCheck } from './copyleft-policy-check';
 import { PolicyCheck } from './policy-check';
 import * as inputs from '../app.input';
 import { UndeclaredPolicyCheck } from './undeclared-policy-check';
+import { DepTrackPolicyCheck } from './dep-track-policy-check';
+import * as core from '@actions/core';
 
 type PolicyRegistry = Record<string, new () => PolicyCheck>;
 
+/**
+ * Manages policy check instances and execution.
+ * Provides access to registered policy checks and handles policy instantiation.
+ */
 export class PolicyManager {
-  private policyRegistry: PolicyRegistry;
+  private readonly policyRegistry: PolicyRegistry;
 
   constructor(policyRegistry?: PolicyRegistry) {
     this.policyRegistry = policyRegistry || {
       copyleft: CopyleftPolicyCheck,
-      undeclared: UndeclaredPolicyCheck
+      cpl: CopyleftPolicyCheck,
+      undeclared: UndeclaredPolicyCheck,
+      und: UndeclaredPolicyCheck,
+      depTrack: DepTrackPolicyCheck,
+      dt: DepTrackPolicyCheck
     };
   }
 
+  /**
+   * Gets instances of the specified policy checks.
+   * @param policiesNames - Array of policy names to instantiate. If not provided, uses POLICIES from app input.
+   */
   getPolicies(policiesNames?: string[]): PolicyCheck[] {
+    core.info(`Policy Names: ${policiesNames}`);
+    core.debug(`Policy Registry: ${this.policyRegistry}`);
+
     const pNames = policiesNames || inputs.POLICIES.split(',').map(pn => pn.trim());
+
+    core.info(`Policies: ${pNames}`);
 
     //throw error if policy does not exist
     pNames.forEach(pName => {
-      if (!this.policyRegistry[pName]) throw new Error(`Policy ${pNames} does not exist`);
+      core.info(`Policy: ${pName}`);
+      if (!this.policyRegistry[pName]) throw new Error(`Policy ${pName} does not exist`);
     });
 
     return pNames.map(pName => new this.policyRegistry[pName]());

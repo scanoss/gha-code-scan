@@ -21,6 +21,13 @@
    THE SOFTWARE.
  */
 
+/**
+ * Base class for building command-line arguments for scanoss-py policy checks.
+ * Concrete implementations handle specific policy types and their argument requirements.
+ */
 export abstract class ArgumentBuilder {
+  /**
+   * Builds an array of command-line arguments for the scanoss-py executable.
+   */
   abstract build(): Promise<string[]>;
 }

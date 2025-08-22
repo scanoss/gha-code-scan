@@ -33,10 +33,16 @@ const FIND_FIRST_RUN_EVENT = 'workflow_dispatch';
 type WorkflowRunsResponse = Endpoints['GET /repos/{owner}/{repo}/actions/runs']['response'];
 type WorkflowRun = WorkflowRunsResponse['data']['workflow_runs'][number];
 
+/**
+ * Determines if the current GitHub workflow run was triggered by a pull request event.
+ */
 export function isPullRequest(): boolean {
   return prEvents.includes(context.eventName);
 }
 
+/**
+ * Gets the SHA of the commit being processed in the current workflow run.
+ */
 export function getSHA(): string {
   let sha = context.sha;
   if (isPullRequest()) {
@@ -49,6 +55,9 @@ export function getSHA(): string {
   return sha;
 }
 
+/**
+ * Creates a comment on the current pull request with the provided message.
+ */
 export async function createCommentOnPR(message: string): Promise<void> {
   const octokit = getOctokit(inputs.GITHUB_TOKEN);
 
@@ -61,6 +70,10 @@ export async function createCommentOnPR(message: string): Promise<void> {
   });
 }
 
+/**
+ * Gets the first workflow run ID for linking purposes.
+ * For workflow_dispatch events, finds the original triggering run.
+ */
 export async function getFirstRunId(): Promise<number> {
   let firstRunId = context.runId;
   if (context.eventName === FIND_FIRST_RUN_EVENT) {
@@ -73,6 +86,9 @@ export async function getFirstRunId(): Promise<number> {
   return firstRunId;
 }
 
+/**
+ * Loads the first workflow run for the current SHA and workflow.
+ */
 async function loadFirstRun(owner: string, repo: string): Promise<WorkflowRun | null> {
   const octokit = getOctokit(inputs.GITHUB_TOKEN);
   const sha = getSHA();

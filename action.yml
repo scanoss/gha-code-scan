@@ -7,13 +7,17 @@ branding:
   color: 'gray-dark'
 
 inputs:
+  halt_on_error:
+    description: 'Stop the pipeline if an error is encountered as opposed to a policy failure'
+    required: false
+    default: 'true'
   policies:
-    description: 'List of policies separated by comma (e.g., copyleft, undeclared)'
+    description: 'List of policies separated by comma (e.g., copyleft, undeclared, dt)'
     required: false
   policies.halt_on_failure:
     description: 'Halt if a check fails'
     required: false
-    default: true
+    default: 'true'
   api.key:
     description: 'SCANOSS API Key token (optional - not required for default OSSKB URL)'
     required: false
@@ -23,7 +27,7 @@ inputs:
   dependencies.enabled:
     description: 'Scan dependencies (optional - default false)'
     required: false
-    default: false
+    default: 'false'
   dependencies.scope:
     description: 'Gets development or production dependencies (scopes - prod|dev)'
     required: false
@@ -37,12 +41,13 @@ inputs:
     required: false
     default: ''
   output.filepath:
+    description: 'Scanner results filepath'
     required: false
     default: 'results.json'
   github.token:
     description: 'Your GitHub token'
     required: false
-    default: ${{ github.token }}
+    default: '${{ github.token }}'
   licenses.copyleft.include:
     description: 'List of Copyleft licenses to append to the default list. Provide licenses as a comma-separated list.'
     required: false
@@ -54,19 +59,19 @@ inputs:
     required: false
   runtimeContainer:
     description: 'Specify runtime container to perform the scan.'
-    default: 'ghcr.io/scanoss/scanoss-py:v1.26.3'
+    default: 'ghcr.io/scanoss/scanoss-py:v1.31.4'
     required: false
   skipSnippets:
     description: 'Skip the generation of snippets.'
-    default: false
+    default: 'false'
     required: false
   scanFiles:
     description: 'Enable or disable file and snippet scanning.'
-    default: true
+    default: 'true'
     required: false
   scanossSettings:
     description: 'Settings file to use for scanning.'
-    default: true
+    default: 'true'
     required: false
   settingsFilepath:
     description: 'SCANOSS settings file path.'
@@ -74,18 +79,34 @@ inputs:
     required: false
   debug:
     description: 'Enable debugging on scanoss.py'
-    default: false
+    default: 'false'
     required: false
-
-
+  deptrack.upload:
+    description: 'Enable Dependency Track upload'
+    default: 'false'
+    required: false
+  deptrack.url:
+    description: 'Dependency Track base URL'
+    required: false
+  deptrack.apikey:
+    description: 'Dependency Track API key'
+    required: false
+  deptrack.projectid:
+    description: 'Dependency Track project UUID'
+    required: false
+  deptrack.projectname:
+    description: 'Dependency Track project name'
+    required: false
+  deptrack.projectversion:
+    description: 'Dependency Track project version'
+    required: false
 
 outputs:
   result-filepath:
     description: 'Scanner results filepath'
   stdout-scan-command:
     description: 'Scanner command output'
-    
+
 runs:
   using: node20
   main: dist/index.js
-

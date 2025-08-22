@@ -24,7 +24,13 @@
 import { CopyLeftArgumentBuilder } from './copyleft-argument-builder';
 import { DEBUG, OUTPUT_FILEPATH, REPO_DIR, RUNTIME_CONTAINER } from '../../../app.input';
 
+/**
+ * Builds arguments for license summary generation using scanoss-py.
+ */
 export class LicenseSummaryArgumentBuilder extends CopyLeftArgumentBuilder {
+  /**
+   * Builds command arguments for generating license summaries.
+   */
   async build(): Promise<string[]> {
     return [
       'run',

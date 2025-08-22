@@ -22,25 +22,130 @@
  */
 
 import * as core from '@actions/core';
+import * as path from 'path';
 
+/**
+ * Validates a filename to prevent directory traversal and ensure safe file operations.
+ * @param filename - The filename to validate
+ * @returns A safe filename or throws an error if invalid
+ */
+function validateFilename(filename: string | undefined): string {
+  if (!filename) {
+    return 'results.json';
+  }
+
+  // Normalize the path to handle any path traversal attempts
+  const normalizedPath = path.normalize(filename);
+
+  // Check for directory traversal attempts
+  if (normalizedPath.includes('..') || normalizedPath.startsWith('/') || normalizedPath.includes('\\')) {
+    core.warning(`Invalid filename detected: ${filename}. Using default: results.json`);
+    return 'results.json';
+  }
+
+  // Extract just the filename (no directory components)
+  const basename = path.basename(normalizedPath);
+
+  // Ensure it's a valid filename (alphanumeric, dots, dashes, underscores)
+  const safeFilenameRegex = /^[a-zA-Z0-9._-]+$/;
+  if (!safeFilenameRegex.test(basename)) {
+    core.warning(`Unsafe filename detected: ${filename}. Using default: results.json`);
+    return 'results.json';
+  }
+
+  // Ensure it has a proper extension
+  if (!basename.includes('.')) {
+    return `${basename}.json`;
+  }
+
+  return basename;
+}
+
+/**
+ * Input configuration constants for the SCANOSS GitHub Action.
+ * All values are loaded from GitHub Actions input parameters or environment variables.
+ */
+
+// Policy Configuration
+/** Comma-separated list of policy names to execute */
 export const POLICIES = core.getInput('policies');
-export const POLICIES_HALT_ON_FAILURE = core.getInput('policies.halt_on_failure') === 'true';
+/** Whether policy failures should halt the workflow (default: true) */
+export const POLICIES_HALT_ON_FAILURE = !(core.getInput('policies.halt_on_failure') === 'false');
+/** Whether technical errors should halt the workflow (default: true) */
+export const HALT_ON_ERROR = !(core.getInput('halt_on_error') === 'false');
+
+// Dependency Scanning Configuration
+/** Enable dependency scanning functionality */
 export const DEPENDENCIES_ENABLED = core.getInput('dependencies.enabled') === 'true';
+/** Dependency scope filter (prod/dev) */
 export const DEPENDENCIES_SCOPE = core.getInput('dependencies.scope');
+/** Exclude specific dependency scopes */
 export const DEPENDENCY_SCOPE_EXCLUDE = core.getInput('dependencies.scope.exclude');
+/** Include specific dependency scopes */
 export const DEPENDENCY_SCOPE_INCLUDE = core.getInput('dependencies.scope.include');
+
+// SCANOSS API Configuration
+/** API key for SCANOSS service authentication */
 export const API_KEY = core.getInput('api.key');
+/** SCANOSS API endpoint URL */
 export const API_URL = core.getInput('api.url');
-export const OUTPUT_FILEPATH = core.getInput('output.filepath');
+
+// File System Configuration
+/** Path for scan results output */
+export const OUTPUT_FILEPATH = validateFilename(core.getInput('output.filepath'));
+/** GitHub token for API access */
 export const GITHUB_TOKEN = core.getInput('github.token');
-export const COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
-export const COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
-export const COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
+/** Repository directory path */
 export const REPO_DIR = process.env.GITHUB_WORKSPACE as string;
-export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.26.3';
+
+// License Policy Configuration
+/** Additional copyleft licenses to include */
+export const COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
+/** Copyleft licenses to exclude */
+export const COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
+/** Explicit list of copyleft licenses */
+export const COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
+
+// Runtime Configuration
+/** Docker container image for scanoss-py execution */
+export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.31.4';
+/** Skip snippet generation during scan */
 export const SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
+/** Enable file scanning */
 export const SCAN_FILES = core.getInput('scanFiles') === 'true';
+/** Enable SCANOSS settings file usage */
 export const SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
+/** Path to SCANOSS settings file */
 export const SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
+/** Docker executable command */
 export const EXECUTABLE = 'docker';
+/** Enable debug mode */
 export const DEBUG = core.getInput('debug') === 'true';
+
+// Dependency Track Configuration
+/** Enable Dependency Track integration */
+export const DEPENDENCY_TRACK_ENABLED = core.getInput('deptrack.upload') === 'true';
+/** Dependency Track server URL */
+export const DEPENDENCY_TRACK_URL = core.getInput('deptrack.url');
+/** Dependency Track API key */
+export const DEPENDENCY_TRACK_API_KEY = core.getInput('deptrack.apikey');
+/** Dependency Track project ID (mutable) */
+// eslint-disable-next-line import/no-mutable-exports
+export let DEPENDENCY_TRACK_PROJECT_ID = core.getInput('deptrack.projectid');
+/** Dependency Track project name */
+export const DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('deptrack.projectname');
+/** Dependency Track project version */
+export const DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('deptrack.projectversion');
+/** Upload token received from Dependency Track (set at runtime) */
+// eslint-disable-next-line import/no-mutable-exports
+export let DEPENDENCY_TRACK_UPLOAD_TOKEN = '';
+
+// Setter Functions
+/** Sets the Dependency Track upload token received from API */
+export const setDependencyTrackUploadToken = (version: string): void => {
+  DEPENDENCY_TRACK_UPLOAD_TOKEN = version;
+};
+/** Sets the Dependency Track project ID received from API */
+export const setDependencyTrackProjectId = (id: string): void => {
+  DEPENDENCY_TRACK_PROJECT_ID = id;
+};

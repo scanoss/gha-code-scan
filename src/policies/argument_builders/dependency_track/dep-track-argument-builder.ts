@@ -22,34 +22,45 @@
  */
 
 import { ArgumentBuilder } from '../argument-builder';
-import { COPYLEFT_LICENSE_EXCLUDE, COPYLEFT_LICENSE_EXPLICIT, COPYLEFT_LICENSE_INCLUDE } from '../../../app.input';
-import * as core from '@actions/core';
+import {
+  REPO_DIR,
+  RUNTIME_CONTAINER,
+  DEBUG,
+  DEPENDENCY_TRACK_URL,
+  DEPENDENCY_TRACK_API_KEY,
+  DEPENDENCY_TRACK_PROJECT_ID,
+  DEPENDENCY_TRACK_PROJECT_NAME,
+  DEPENDENCY_TRACK_UPLOAD_TOKEN,
+  DEPENDENCY_TRACK_PROJECT_VERSION
+} from '../../../app.input';
 
 /**
- * Base class for building license-related command arguments.
+ * Builds arguments for Dependency Track policy violation checks using scanoss-py.
  */
-export abstract class BaseLicenseArgumentBuilder extends ArgumentBuilder {
+export class DependencyTrackArgumentBuilder extends ArgumentBuilder {
   /**
-   * Builds copyleft license filtering arguments based on configuration.
+   * Builds command arguments for Dependency Track policy checks.
    */
-  protected buildCopyleftArgs(): string[] {
-    if (COPYLEFT_LICENSE_EXPLICIT) {
-      core.info(`Explicit copyleft licenses: ${COPYLEFT_LICENSE_EXPLICIT}`);
-      return ['--explicit', COPYLEFT_LICENSE_EXPLICIT];
-    }
-
-    if (COPYLEFT_LICENSE_INCLUDE) {
-      core.info(`Included copyleft licenses: ${COPYLEFT_LICENSE_INCLUDE}`);
-      return ['--include', COPYLEFT_LICENSE_INCLUDE];
-    }
-
-    if (COPYLEFT_LICENSE_EXCLUDE) {
-      core.info(`Excluded copyleft licenses: ${COPYLEFT_LICENSE_EXCLUDE}`);
-      return ['--exclude', COPYLEFT_LICENSE_EXCLUDE];
-    }
-
-    return [];
+  async build(): Promise<string[]> {
+    return [
+      'run',
+      '-v',
+      `${REPO_DIR}:/scanoss`,
+      RUNTIME_CONTAINER,
+      'inspect',
+      'dt',
+      'pv',
+      '--url',
+      DEPENDENCY_TRACK_URL,
+      '--apikey',
+      DEPENDENCY_TRACK_API_KEY,
+      ...(DEPENDENCY_TRACK_PROJECT_ID ? ['--project-id', DEPENDENCY_TRACK_PROJECT_ID] : []),
+      ...(DEPENDENCY_TRACK_UPLOAD_TOKEN ? ['--upload-token', DEPENDENCY_TRACK_UPLOAD_TOKEN] : []),
+      ...(DEPENDENCY_TRACK_PROJECT_NAME ? ['--project-name', DEPENDENCY_TRACK_PROJECT_NAME] : []),
+      ...(DEPENDENCY_TRACK_PROJECT_VERSION ? ['--project-version', DEPENDENCY_TRACK_PROJECT_VERSION] : []),
+      '--format',
+      'md',
+      ...(DEBUG ? ['--debug'] : [])
+    ];
   }
-
-  abstract build(): Promise<string[]>;
 }

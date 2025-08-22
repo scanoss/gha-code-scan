@@ -24,7 +24,13 @@
 import { DEBUG, OUTPUT_FILEPATH, REPO_DIR, RUNTIME_CONTAINER } from '../../../app.input';
 import { BaseLicenseArgumentBuilder } from './base-license-argument-builder';
 
+/**
+ * Builds arguments for copyleft license policy checks using scanoss-py.
+ */
 export class CopyLeftArgumentBuilder extends BaseLicenseArgumentBuilder {
+  /**
+   * Builds command arguments for copyleft license inspection.
+   */
   async build(): Promise<string[]> {
     return [
       'run',

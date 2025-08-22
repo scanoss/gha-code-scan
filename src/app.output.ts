@@ -21,5 +21,21 @@
    THE SOFTWARE.
  */
 
+/**
+ * Output constants for GitHub Actions outputs and artifact names.
+ */
+
+/**
+ * Output key for the scan results file path.
+ */
 export const RESULT_FILEPATH = 'result-filepath';
+
+/**
+ * Output key for the scan command stdout.
+ */
 export const STDOUT_SCAN_COMMAND = 'stdout-scan-command';
+
+/**
+ * Default filename for CycloneDX format exports.
+ */
+export const CYCLONEDX_FILE_NAME = 'scanoss-cyclonedx.json';

@@ -21,4 +21,8 @@
    THE SOFTWARE.
  */
 
-export const CHECK_NAME = 'SCANOSS Policy Checker';
+/**
+ * Configuration constants for the SCANOSS action.
+ */
+export const CHECK_NAME = 'Policy Check';
+export const STATUS_NAME = 'Status Check';

@@ -123656,8 +123656,12 @@ ZipStream.prototype.finalize = function() {
    THE SOFTWARE.
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CHECK_NAME = void 0;
-exports.CHECK_NAME = 'SCANOSS Policy Checker';
+exports.STATUS_NAME = exports.CHECK_NAME = void 0;
+/**
+ * Configuration constants for the SCANOSS action.
+ */
+exports.CHECK_NAME = 'Policy Check';
+exports.STATUS_NAME = 'Status Check';
 
 
 /***/ }),
@@ -123713,29 +123717,121 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.REPO_DIR = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
+exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.REPO_DIR = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.HALT_ON_ERROR = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
 const core = __importStar(__nccwpck_require__(42186));
+const path = __importStar(__nccwpck_require__(71017));
+/**
+ * Validates a filename to prevent directory traversal and ensure safe file operations.
+ * @param filename - The filename to validate
+ * @returns A safe filename or throws an error if invalid
+ */
+function validateFilename(filename) {
+    if (!filename) {
+        return 'results.json';
+    }
+    // Normalize the path to handle any path traversal attempts
+    const normalizedPath = path.normalize(filename);
+    // Check for directory traversal attempts
+    if (normalizedPath.includes('..') || normalizedPath.startsWith('/') || normalizedPath.includes('\\')) {
+        core.warning(`Invalid filename detected: ${filename}. Using default: results.json`);
+        return 'results.json';
+    }
+    // Extract just the filename (no directory components)
+    const basename = path.basename(normalizedPath);
+    // Ensure it's a valid filename (alphanumeric, dots, dashes, underscores)
+    const safeFilenameRegex = /^[a-zA-Z0-9._-]+$/;
+    if (!safeFilenameRegex.test(basename)) {
+        core.warning(`Unsafe filename detected: ${filename}. Using default: results.json`);
+        return 'results.json';
+    }
+    // Ensure it has a proper extension
+    if (!basename.includes('.')) {
+        return `${basename}.json`;
+    }
+    return basename;
+}
+/**
+ * Input configuration constants for the SCANOSS GitHub Action.
+ * All values are loaded from GitHub Actions input parameters or environment variables.
+ */
+// Policy Configuration
+/** Comma-separated list of policy names to execute */
 exports.POLICIES = core.getInput('policies');
-exports.POLICIES_HALT_ON_FAILURE = core.getInput('policies.halt_on_failure') === 'true';
+/** Whether policy failures should halt the workflow (default: true) */
+exports.POLICIES_HALT_ON_FAILURE = !(core.getInput('policies.halt_on_failure') === 'false');
+/** Whether technical errors should halt the workflow (default: true) */
+exports.HALT_ON_ERROR = !(core.getInput('halt_on_error') === 'false');
+// Dependency Scanning Configuration
+/** Enable dependency scanning functionality */
 exports.DEPENDENCIES_ENABLED = core.getInput('dependencies.enabled') === 'true';
+/** Dependency scope filter (prod/dev) */
 exports.DEPENDENCIES_SCOPE = core.getInput('dependencies.scope');
+/** Exclude specific dependency scopes */
 exports.DEPENDENCY_SCOPE_EXCLUDE = core.getInput('dependencies.scope.exclude');
+/** Include specific dependency scopes */
 exports.DEPENDENCY_SCOPE_INCLUDE = core.getInput('dependencies.scope.include');
+// SCANOSS API Configuration
+/** API key for SCANOSS service authentication */
 exports.API_KEY = core.getInput('api.key');
+/** SCANOSS API endpoint URL */
 exports.API_URL = core.getInput('api.url');
-exports.OUTPUT_FILEPATH = core.getInput('output.filepath');
+// File System Configuration
+/** Path for scan results output */
+exports.OUTPUT_FILEPATH = validateFilename(core.getInput('output.filepath'));
+/** GitHub token for API access */
 exports.GITHUB_TOKEN = core.getInput('github.token');
-exports.COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
-exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
-exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
+/** Repository directory path */
 exports.REPO_DIR = process.env.GITHUB_WORKSPACE;
-exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.26.3';
+// License Policy Configuration
+/** Additional copyleft licenses to include */
+exports.COPYLEFT_LICENSE_INCLUDE = core.getInput('licenses.copyleft.include');
+/** Copyleft licenses to exclude */
+exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
+/** Explicit list of copyleft licenses */
+exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
+// Runtime Configuration
+/** Docker container image for scanoss-py execution */
+exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.31.4';
+/** Skip snippet generation during scan */
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
+/** Enable file scanning */
 exports.SCAN_FILES = core.getInput('scanFiles') === 'true';
+/** Enable SCANOSS settings file usage */
 exports.SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
+/** Path to SCANOSS settings file */
 exports.SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
+/** Docker executable command */
 exports.EXECUTABLE = 'docker';
+/** Enable debug mode */
 exports.DEBUG = core.getInput('debug') === 'true';
+// Dependency Track Configuration
+/** Enable Dependency Track integration */
+exports.DEPENDENCY_TRACK_ENABLED = core.getInput('deptrack.upload') === 'true';
+/** Dependency Track server URL */
+exports.DEPENDENCY_TRACK_URL = core.getInput('deptrack.url');
+/** Dependency Track API key */
+exports.DEPENDENCY_TRACK_API_KEY = core.getInput('deptrack.apikey');
+/** Dependency Track project ID (mutable) */
+// eslint-disable-next-line import/no-mutable-exports
+exports.DEPENDENCY_TRACK_PROJECT_ID = core.getInput('deptrack.projectid');
+/** Dependency Track project name */
+exports.DEPENDENCY_TRACK_PROJECT_NAME = core.getInput('deptrack.projectname');
+/** Dependency Track project version */
+exports.DEPENDENCY_TRACK_PROJECT_VERSION = core.getInput('deptrack.projectversion');
+/** Upload token received from Dependency Track (set at runtime) */
+// eslint-disable-next-line import/no-mutable-exports
+exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = '';
+// Setter Functions
+/** Sets the Dependency Track upload token received from API */
+const setDependencyTrackUploadToken = (version) => {
+    exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = version;
+};
+exports.setDependencyTrackUploadToken = setDependencyTrackUploadToken;
+/** Sets the Dependency Track project ID received from API */
+const setDependencyTrackProjectId = (id) => {
+    exports.DEPENDENCY_TRACK_PROJECT_ID = id;
+};
+exports.setDependencyTrackProjectId = setDependencyTrackProjectId;
 
 
 /***/ }),
@@ -123768,9 +123864,22 @@ exports.DEBUG = core.getInput('debug') === 'true';
    THE SOFTWARE.
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
+exports.CYCLONEDX_FILE_NAME = exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
+/**
+ * Output constants for GitHub Actions outputs and artifact names.
+ */
+/**
+ * Output key for the scan results file path.
+ */
 exports.RESULT_FILEPATH = 'result-filepath';
+/**
+ * Output key for the scan command stdout.
+ */
 exports.STDOUT_SCAN_COMMAND = 'stdout-scan-command';
+/**
+ * Default filename for CycloneDX format exports.
+ */
+exports.CYCLONEDX_FILE_NAME = 'scanoss-cyclonedx.json';
 
 
 /***/ }),
@@ -123834,6 +123943,10 @@ const inputs = __importStar(__nccwpck_require__(483));
 const outputs = __importStar(__nccwpck_require__(22698));
 const scan_service_1 = __nccwpck_require__(87577);
 const policy_manager_1 = __nccwpck_require__(78951);
+const dep_track_policy_check_1 = __nccwpck_require__(1669);
+const dependency_track_service_1 = __nccwpck_require__(57356);
+const dependency_track_status_service_1 = __nccwpck_require__(55414);
+const scanoss_service_1 = __nccwpck_require__(73406);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -123849,11 +123962,20 @@ async function run() {
         for (const policy of policies) {
             await policy.start(firstRunId);
         }
-        // run scan
+        // 1: run scan
         const { stdout } = await scan_service_1.scanService.scan();
         await (0, scan_service_1.uploadResults)();
-        // run policies
+        // 2: Convert scan results to CycloneDX
+        await scanoss_service_1.scanossService.scanResultsToCycloneDX();
+        // 3: Dependency Track
+        const uploadResult = await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
+        // 3.1: Report Dependency Track upload status
+        await dependency_track_status_service_1.dependencyTrackStatusService.reportUploadStatus(uploadResult);
+        // 4: run policies
         for (const policy of policies) {
+            if (policy instanceof dep_track_policy_check_1.DepTrackPolicyCheck) {
+                policy.setUploadAttempted(uploadResult.success); // Warn if DT upload was disabled or failed
+            }
             await policy.run();
         }
         if ((0, github_utils_1.isPullRequest)()) {
@@ -123861,7 +123983,7 @@ async function run() {
             const report = await (0, report_service_1.generatePRSummary)(policies);
             await (0, github_utils_1.createCommentOnPR)(report);
         }
-        await (0, report_service_1.generateJobSummary)(policies);
+        await (0, report_service_1.generateJobSummary)(policies, uploadResult);
         // set outputs for other workflow steps to use
         core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
         core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
@@ -123906,6 +124028,10 @@ exports.run = run;
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ArgumentBuilder = void 0;
+/**
+ * Base class for building command-line arguments for scanoss-py policy checks.
+ * Concrete implementations handle specific policy types and their argument requirements.
+ */
 class ArgumentBuilder {
 }
 exports.ArgumentBuilder = ArgumentBuilder;
@@ -123944,7 +124070,13 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ComponentSummaryArgumentBuilder = void 0;
 const argument_builder_1 = __nccwpck_require__(26658);
 const app_input_1 = __nccwpck_require__(483);
+/**
+ * Builds arguments for component summary inspection using scanoss-py.
+ */
 class ComponentSummaryArgumentBuilder extends argument_builder_1.ArgumentBuilder {
+    /**
+     * Builds command arguments for generating component summaries.
+     */
     async build() {
         return [
             'run',
@@ -123995,7 +124127,13 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UndeclaredArgumentBuilder = void 0;
 const argument_builder_1 = __nccwpck_require__(26658);
 const app_input_1 = __nccwpck_require__(483);
+/**
+ * Builds arguments for undeclared component inspection using scanoss-py.
+ */
 class UndeclaredArgumentBuilder extends argument_builder_1.ArgumentBuilder {
+    /**
+     * Builds command arguments for detecting undeclared components.
+     */
     async build() {
         return [
             'run',
@@ -124013,6 +124151,72 @@ class UndeclaredArgumentBuilder extends argument_builder_1.ArgumentBuilder {
     }
 }
 exports.UndeclaredArgumentBuilder = UndeclaredArgumentBuilder;
+
+
+/***/ }),
+
+/***/ 68374:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DependencyTrackArgumentBuilder = void 0;
+const argument_builder_1 = __nccwpck_require__(26658);
+const app_input_1 = __nccwpck_require__(483);
+/**
+ * Builds arguments for Dependency Track policy violation checks using scanoss-py.
+ */
+class DependencyTrackArgumentBuilder extends argument_builder_1.ArgumentBuilder {
+    /**
+     * Builds command arguments for Dependency Track policy checks.
+     */
+    async build() {
+        return [
+            'run',
+            '-v',
+            `${app_input_1.REPO_DIR}:/scanoss`,
+            app_input_1.RUNTIME_CONTAINER,
+            'inspect',
+            'dt',
+            'pv',
+            '--url',
+            app_input_1.DEPENDENCY_TRACK_URL,
+            '--apikey',
+            app_input_1.DEPENDENCY_TRACK_API_KEY,
+            ...(app_input_1.DEPENDENCY_TRACK_PROJECT_ID ? ['--project-id', app_input_1.DEPENDENCY_TRACK_PROJECT_ID] : []),
+            ...(app_input_1.DEPENDENCY_TRACK_UPLOAD_TOKEN ? ['--upload-token', app_input_1.DEPENDENCY_TRACK_UPLOAD_TOKEN] : []),
+            ...(app_input_1.DEPENDENCY_TRACK_PROJECT_NAME ? ['--project-name', app_input_1.DEPENDENCY_TRACK_PROJECT_NAME] : []),
+            ...(app_input_1.DEPENDENCY_TRACK_PROJECT_VERSION ? ['--project-version', app_input_1.DEPENDENCY_TRACK_PROJECT_VERSION] : []),
+            '--format',
+            'md',
+            ...(app_input_1.DEBUG ? ['--debug'] : [])
+        ];
+    }
+}
+exports.DependencyTrackArgumentBuilder = DependencyTrackArgumentBuilder;
 
 
 /***/ }),
@@ -124072,7 +124276,13 @@ exports.BaseLicenseArgumentBuilder = void 0;
 const argument_builder_1 = __nccwpck_require__(26658);
 const app_input_1 = __nccwpck_require__(483);
 const core = __importStar(__nccwpck_require__(42186));
+/**
+ * Base class for building license-related command arguments.
+ */
 class BaseLicenseArgumentBuilder extends argument_builder_1.ArgumentBuilder {
+    /**
+     * Builds copyleft license filtering arguments based on configuration.
+     */
     buildCopyleftArgs() {
         if (app_input_1.COPYLEFT_LICENSE_EXPLICIT) {
             core.info(`Explicit copyleft licenses: ${app_input_1.COPYLEFT_LICENSE_EXPLICIT}`);
@@ -124125,7 +124335,13 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CopyLeftArgumentBuilder = void 0;
 const app_input_1 = __nccwpck_require__(483);
 const base_license_argument_builder_1 = __nccwpck_require__(3075);
+/**
+ * Builds arguments for copyleft license policy checks using scanoss-py.
+ */
 class CopyLeftArgumentBuilder extends base_license_argument_builder_1.BaseLicenseArgumentBuilder {
+    /**
+     * Builds command arguments for copyleft license inspection.
+     */
     async build() {
         return [
             'run',
@@ -124179,7 +124395,13 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.LicenseSummaryArgumentBuilder = void 0;
 const copyleft_argument_builder_1 = __nccwpck_require__(73373);
 const app_input_1 = __nccwpck_require__(483);
+/**
+ * Builds arguments for license summary generation using scanoss-py.
+ */
 class LicenseSummaryArgumentBuilder extends copyleft_argument_builder_1.CopyLeftArgumentBuilder {
+    /**
+     * Builds command arguments for generating license summaries.
+     */
     async build() {
         return [
             'run',
@@ -124265,12 +124487,15 @@ const github_service_1 = __nccwpck_require__(43123);
  * It then generates a summary and detailed report of the findings.
  */
 class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
-    static policyName = 'Copyleft Policy';
+    static policyName = 'Copyleft';
     argumentBuilder;
     constructor(argumentBuilder = new copyleft_argument_builder_1.CopyLeftArgumentBuilder()) {
         super(`${app_config_1.CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`);
         this.argumentBuilder = argumentBuilder;
     }
+    /**
+     * Executes the copyleft policy check.
+     */
     async run() {
         core.info(`Running Copyleft Policy Check...`);
         super.initStatus();
@@ -124282,28 +124507,385 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
         const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
         let summary = stdout;
         let details = stderr;
-        if (exitCode === 1) {
-            await this.success('### :white_check_mark: Policy Pass \n #### Not copyleft Licenses were found', undefined);
+        // Happy path. All goodness
+        if (exitCode === 0) {
+            await this.success('### :white_check_mark: Policy Pass \n #### No copyleft licenses were found', undefined);
             return;
         }
+        else if (exitCode === 1) {
+            // Technical error occurred
+            core.warning('Copyleft policy check encountered an error');
+            core.debug(`Copyleft policy check stderr: ${stderr}`);
+            const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete copyleft license check';
+            const errorDetails = 'Error details: Check debug logs for more information';
+            await this.technicalError(errorSummary, errorDetails);
+            return;
+        }
+        // exitCode === 2 means policy violations found
         const { id } = await this.uploadArtifact(stdout);
         core.debug(`Copyleft Artifact ID: ${id}`);
         if (id) {
             details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
         }
+        // Checking if the summary is too long
         if ((0, github_service_1.isOverMaxCharacterLimitAPI)(summary)) {
             summary = '';
         }
+        // Reject/fail the policy check (unless disabled)
         return this.reject(summary, details);
     }
+    /**
+     * Returns the artifact filename for copyleft policy results.
+     */
     artifactPolicyFileName() {
         return 'policy-check-copyleft-results.md';
     }
+    /**
+     * Returns the policy name for copyleft checks.
+     */
     getPolicyName() {
         return CopyleftPolicyCheck.policyName;
     }
 }
 exports.CopyleftPolicyCheck = CopyleftPolicyCheck;
+
+
+/***/ }),
+
+/***/ 1669:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DepTrackPolicyCheck = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const app_config_1 = __nccwpck_require__(29014);
+const policy_check_1 = __nccwpck_require__(63702);
+const app_input_1 = __nccwpck_require__(483);
+const exec = __importStar(__nccwpck_require__(71514));
+const dep_track_argument_builder_1 = __nccwpck_require__(68374);
+const github_service_1 = __nccwpck_require__(43123);
+const inputs = __importStar(__nccwpck_require__(483));
+/**
+ * This class performs policy checks using Dependency Track integration.
+ * It uploads SBOM (Software Bill of Materials) data to a Dependency Track server
+ * and checks for policy violations including security vulnerabilities, license violations,
+ * and other compliance issues as configured in the Dependency Track policies.
+ * It then generates a summary and detailed report of any violations found.
+ */
+class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
+    static policyName = 'Dependency Track';
+    argumentBuilder;
+    uploadAttempted = false;
+    constructor(argumentBuilder = new dep_track_argument_builder_1.DependencyTrackArgumentBuilder()) {
+        super(`${app_config_1.CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
+        this.argumentBuilder = argumentBuilder;
+    }
+    /**
+     * Sets whether the upload to Dependency Track was attempted
+     */
+    setUploadAttempted(attempted) {
+        this.uploadAttempted = attempted;
+    }
+    /**
+     * Parse policy check error and return appropriate error message and details
+     */
+    parseError(stderr) {
+        const lowerStderr = stderr.toLowerCase();
+        // Determine error type based on stderr content
+        const getErrorType = () => {
+            if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
+                return 'CONNECTION_ERROR';
+            }
+            if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized')) {
+                return 'AUTH_ERROR';
+            }
+            if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
+                return 'PROJECT_NOT_FOUND';
+            }
+            if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
+                return 'NOT_FOUND_ERROR';
+            }
+            if (lowerStderr.includes('timeout')) {
+                return 'TIMEOUT_ERROR';
+            }
+            return 'GENERIC_ERROR';
+        };
+        switch (getErrorType()) {
+            case 'CONNECTION_ERROR':
+                return {
+                    message: 'Cannot connect to Dependency Track server',
+                    details: `Connection failed to: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+                        `• Server may not be running\n` +
+                        `• URL may be incorrect\n` +
+                        `• Network connectivity issues`
+                };
+            case 'AUTH_ERROR':
+                return {
+                    message: 'Authentication failed with Dependency Track',
+                    details: `Authentication error for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+                        `• API key may be invalid\n` +
+                        `• API key may be expired\n` +
+                        `• Check user permissions`
+                };
+            case 'NOT_FOUND_ERROR':
+                return {
+                    message: 'Dependency Track endpoint not found',
+                    details: `Endpoint not found: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+                        `• URL may be incorrect\n` +
+                        `• API endpoint may not exist\n` +
+                        `• Check Dependency Track version`
+                };
+            case 'PROJECT_NOT_FOUND':
+                return {
+                    message: 'Project not found in Dependency Track',
+                    details: `Project not found:\n` +
+                        `• Project ID: ${inputs.DEPENDENCY_TRACK_PROJECT_ID || 'Not specified'}\n` +
+                        `• Project Name: ${inputs.DEPENDENCY_TRACK_PROJECT_NAME || 'Not specified'}\n` +
+                        `• Upload Token: ${inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN ? 'Present' : 'Not specified'}\n` +
+                        `Solutions: Create project in Dependency Track first`
+                };
+            case 'TIMEOUT_ERROR':
+                return {
+                    message: 'Dependency Track server timeout',
+                    details: `Server timeout for: ${inputs.DEPENDENCY_TRACK_URL}\n` +
+                        `• Server may be overloaded\n` +
+                        `• Network latency issues\n` +
+                        `• Try again later`
+                };
+            default:
+                return {
+                    message: 'Unable to complete Dependency Track policy check',
+                    details: `Error details: ${stderr}`
+                };
+        }
+    }
+    /**
+     * Check if stderr message is informational rather than a real error
+     */
+    isInformationalMessage(stderr) {
+        const lowerStderr = stderr.toLowerCase();
+        return (lowerStderr.includes('policy violations were found') || // Status message, not error
+            lowerStderr.includes('policy violations detected') || // Status message, not error
+            lowerStderr.includes('no violations found') || // Status message, not error
+            lowerStderr.includes('violations detected') || // General status message
+            lowerStderr.includes('policy check') || // General policy status
+            lowerStderr.includes('error details') // Generic error placeholder
+        );
+    }
+    /**
+     * Validates Dependency Track policy check configuration
+     */
+    validatePolicyConfiguration() {
+        const MINIMUM_API_KEY_LENGTH = 10;
+        const missingParams = [];
+        const invalidParams = [];
+        // Check required parameters from app.input
+        if (!inputs.DEPENDENCY_TRACK_URL) {
+            missingParams.push('deptrack.url');
+        }
+        else {
+            // Validate URL format
+            try {
+                const url = new URL(inputs.DEPENDENCY_TRACK_URL);
+                if (!['http:', 'https:'].includes(url.protocol)) {
+                    invalidParams.push('deptrack.url (must use http:// or https://)');
+                }
+            }
+            catch (error) {
+                invalidParams.push('deptrack.url (invalid URL format)');
+            }
+        }
+        if (!inputs.DEPENDENCY_TRACK_API_KEY) {
+            missingParams.push('deptrack.apikey');
+        }
+        else if (inputs.DEPENDENCY_TRACK_API_KEY.length < MINIMUM_API_KEY_LENGTH) {
+            invalidParams.push('deptrack.apikey (appears to be too short)');
+        }
+        // Check project identification
+        if (!inputs.DEPENDENCY_TRACK_PROJECT_ID && !inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN) {
+            const missingProjectParams = [];
+            if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME && !inputs.DEPENDENCY_TRACK_PROJECT_VERSION) {
+                missingProjectParams.push('Either deptrack.projectid or BOTH deptrack.projectname AND deptrack.projectversion');
+            }
+            else if (!inputs.DEPENDENCY_TRACK_PROJECT_NAME)
+                missingProjectParams.push('deptrack.projectname');
+            else if (!inputs.DEPENDENCY_TRACK_PROJECT_VERSION)
+                missingProjectParams.push('deptrack.projectversion');
+            if (missingProjectParams.length > 0) {
+                missingParams.push(...missingProjectParams);
+            }
+        }
+        if (missingParams.length > 0) {
+            throw new Error(`Dependency Track Policy Check Failed: Required parameters are missing.\n` +
+                `Missing: ${missingParams.join(', ')}\n` +
+                `Please set these parameters in your workflow configuration.`);
+        }
+        if (invalidParams.length > 0) {
+            throw new Error(`Dependency Track Policy Check Failed: Invalid parameter values.\n` +
+                `Invalid: ${invalidParams.join(', ')}\n` +
+                `Please check your parameter values and try again.`);
+        }
+    }
+    /**
+     * Executes the Dependency Track policy check.
+     */
+    async run() {
+        try {
+            // Mask secrets to prevent accidental leakage in logs
+            if (inputs.DEPENDENCY_TRACK_API_KEY)
+                core.setSecret(inputs.DEPENDENCY_TRACK_API_KEY);
+            if (inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN)
+                core.setSecret(inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN);
+            core.info(`Checking Dependency Track for Project Violations...`);
+            super.initStatus();
+            // Validate configuration before running
+            this.validatePolicyConfiguration();
+            const args = await this.argumentBuilder.build();
+            const options = {
+                failOnStdErr: false,
+                ignoreReturnCode: true,
+                silent: true // Capture output silently, then selectively display
+            };
+            const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
+            // Display stdout (policy results) unless it's empty
+            if (stdout && stdout.trim()) {
+                core.info(stdout);
+            }
+            // Only display stderr if it's a real error, not informational messages
+            if (stderr && !this.isInformationalMessage(stderr)) {
+                core.error(stderr); // Display real errors to user
+            }
+            let summary = stdout;
+            let details = stderr;
+            if (exitCode === 0) {
+                let successMessage = '### :white_check_mark: Policy Pass \n #### No policy violations were found';
+                if (!this.uploadAttempted) {
+                    core.warning('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
+                    successMessage +=
+                        '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. Results may not reflect latest changes.';
+                    successMessage += this.getUploadConfigurationHelp();
+                }
+                await this.success(successMessage, undefined);
+                return;
+            }
+            if (exitCode === 1) {
+                // Technical error occurred - parse for better error messages
+                let errorMessage = 'Unable to complete Dependency Track policy check';
+                let errorDetails = `Error details: ${stderr}`;
+                if (stderr) {
+                    const { message, details } = this.parseError(stderr);
+                    errorMessage = message;
+                    errorDetails = details;
+                }
+                core.warning(`Dependency Track policy check encountered an error: ${errorMessage}`);
+                const errorSummary = `### :warning: Policy Check Error \n #### ${errorMessage}`;
+                await this.technicalError(errorSummary, errorDetails);
+                return;
+            }
+            // exitCode === 2 means policy violations found
+            if (!this.uploadAttempted) {
+                core.warning('Policy violations found, but SBOM upload to Dependency Track was not attempted - results may be outdated');
+                const uploadWarning = '\n\n:warning: **Warning**: SBOM upload to Dependency Track was not attempted. These policy violations may be based on outdated data.';
+                const configHelp = this.getUploadConfigurationHelp();
+                details = stderr + uploadWarning + configHelp;
+            }
+            // Add link to Dependency Track Project
+            if (inputs.DEPENDENCY_TRACK_PROJECT_ID) {
+                const projectLink = `\n\nView project in Dependency Track [here](${inputs.DEPENDENCY_TRACK_URL}/projects/${inputs.DEPENDENCY_TRACK_PROJECT_ID}).`;
+                details = details + projectLink;
+            }
+            const { id } = await this.uploadArtifact(stdout);
+            core.debug(`Dependency Track Artifact ID: ${id}`);
+            if (id) {
+                details = await this.concatPolicyArtifactURLToPolicyCheck(details || stderr, id);
+            }
+            if ((0, github_service_1.isOverMaxCharacterLimitAPI)(summary)) {
+                summary = '';
+            }
+            return this.reject(summary, details);
+        }
+        catch (validationError) {
+            // Handle validation errors
+            core.warning(`Dependency Track policy check configuration error: ${validationError.message}`);
+            const errorSummary = '### :warning: Configuration Error \n #### Dependency Track policy check misconfigured';
+            await this.technicalError(errorSummary, validationError.message);
+        }
+    }
+    /**
+     * Returns the filename for Dependency Track policy check artifact results.
+     */
+    artifactPolicyFileName() {
+        return 'dep-track-policy-check-results.md';
+    }
+    /**
+     * Returns the name of the Dependency Track policy.
+     */
+    getPolicyName() {
+        return DepTrackPolicyCheck.policyName;
+    }
+    /**
+     * Returns upload configuration instructions for when upload is disabled
+     */
+    getUploadConfigurationHelp() {
+        return [
+            '',
+            '**To enable Dependency Track upload:**',
+            '• Set `deptrack.upload: true` in your workflow',
+            '• Configure required parameters:',
+            '  - `deptrack.url`',
+            '  - `deptrack.apikey`',
+            '  - `deptrack.projectid` OR (`deptrack.projectname` + `deptrack.projectversion`)'
+        ].join('\n');
+    }
+}
+exports.DepTrackPolicyCheck = DepTrackPolicyCheck;
 
 
 /***/ }),
@@ -124389,6 +124971,9 @@ var STATUS;
     STATUS["RUNNING"] = "RUNNING";
     STATUS["FINISHED"] = "FINISHED";
 })(STATUS || (exports.STATUS = STATUS = {}));
+/**
+ * Abstract base class for policy checks that integrate with GitHub's check runs API.
+ */
 class PolicyCheck {
     octokit;
     checkName;
@@ -124397,6 +124982,9 @@ class PolicyCheck {
     _status;
     _conclusion;
     _firstRunId = -1;
+    /**
+     * Initializes the policy check with GitHub integration.
+     */
     constructor(checkName) {
         this.octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
         this.checkName = checkName;
@@ -124404,6 +124992,9 @@ class PolicyCheck {
         this._conclusion = CONCLUSION.Neutral;
         this.checkRunId = -1;
     }
+    /**
+     * Starts a new GitHub check run for this policy.
+     */
     async start(runId) {
         const result = await this.octokit.rest.checks.create({
             owner: github_1.context.repo.owner,
@@ -124417,40 +125008,77 @@ class PolicyCheck {
         this._status = STATUS.INITIALIZED;
         return result.data;
     }
+    /**
+     * Returns the check name.
+     */
     get name() {
         return this.checkName;
     }
+    /**
+     * Returns the check conclusion status.
+     */
     get conclusion() {
         return this._conclusion;
     }
+    /**
+     * Returns the raw GitHub check run data.
+     */
     get raw() {
         return this._raw;
     }
+    /**
+     * Returns the URL to this check run.
+     */
     get url() {
         return `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${this._firstRunId}/job/${this.raw?.id}`;
     }
+    /**
+     * Initializes the policy check status to running.
+     */
     initStatus() {
         if (this._status === STATUS.UNINITIALIZED)
             throw new Error(`Error on finish. Policy "${this.checkName}" is not created.`);
         core.debug(`Running policy check: ${this.checkName}`);
         this._status = STATUS.RUNNING;
     }
+    /**
+     * Marks the policy check as successful.
+     */
     async success(summary, text) {
         this._conclusion = CONCLUSION.Success;
         return await this.finish(summary, text);
     }
+    /**
+     * Marks the policy check as rejected due to policy violations.
+     */
     async reject(summary, text) {
         if (inputs.POLICIES_HALT_ON_FAILURE)
+            this._conclusion = CONCLUSION.ActionRequired;
+        else
+            this._conclusion = CONCLUSION.Neutral;
+        await this.finish(summary, text);
+    }
+    /**
+     * Handles technical errors during policy check execution.
+     */
+    async technicalError(summary, text) {
+        if (inputs.HALT_ON_ERROR)
             this._conclusion = CONCLUSION.Failure;
         else
             this._conclusion = CONCLUSION.Neutral;
         await this.finish(summary, text);
     }
+    /**
+     * Finalizes the policy check and updates GitHub status.
+     */
     async finish(summary, text) {
         core.debug(`Finish policy check: ${this.checkName}. (conclusion=${this._conclusion})`);
         this._status = STATUS.FINISHED;
         await this.updateCheck(summary, text);
     }
+    /**
+     * Updates the GitHub check run with results.
+     */
     async updateCheck(summary, text) {
         await this.octokit.rest.checks.update({
             owner: github_1.context.repo.owner,
@@ -124465,6 +125093,9 @@ class PolicyCheck {
             }
         });
     }
+    /**
+     * Appends artifact download link to policy check details.
+     */
     async concatPolicyArtifactURLToPolicyCheck(details, artifactId) {
         const link = `\n\nDownload the ` +
             `[${this.getPolicyName()} Result](${github_1.context.serverUrl}/` +
@@ -124482,6 +125113,9 @@ class PolicyCheck {
         }
         return text;
     }
+    /**
+     * Uploads policy check results as a GitHub Actions artifact.
+     */
     async uploadArtifact(file) {
         await fs_1.promises.writeFile(this.artifactPolicyFileName(), file);
         const artifact = new artifact_1.DefaultArtifactClient();
@@ -124548,20 +125182,38 @@ exports.policyManager = exports.PolicyManager = void 0;
 const copyleft_policy_check_1 = __nccwpck_require__(34466);
 const inputs = __importStar(__nccwpck_require__(483));
 const undeclared_policy_check_1 = __nccwpck_require__(55153);
+const dep_track_policy_check_1 = __nccwpck_require__(1669);
+const core = __importStar(__nccwpck_require__(42186));
+/**
+ * Manages policy check instances and execution.
+ * Provides access to registered policy checks and handles policy instantiation.
+ */
 class PolicyManager {
     policyRegistry;
     constructor(policyRegistry) {
         this.policyRegistry = policyRegistry || {
             copyleft: copyleft_policy_check_1.CopyleftPolicyCheck,
-            undeclared: undeclared_policy_check_1.UndeclaredPolicyCheck
+            cpl: copyleft_policy_check_1.CopyleftPolicyCheck,
+            undeclared: undeclared_policy_check_1.UndeclaredPolicyCheck,
+            und: undeclared_policy_check_1.UndeclaredPolicyCheck,
+            depTrack: dep_track_policy_check_1.DepTrackPolicyCheck,
+            dt: dep_track_policy_check_1.DepTrackPolicyCheck
         };
     }
+    /**
+     * Gets instances of the specified policy checks.
+     * @param policiesNames - Array of policy names to instantiate. If not provided, uses POLICIES from app input.
+     */
     getPolicies(policiesNames) {
+        core.info(`Policy Names: ${policiesNames}`);
+        core.debug(`Policy Registry: ${this.policyRegistry}`);
         const pNames = policiesNames || inputs.POLICIES.split(',').map(pn => pn.trim());
+        core.info(`Policies: ${pNames}`);
         //throw error if policy does not exist
         pNames.forEach(pName => {
+            core.info(`Policy: ${pName}`);
             if (!this.policyRegistry[pName])
-                throw new Error(`Policy ${pNames} does not exist`);
+                throw new Error(`Policy ${pName} does not exist`);
         });
         return pNames.map(pName => new this.policyRegistry[pName]());
     }
@@ -124639,12 +125291,15 @@ const github_service_1 = __nccwpck_require__(43123);
  *
  */
 class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
-    static policyName = 'Undeclared Policy';
+    static policyName = 'Undeclared';
     argumentBuilder;
     constructor(argumentBuilder = new undeclared_argument_builder_1.UndeclaredArgumentBuilder()) {
         super(`${app_config_1.CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`);
         this.argumentBuilder = argumentBuilder;
     }
+    /**
+     * Executes the undeclared components policy check.
+     */
     async run() {
         core.info(`Running Undeclared Components Policy Check...`);
         super.initStatus();
@@ -124660,9 +125315,26 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         if (!app_input_1.SCANOSS_SETTINGS) {
             core.warning('Undeclared policy is being used with SCANOSS settings disabled');
         }
-        if (exitCode === 1) {
-            await this.success('### :white_check_mark: Policy Pass \n #### Not undeclared components were found', undefined);
+        if (exitCode === 0) {
+            await this.success('### :white_check_mark: Policy Pass \n #### No undeclared components were found', undefined);
             return;
+        }
+        if (exitCode === 1) {
+            // Technical error occurred
+            core.warning('Undeclared policy check encountered an error');
+            core.debug(`Undeclared policy check stderr: ${stderr}`);
+            const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete undeclared component check';
+            const errorDetails = 'Error details: Check debug logs for more information';
+            await this.technicalError(errorSummary, errorDetails);
+            return;
+        }
+        // exitCode === 2 means policy violations found
+        // Combine stdout (summary) and stderr (details) for comprehensive reporting
+        if (stderr) {
+            details = `${stdout}\n\n${stderr}`;
+        }
+        else {
+            details = stdout;
         }
         const { id } = await this.uploadArtifact(details);
         core.debug(`Undeclared Artifact ID: ${id}`);
@@ -124673,9 +125345,15 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         }
         return this.reject(summary, details);
     }
+    /**
+     * Returns the filename for undeclared policy check artifact results.
+     */
     artifactPolicyFileName() {
         return 'policy-check-undeclared-results.md';
     }
+    /**
+     * Returns the name of the undeclared components policy.
+     */
     getPolicyName() {
         return UndeclaredPolicyCheck.policyName;
     }
@@ -124690,6 +125368,28 @@ exports.UndeclaredPolicyCheck = UndeclaredPolicyCheck;
 
 "use strict";
 
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -124719,6 +125419,10 @@ const exec = __importStar(__nccwpck_require__(71514));
 const app_input_1 = __nccwpck_require__(483);
 const core = __importStar(__nccwpck_require__(42186));
 const component_summary_argument_builder_1 = __nccwpck_require__(63547);
+/**
+ * Retrieves a summary of all components detected in the scan results.
+ * Uses scanoss-py to analyze scan results and determine component declaration status.
+ */
 async function getComponentSummary() {
     const componentSummaryBuilder = new component_summary_argument_builder_1.ComponentSummaryArgumentBuilder();
     const args = await componentSummaryBuilder.build();
@@ -124746,19 +125450,565 @@ exports.getComponentSummary = getComponentSummary;
 
 /***/ }),
 
-/***/ 43123:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ 55414:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+*/
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isOverMaxCharacterLimitAPI = void 0;
+exports.dependencyTrackStatusService = exports.DependencyTrackStatusService = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const github_1 = __nccwpck_require__(95438);
+const github_utils_1 = __nccwpck_require__(17889);
+const inputs = __importStar(__nccwpck_require__(483));
+const app_config_1 = __nccwpck_require__(29014);
+/**
+ * Service for reporting Dependency Track upload status as a GitHub check
+ */
+class DependencyTrackStatusService {
+    checkName = `${app_config_1.STATUS_NAME}: Dependency Track Upload`;
+    /**
+     * Reports the Dependency Track upload status as a GitHub check run
+     * Returns the created check run ID for linking purposes
+     */
+    async reportUploadStatus(result) {
+        if (!result.enabled) {
+            return;
+        }
+        try {
+            const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+            // eslint-disable-next-line @typescript-eslint/await-thenable
+            const sha = await (0, github_utils_1.getSHA)(); // TODO review with Groh
+            let conclusion;
+            let title;
+            let summary;
+            let text;
+            if (result.success) {
+                conclusion = 'success';
+                title = 'SBOM successfully uploaded to Dependency Track';
+                summary = '### ✅ Dependency Track Upload\n#### SBOM successfully uploaded to Dependency Track';
+                text = this.createSuccessDetails(result);
+            }
+            else {
+                conclusion = 'failure';
+                title = 'Failed to upload SBOM to Dependency Track';
+                summary = '### ❌ Dependency Track Upload\n#### Failed to upload SBOM to Dependency Track';
+                text = this.createFailureDetails(result);
+            }
+            const response = await octokit.rest.checks.create({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                name: this.checkName,
+                head_sha: sha,
+                status: 'completed',
+                conclusion,
+                output: {
+                    title,
+                    summary,
+                    text
+                }
+            });
+            core.debug(`Dependency Track upload status check created: ${conclusion}, ID: ${response.data.id}`);
+            result.checkRunId = response.data.id;
+        }
+        catch (error) {
+            core.warning(`Failed to create Dependency Track upload status check: ${error}`);
+        }
+    }
+    /**
+     * Creates details text for successful upload
+     */
+    createSuccessDetails(result) {
+        const details = ['**Upload Details:**', `• Project Name: ${result.projectName || 'Unknown'}`];
+        if (result.projectVersion) {
+            details.push(`• Project Version: ${result.projectVersion}`);
+        }
+        if (result.projectId) {
+            details.push(`• Project ID: ${result.projectId}`);
+        }
+        details.push(`• Server: ${inputs.DEPENDENCY_TRACK_URL}`);
+        if (result.fileSize) {
+            const fileSizeKB = (result.fileSize / 1024).toFixed(1);
+            details.push(`• File: scanoss-cyclonedx.json (${fileSizeKB} KB${result.componentsCount ? `, ${result.componentsCount} components` : ''})`);
+        }
+        if (result.uploadTime) {
+            details.push(`• Upload Time: ${result.uploadTime.toFixed(1)}s`);
+        }
+        if (result.projectId && inputs.DEPENDENCY_TRACK_URL) {
+            details.push('', `View project in Dependency Track [here](${inputs.DEPENDENCY_TRACK_URL}/projects/${result.projectId}).`);
+        }
+        return details.join('\n');
+    }
+    /**
+     * Creates details text for failed upload
+     */
+    createFailureDetails(result) {
+        const details = ['**Upload Details:**', `• Server: ${inputs.DEPENDENCY_TRACK_URL}`];
+        if (result.error) {
+            details.push(`• Error: ${result.error}`);
+        }
+        return details.join('\n');
+    }
+}
+exports.DependencyTrackStatusService = DependencyTrackStatusService;
+exports.dependencyTrackStatusService = new DependencyTrackStatusService();
+
+
+/***/ }),
+
+/***/ 57356:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.dependencyTrackService = exports.DependencyTrackService = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const exec = __importStar(__nccwpck_require__(71514));
+const inputs = __importStar(__nccwpck_require__(483));
+const app_input_1 = __nccwpck_require__(483);
+const app_output_1 = __nccwpck_require__(22698);
+const fs_1 = __importDefault(__nccwpck_require__(57147));
+/**
+ * Service for integrating with Dependency Track for vulnerability and policy management.
+ * Handles SBOM upload and project management within Dependency Track instances.
+ */
+class DependencyTrackService {
+    MINIMUM_APIKEY_LENGTH = 10;
+    options;
+    constructor(options) {
+        this.options = options || {
+            enabled: inputs.DEPENDENCY_TRACK_ENABLED,
+            url: inputs.DEPENDENCY_TRACK_URL,
+            apiKey: inputs.DEPENDENCY_TRACK_API_KEY,
+            projectId: inputs.DEPENDENCY_TRACK_PROJECT_ID,
+            projectName: inputs.DEPENDENCY_TRACK_PROJECT_NAME,
+            projectVersion: inputs.DEPENDENCY_TRACK_PROJECT_VERSION
+        };
+    }
+    /**
+     * Validates that all required Dependency Track parameters are provided
+     * @returns true if configuration is valid, false if parameters are missing
+     */
+    validateConfiguration() {
+        const missingParams = [];
+        const invalidParams = [];
+        // Check required parameters
+        if (!this.options.url) {
+            missingParams.push('deptrack.url');
+        }
+        else {
+            // Validate URL format
+            try {
+                const url = new URL(this.options.url);
+                if (!['http:', 'https:'].includes(url.protocol)) {
+                    invalidParams.push('deptrack.url (must use http:// or https://)');
+                }
+            }
+            catch (error) {
+                invalidParams.push('deptrack.url (invalid URL format)');
+            }
+        }
+        if (!this.options.apiKey) {
+            missingParams.push('deptrack.apikey');
+        }
+        else if (this.options.apiKey.length < this.MINIMUM_APIKEY_LENGTH) {
+            // Basic API key validation - Dependency Track API keys are typically longer
+            invalidParams.push('deptrack.apikey (appears to be too short)');
+        }
+        if (missingParams.length > 0) {
+            core.warning(`Dependency Track upload skipped: Required parameters are missing.\n` +
+                `Missing: ${missingParams.join(', ')}\n` +
+                `Please set these parameters in your workflow configuration.`);
+            return false;
+        }
+        if (invalidParams.length > 0) {
+            core.warning(`Dependency Track upload skipped: Invalid parameter values.\n` +
+                `Invalid: ${invalidParams.join(', ')}\n` +
+                `Please check your parameter values and try again.`);
+            return false;
+        }
+        // Check project identification - must have either projectId OR (projectName + projectVersion)
+        if (!this.options.projectId) {
+            const missingProjectParams = [];
+            if (!this.options.projectName)
+                missingProjectParams.push('deptrack.projectname');
+            if (!this.options.projectVersion)
+                missingProjectParams.push('deptrack.projectversion');
+            if (missingProjectParams.length > 0) {
+                core.warning(`Dependency Track upload skipped: Project identification is incomplete.\n` +
+                    `You must provide EITHER:\n` +
+                    `  • deptrack.projectid (for existing projects), OR\n` +
+                    `  • Both deptrack.projectname AND deptrack.projectversion (to create/find projects)\n\n` +
+                    `Missing: ${missingProjectParams.join(', ')}`);
+                return false;
+            }
+        }
+        return true;
+    }
+    /**
+     * Converts SCANOSS results to CycloneDX format and uploads to Dependency Track
+     * @returns DependencyTrackUploadResult with detailed upload information
+     */
+    async uploadToDependencyTrack() {
+        const startTime = Date.now();
+        try {
+            if (!this.options.enabled) {
+                core.debug('Dependency Track upload is disabled');
+                return {
+                    success: false,
+                    enabled: false
+                };
+            }
+            if (!this.validateConfiguration()) {
+                return {
+                    success: false,
+                    enabled: true,
+                    error: 'Configuration validation failed'
+                };
+            }
+            // Get file information before upload if we can
+            let fileSize;
+            let componentsCount;
+            try {
+                const stats = await fs_1.default.promises.stat(app_output_1.CYCLONEDX_FILE_NAME);
+                fileSize = stats.size;
+                // Try to get component count from CycloneDX file
+                const cycloneDxContent = await fs_1.default.promises.readFile(app_output_1.CYCLONEDX_FILE_NAME, 'utf-8');
+                const cycloneDxData = JSON.parse(cycloneDxContent);
+                componentsCount = cycloneDxData.components?.length || 0;
+            }
+            catch (fileError) {
+                core.warning(`Could not read SBOM file details: ${fileError}`);
+            }
+            core.info('Starting Dependency Track upload process...');
+            const uploadError = await this.uploadCycloneDXToDependencyTrack();
+            const uploadTime = (Date.now() - startTime) / 1000;
+            if (uploadError) {
+                core.error(uploadError.message);
+                return {
+                    success: false,
+                    enabled: true,
+                    error: uploadError.message,
+                    projectName: this.options.projectName,
+                    projectVersion: this.options.projectVersion,
+                    fileSize,
+                    componentsCount,
+                    uploadTime
+                };
+            }
+            return {
+                success: true,
+                enabled: true,
+                projectId: inputs.DEPENDENCY_TRACK_PROJECT_ID,
+                uploadToken: inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN,
+                projectName: this.options.projectName,
+                projectVersion: this.options.projectVersion,
+                fileSize,
+                componentsCount,
+                uploadTime
+            };
+        }
+        catch (e) {
+            const uploadTime = (Date.now() - startTime) / 1000;
+            core.error(e.message);
+            return {
+                success: false,
+                enabled: true,
+                error: e.message,
+                uploadTime
+            };
+        }
+    }
+    /**
+     * Parse upload error and return appropriate error message
+     */
+    parseUploadError(stderr) {
+        const lowerStderr = stderr.toLowerCase();
+        // Determine error type based on stderr content
+        const getErrorType = () => {
+            if (lowerStderr.includes('connection refused') || lowerStderr.includes('no route to host')) {
+                return 'CONNECTION_ERROR';
+            }
+            if (lowerStderr.includes('401') ||
+                lowerStderr.includes('unauthorized') ||
+                lowerStderr.includes('invalid api key')) {
+                return 'AUTH_ERROR';
+            }
+            if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
+                return 'PROJECT_NOT_FOUND';
+            }
+            if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
+                return 'NOT_FOUND_ERROR';
+            }
+            if (lowerStderr.includes('timeout') || lowerStderr.includes('timed out')) {
+                return 'TIMEOUT_ERROR';
+            }
+            if (lowerStderr.includes('ssl') || lowerStderr.includes('certificate') || lowerStderr.includes('tls')) {
+                return 'SSL_ERROR';
+            }
+            if (lowerStderr.includes('forbidden') || lowerStderr.includes('403')) {
+                return 'FORBIDDEN_ERROR';
+            }
+            return 'GENERIC_ERROR';
+        };
+        switch (getErrorType()) {
+            case 'CONNECTION_ERROR':
+                return (`Cannot connect to Dependency Track server.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Server is not reachable\n` +
+                    `• Solutions: Verify the URL, check network connectivity, ensure server is running`);
+            case 'AUTH_ERROR':
+                return (`Authentication failed with Dependency Track server.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Invalid or missing API key\n` +
+                    `• Solutions: Verify your API key, check user permissions in Dependency Track`);
+            case 'NOT_FOUND_ERROR':
+                return (`Dependency Track server endpoint not found.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Server endpoint does not exist\n` +
+                    `• Solutions: Verify the URL is correct, check if Dependency Track is properly deployed`);
+            case 'TIMEOUT_ERROR':
+                return (`Connection to Dependency Track server timed out.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Server is too slow to respond\n` +
+                    `• Solutions: Check network connectivity, verify server performance, try again later`);
+            case 'SSL_ERROR':
+                return (`SSL/TLS connection error with Dependency Track server.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: SSL certificate validation failed\n` +
+                    `• Solutions: Check SSL certificate validity, ensure proper HTTPS configuration`);
+            case 'PROJECT_NOT_FOUND':
+                return (`Project not found in Dependency Track.\n` +
+                    `• Project ID: ${this.options.projectId || 'Not specified'}\n` +
+                    `• Project Name: ${this.options.projectName || 'Not specified'}\n` +
+                    `• Solutions: Verify project exists, check project ID/name, create project first`);
+            case 'FORBIDDEN_ERROR':
+                return (`Access forbidden to Dependency Track resource.\n` +
+                    `• URL: ${this.options.url}\n` +
+                    `• Issue: Insufficient permissions\n` +
+                    `• Solutions: Check API key permissions, verify user role in Dependency Track`);
+            default:
+                return (`Dependency Track upload failed with error:\n${stderr}\n\n` +
+                    `Troubleshooting:\n` +
+                    `• Verify URL: ${this.options.url}\n` +
+                    `• Check that the server is running and accessible\n` +
+                    `• Ensure API key is valid and has proper permissions\n` +
+                    `• Verify project exists or can be created automatically`);
+        }
+    }
+    /**
+     * Build scanoss-py dependency track upload parameters
+     */
+    buildDependencyTrackUploadParameters() {
+        return [
+            'run',
+            '-v',
+            `${inputs.REPO_DIR}:/scanoss`,
+            inputs.RUNTIME_CONTAINER,
+            'export',
+            'dependency-track',
+            '--input',
+            `./${app_output_1.CYCLONEDX_FILE_NAME}`,
+            ...(this.options.apiKey ? ['--apikey', this.options.apiKey] : []),
+            ...(this.options.url ? ['--url', this.options.url] : []),
+            ...(this.options.projectId ? ['--project-id', this.options.projectId] : []),
+            ...(this.options.projectName ? ['--project-name', this.options.projectName] : []),
+            ...(this.options.projectVersion ? ['--project-version', this.options.projectVersion] : [])
+        ];
+    }
+    /**
+     * Upload CycloneDX file to Dependency Track using scanoss-py
+     */
+    async uploadCycloneDXToDependencyTrack() {
+        const options = {
+            failOnStdErr: false,
+            ignoreReturnCode: true,
+            silent: true // Suppress automatic output, we'll handle errors cleanly
+        };
+        const { stderr, stdout, exitCode } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildDependencyTrackUploadParameters(), options);
+        if (exitCode !== 0) {
+            let errorMessage;
+            if (stderr) {
+                errorMessage = this.parseUploadError(stderr);
+            }
+            else {
+                errorMessage =
+                    `Dependency Track upload failed (exit code ${exitCode}).\n` +
+                        `• URL: ${this.options.url}\n` +
+                        `• Check server connectivity and configuration`;
+            }
+            return new Error(errorMessage);
+        }
+        // Upload succeeded - show success message
+        core.info('CycloneDX successfully uploaded to Dependency Track');
+        if (stderr) {
+            // Log stderr for debugging but don't treat as error if exitCode is 0
+            core.debug(`Dependency Track upload stderr: ${stderr}`);
+            // Filter out harmless informational messages
+            const trimmedStderr = stderr.trim();
+            const isHarmlessInfo = trimmedStderr.startsWith('Reading SBOM file:') ||
+                trimmedStderr.includes('Reading SBOM file:') ||
+                trimmedStderr.match(/^Reading .+ file:/);
+            if (!isHarmlessInfo) {
+                core.warning('Dependency Track upload completed with warnings. Check debug logs for details.');
+            }
+        }
+        const response = JSON.parse(stdout);
+        (0, app_input_1.setDependencyTrackUploadToken)(response.token);
+        (0, app_input_1.setDependencyTrackProjectId)(response.project_uuid);
+    }
+}
+exports.DependencyTrackService = DependencyTrackService;
+exports.dependencyTrackService = new DependencyTrackService();
+
+
+/***/ }),
+
+/***/ 43123:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.uploadToArtifacts = exports.isOverMaxCharacterLimitAPI = void 0;
+const artifact_1 = __nccwpck_require__(79450);
+const path_1 = __importDefault(__nccwpck_require__(71017));
 const MAX_GH_API_CONTENT_SIZE = 65534;
 const CHARACTERS_BUFFER = 50;
+/**
+ * Checks if content exceeds GitHub API character limits for check runs.
+ */
 function isOverMaxCharacterLimitAPI(content) {
     return content.length >= MAX_GH_API_CONTENT_SIZE - CHARACTERS_BUFFER;
 }
 exports.isOverMaxCharacterLimitAPI = isOverMaxCharacterLimitAPI;
+/**
+ * Uploads a file to GitHub Actions artifacts.
+ */
+async function uploadToArtifacts(artifactName) {
+    const artifact = new artifact_1.DefaultArtifactClient();
+    return await artifact.uploadArtifact(path_1.default.basename(artifactName), [artifactName], path_1.default.dirname(artifactName));
+}
+exports.uploadToArtifacts = uploadToArtifacts;
 
 
 /***/ }),
@@ -124768,6 +126018,28 @@ exports.isOverMaxCharacterLimitAPI = isOverMaxCharacterLimitAPI;
 
 "use strict";
 
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -124797,6 +126069,10 @@ const license_summary_argument_builder_1 = __nccwpck_require__(4088);
 const exec = __importStar(__nccwpck_require__(71514));
 const app_input_1 = __nccwpck_require__(483);
 const core = __importStar(__nccwpck_require__(42186));
+/**
+ * Retrieves a summary of all licenses detected in the scan results.
+ * Uses scanoss-py to analyze scan results and generate license statistics.
+ */
 async function getLicenseSummary() {
     const licenseSummaryBuilder = new license_summary_argument_builder_1.LicenseSummaryArgumentBuilder();
     const args = await licenseSummaryBuilder.build();
@@ -124872,10 +126148,16 @@ const core = __importStar(__nccwpck_require__(42186));
 const policy_check_1 = __nccwpck_require__(63702);
 const markdown_utils_1 = __nccwpck_require__(96011);
 const github_1 = __nccwpck_require__(95438);
+const github_utils_1 = __nccwpck_require__(17889);
 const license_utils_1 = __nccwpck_require__(52210);
 const github_service_1 = __nccwpck_require__(43123);
 const license_service_1 = __nccwpck_require__(54621);
 const component_service_1 = __nccwpck_require__(44749);
+const inputs = __importStar(__nccwpck_require__(483));
+/**
+ * Generates a summary report for pull request comments.
+ * Includes policy check results, component counts, and license statistics.
+ */
 async function generatePRSummary(policies) {
     const componentSummary = await (0, component_service_1.getComponentSummary)();
     const licenseSummary = await (0, license_service_1.getLicenseSummary)();
@@ -124889,24 +126171,25 @@ async function generatePRSummary(policies) {
         success: polCount.success ? `:white_check_mark: ${polCount.success} pass` : '',
         fail: polCount.fail ? `:x: ${polCount.fail} fail` : ''
     };
-    const content = `
-  ### SCANOSS SCAN Completed :rocket:
-  - **Detected components:** ${componentSummary.totalComponents}
-  - **Undeclared components:** ${componentSummary.undeclaredComponents}
-  - **Declared components:** ${componentSummary.declaredComponents}
-  - **Detected files:** ${componentSummary.totalFilesDetected}
-  - **Detected files undeclared:** ${componentSummary.totalFilesUndeclared}
-  - **Detected files declared:** ${componentSummary.totalFilesDeclared}
-  - **Licenses detected:** ${licenseSummary.detectedLicenses}
-  - **Licenses detected with copyleft:** ${licenseSummary.detectedLicensesWithCopyleft}
-  - **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
+    return `### SCANOSS SCAN Completed :rocket:
+- **Detected components:** ${componentSummary.totalComponents}
+- **Undeclared components:** ${componentSummary.undeclaredComponents}
+- **Declared components:** ${componentSummary.declaredComponents}
+- **Detected files:** ${componentSummary.totalFilesDetected}
+- **Detected files undeclared:** ${componentSummary.totalFilesUndeclared}
+- **Detected files declared:** ${componentSummary.totalFilesDeclared}
+- **Licenses detected:** ${licenseSummary.detectedLicenses}
+- **Licenses detected with copyleft:** ${licenseSummary.detectedLicensesWithCopyleft}
+- **Policies:** ${polTxt.fail} ${polTxt.success} ${polTxt.total}
 
-  View more details on [SCANOSS Action Summary](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId})
-  `;
-    return content;
+View more details on [SCANOSS Action Summary](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${github_1.context.runId})`;
 }
 exports.generatePRSummary = generatePRSummary;
-async function generateJobSummary(policies) {
+/**
+ * Generates and publishes a detailed job summary to GitHub Actions.
+ * Creates visual reports with license distributions, component summaries, policy results, and Dependency Track upload status.
+ */
+async function generateJobSummary(policies, uploadResult) {
     const licenseSummary = await (0, license_service_1.getLicenseSummary)();
     licenseSummary.licenses.sort((l1, l2) => l2.componentCount - l1.componentCount);
     const LicensesPie = (items) => {
@@ -124942,19 +126225,78 @@ async function generateJobSummary(policies) {
         });
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
+    const StatusChecksTable = async (uploadResult) => {
+        if (!uploadResult) {
+            return '';
+        }
+        const HEADERS = ['Status Check', 'Status', 'Details'];
+        const ROWS = [];
+        let statusIcon;
+        if (!uploadResult.enabled) {
+            statusIcon = ':white_circle:';
+        }
+        else if (uploadResult.success) {
+            statusIcon = ':white_check_mark:';
+        }
+        else {
+            statusIcon = ':x:';
+        }
+        // Generate link to GitHub status check details
+        // Use specific job ID if available, otherwise fallback to general run page
+        let statusCheckUrl;
+        if (uploadResult.checkRunId) {
+            const firstRunId = await (0, github_utils_1.getFirstRunId)();
+            statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId}`;
+        }
+        else {
+            const firstRunId = await (0, github_utils_1.getFirstRunId)();
+            statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}`;
+        }
+        ROWS.push(['Dependency Track Upload', statusIcon, `[More Details](${statusCheckUrl})`]);
+        return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
+    };
+    const LinksTable = (uploadResult) => {
+        if (!uploadResult) {
+            return '';
+        }
+        // Check if we have project link data
+        if (!(uploadResult.projectId || inputs.DEPENDENCY_TRACK_PROJECT_ID) || !inputs.DEPENDENCY_TRACK_URL) {
+            return '';
+        }
+        const HEADERS = ['Resource', 'Link'];
+        const ROWS = [];
+        const projectId = uploadResult.projectId || inputs.DEPENDENCY_TRACK_PROJECT_ID;
+        const projectUrl = `${inputs.DEPENDENCY_TRACK_URL}/projects/${projectId}`;
+        ROWS.push(['Dependency Track Project', `[View Project](${projectUrl})`]);
+        return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
+    };
     let licenseTable = LicensesTable(licenseSummary.licenses);
     if ((0, github_service_1.isOverMaxCharacterLimitAPI)(licenseTable)) {
         licenseTable = 'License table too large to display, omitted from GitHub UI due to length';
     }
-    await core.summary
+    const summary = core.summary
         .addHeading('Scan Report Section', 2)
         .addHeading('Licenses', 3)
         .addCodeBlock(LicensesPie(licenseSummary.licenses), 'mermaid')
         .addRaw(licenseTable)
         .addSeparator()
         .addHeading('Policies', 3)
-        .addRaw(PoliciesTable(policies))
-        .write();
+        .addRaw(PoliciesTable(policies));
+    // Add Details section if upload result is provided
+    if (uploadResult) {
+        const statusChecksTable = await StatusChecksTable(uploadResult);
+        const linksTable = LinksTable(uploadResult);
+        if (statusChecksTable || linksTable) {
+            summary.addSeparator().addHeading('Details', 3);
+            if (statusChecksTable) {
+                summary.addHeading('Status Checks', 4).addRaw(statusChecksTable);
+            }
+            if (linksTable) {
+                summary.addHeading('Links', 4).addRaw(linksTable);
+            }
+        }
+    }
+    await summary.write();
 }
 exports.generateJobSummary = generateJobSummary;
 
@@ -125024,6 +126366,9 @@ const core = __importStar(__nccwpck_require__(42186));
 const path = __importStar(__nccwpck_require__(71017));
 const app_input_1 = __nccwpck_require__(483);
 const artifact = new artifact_1.DefaultArtifactClient();
+/**
+ * Uploads scan results to GitHub Actions artifacts for later retrieval.
+ */
 async function uploadResults() {
     await artifact.uploadArtifact(path.basename(inputs.OUTPUT_FILEPATH), [inputs.OUTPUT_FILEPATH], path.dirname(inputs.OUTPUT_FILEPATH));
 }
@@ -125040,9 +126385,6 @@ exports.uploadResults = uploadResults;
  * @property {Options} options - Configuration options for the scanner
  * @property {string} options.apiKey - API key for SCANOSS service authentication
  * @property {string} options.apiUrl - URL endpoint for the SCANOSS service
- * @property {boolean} options.sbomEnabled - Flag to enable SBOM generation
- * @property {string} options.sbomFilepath - Path to store or read SBOM files
- * @property {string} options.sbomType - Type of SBOM format to use
  * @property {boolean} options.dependenciesEnabled - Flag to enable dependency scanning
  * @property {string} options.outputFilepath - Path for scan results output
  * @property {string} options.inputFilepath - Path to the repository to scan
@@ -125103,7 +126445,13 @@ class ScanService {
             ignoreReturnCode: true
         };
         const args = await this.buildArgs();
-        const { stdout, stderr } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
+        const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
+        if (exitCode !== 0) {
+            core.warning(`Scan execution completed with exit code ${exitCode}`);
+            if (stderr) {
+                core.debug(`Scan stderr: ${stderr}`);
+            }
+        }
         const scan = await this.parseResult();
         return { scan, stdout, stderr };
     }
@@ -125251,6 +126599,9 @@ class ScanService {
         // Force scanoss.py to not load the settings.json file
         return ['-stf'];
     }
+    /**
+     * Parses scan results from the output file.
+     */
     async parseResult() {
         const content = await fs_1.default.promises.readFile(this.options.outputFilepath, 'utf-8');
         return JSON.parse(content);
@@ -125258,6 +126609,124 @@ class ScanService {
 }
 exports.ScanService = ScanService;
 exports.scanService = new ScanService();
+
+
+/***/ }),
+
+/***/ 73406:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.scanossService = exports.ScanOssService = void 0;
+const exec = __importStar(__nccwpck_require__(71514));
+const inputs = __importStar(__nccwpck_require__(483));
+const core = __importStar(__nccwpck_require__(42186));
+const github_service_1 = __nccwpck_require__(43123);
+const app_output_1 = __nccwpck_require__(22698);
+/**
+ * Service for converting SCANOSS scan results to different formats using scanoss-py.
+ * Currently supports CycloneDX format conversion for integration with other tools.
+ */
+class ScanOssService {
+    /**
+     * Build scanoss-py CycloneDX conversion parameters */
+    buildCycloneDXParameters() {
+        return [
+            'run',
+            '-v',
+            `${inputs.REPO_DIR}:/scanoss`,
+            inputs.RUNTIME_CONTAINER,
+            'convert',
+            '--input',
+            `./${inputs.OUTPUT_FILEPATH}`,
+            '--format',
+            'cyclonedx',
+            '--output',
+            `./${app_output_1.CYCLONEDX_FILE_NAME}`
+        ];
+    }
+    /**
+     * Converts SCANOSS results to CycloneDX format using scanoss-py.
+     * Currently always generates CycloneDX file which can be used by Dependency Track
+     * or uploaded as an artifact for other integrations.
+     */
+    async scanResultsToCycloneDX() {
+        try {
+            core.info('Converting SCANOSS results to CycloneDX format...');
+            const options = {
+                failOnStdErr: false,
+                ignoreReturnCode: false
+            };
+            const { exitCode } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildCycloneDXParameters(), options);
+            if (exitCode !== 0) {
+                return new Error(`Error converting scan results into CycloneDX format`);
+            }
+            // Check if CycloneDX file was actually created before trying to upload it
+            try {
+                const fs = await Promise.resolve(/* import() */).then(__nccwpck_require__.t.bind(__nccwpck_require__, 57147, 23));
+                await fs.promises.access(app_output_1.CYCLONEDX_FILE_NAME, fs.constants.F_OK);
+                await (0, github_service_1.uploadToArtifacts)(app_output_1.CYCLONEDX_FILE_NAME);
+                core.info('Successfully converted results into CycloneDX format');
+            }
+            catch (fileError) {
+                // File doesn't exist - this can happen with empty repos
+                core.info('CycloneDX conversion completed but no file generated (likely empty repository)');
+            }
+        }
+        catch (e) {
+            core.error(e.message);
+        }
+    }
+}
+exports.ScanOssService = ScanOssService;
+exports.scanossService = new ScanOssService();
 
 
 /***/ }),
@@ -125319,10 +126788,16 @@ const core = __importStar(__nccwpck_require__(42186));
 const inputs = __importStar(__nccwpck_require__(483));
 const prEvents = ['pull_request', 'pull_request_review', 'pull_request_review_comment'];
 const FIND_FIRST_RUN_EVENT = 'workflow_dispatch';
+/**
+ * Determines if the current GitHub workflow run was triggered by a pull request event.
+ */
 function isPullRequest() {
     return prEvents.includes(github_1.context.eventName);
 }
 exports.isPullRequest = isPullRequest;
+/**
+ * Gets the SHA of the commit being processed in the current workflow run.
+ */
 function getSHA() {
     let sha = github_1.context.sha;
     if (isPullRequest()) {
@@ -125334,6 +126809,9 @@ function getSHA() {
     return sha;
 }
 exports.getSHA = getSHA;
+/**
+ * Creates a comment on the current pull request with the provided message.
+ */
 async function createCommentOnPR(message) {
     const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
     core.debug('Creating comment on PR');
@@ -125345,6 +126823,10 @@ async function createCommentOnPR(message) {
     });
 }
 exports.createCommentOnPR = createCommentOnPR;
+/**
+ * Gets the first workflow run ID for linking purposes.
+ * For workflow_dispatch events, finds the original triggering run.
+ */
 async function getFirstRunId() {
     let firstRunId = github_1.context.runId;
     if (github_1.context.eventName === FIND_FIRST_RUN_EVENT) {
@@ -125357,6 +126839,9 @@ async function getFirstRunId() {
     return firstRunId;
 }
 exports.getFirstRunId = getFirstRunId;
+/**
+ * Loads the first workflow run for the current SHA and workflow.
+ */
 async function loadFirstRun(owner, repo) {
     const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
     const sha = getSHA();
@@ -125386,6 +126871,28 @@ async function loadFirstRun(owner, repo) {
 
 "use strict";
 
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -125413,9 +126920,15 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.licenseUtil = exports.LicenseUtil = void 0;
 const inputs = __importStar(__nccwpck_require__(483));
 const core = __importStar(__nccwpck_require__(42186));
+/**
+ * Utility class for handling license operations and copyleft license detection.
+ */
 class LicenseUtil {
     BASE_OSADL_URL = 'https://spdx.org/licenses';
     HTML = 'html';
+    /**
+     * Initializes the license utility with copyleft license configurations.
+     */
     constructor() {
         this.init();
     }
@@ -125443,6 +126956,9 @@ class LicenseUtil {
         'CC-BY-SA-4.0'
     ].map(l => l.toLowerCase()));
     copyLeftLicenses = new Set();
+    /**
+     * Initializes copyleft license sets based on configuration.
+     */
     init() {
         if (inputs.COPYLEFT_LICENSE_EXPLICIT) {
             const explicitCopyleftLicenses = inputs.COPYLEFT_LICENSE_EXPLICIT.split(',').map(pn => pn.trim().toLowerCase());
@@ -125463,9 +126979,9 @@ class LicenseUtil {
             excludedCopyleftLicenses.forEach(l => this.copyLeftLicenses.delete(l.toLowerCase()));
         }
     }
-    isCopyLeft(spdxid) {
-        return this.copyLeftLicenses.has(spdxid);
-    }
+    /**
+     * Generates SPDX license URL for the given license identifier.
+     */
     getOSADL(spdxid) {
         return `${this.BASE_OSADL_URL}/${spdxid}.${this.HTML}`;
     }
@@ -125505,6 +127021,12 @@ exports.licenseUtil = new LicenseUtil();
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.generateTable = void 0;
+/**
+ * Generates a markdown table with the provided headers and rows.
+ * @param headers - Array of column headers
+ * @param rows - Array of row data, where each row is an array of cell values
+ * @param centeredColumns - Optional array of column indices to center-align
+ */
 const generateTable = (headers, rows, centeredColumns) => {
     const COL_SEP = ' | ';
     const centeredColumnMapper = new Set();
@@ -135724,6 +137246,64 @@ module.exports = JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45,46],"valid"]
 /******/ 	}
 /******/ 	
 /************************************************************************/
+/******/ 	/* webpack/runtime/create fake namespace object */
+/******/ 	(() => {
+/******/ 		var getProto = Object.getPrototypeOf ? (obj) => (Object.getPrototypeOf(obj)) : (obj) => (obj.__proto__);
+/******/ 		var leafPrototypes;
+/******/ 		// create a fake namespace object
+/******/ 		// mode & 1: value is a module id, require it
+/******/ 		// mode & 2: merge all properties of value into the ns
+/******/ 		// mode & 4: return value when already ns object
+/******/ 		// mode & 16: return value when it's Promise-like
+/******/ 		// mode & 8|1: behave like require
+/******/ 		__nccwpck_require__.t = function(value, mode) {
+/******/ 			if(mode & 1) value = this(value);
+/******/ 			if(mode & 8) return value;
+/******/ 			if(typeof value === 'object' && value) {
+/******/ 				if((mode & 4) && value.__esModule) return value;
+/******/ 				if((mode & 16) && typeof value.then === 'function') return value;
+/******/ 			}
+/******/ 			var ns = Object.create(null);
+/******/ 			__nccwpck_require__.r(ns);
+/******/ 			var def = {};
+/******/ 			leafPrototypes = leafPrototypes || [null, getProto({}), getProto([]), getProto(getProto)];
+/******/ 			for(var current = mode & 2 && value; typeof current == 'object' && !~leafPrototypes.indexOf(current); current = getProto(current)) {
+/******/ 				Object.getOwnPropertyNames(current).forEach((key) => (def[key] = () => (value[key])));
+/******/ 			}
+/******/ 			def['default'] = () => (value);
+/******/ 			__nccwpck_require__.d(ns, def);
+/******/ 			return ns;
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	(() => {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__nccwpck_require__.d = (exports, definition) => {
+/******/ 			for(var key in definition) {
+/******/ 				if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	(() => {
+/******/ 		__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__nccwpck_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
 /******/ 	/* webpack/runtime/node module decorator */
 /******/ 	(() => {
 /******/ 		__nccwpck_require__.nmd = (module) => {

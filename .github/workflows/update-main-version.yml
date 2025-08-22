@@ -1,4 +1,4 @@
-# This workflow was inspirated on https://github.com/actions/checkout/blob/main/.github/workflows/update-main-version.yml
+# This workflow was inspired by https://github.com/actions/checkout/blob/main/.github/workflows/update-main-version.yml
 
 name: Update Main Version
 run-name: Move ${{ github.event.inputs.major_version }} to ${{ github.event.inputs.target }}

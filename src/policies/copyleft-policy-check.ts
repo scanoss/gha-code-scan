@@ -36,7 +36,7 @@ import { isOverMaxCharacterLimitAPI } from '../services/github.service';
  * It then generates a summary and detailed report of the findings.
  */
 export class CopyleftPolicyCheck extends PolicyCheck {
-  static policyName = 'Copyleft Policy';
+  static policyName = 'Copyleft';
   private argumentBuilder: ArgumentBuilder;
 
   constructor(argumentBuilder: CopyLeftArgumentBuilder = new CopyLeftArgumentBuilder()) {
@@ -44,6 +44,9 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     this.argumentBuilder = argumentBuilder;
   }
 
+  /**
+   * Executes the copyleft policy check.
+   */
   async run(): Promise<void> {
     core.info(`Running Copyleft Policy Check...`);
     super.initStatus();
@@ -56,28 +59,43 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
     let summary = stdout;
     let details = stderr;
-    if (exitCode === 1) {
-      await this.success('### :white_check_mark: Policy Pass \n #### Not copyleft Licenses were found', undefined);
+    // Happy path. All goodness
+    if (exitCode === 0) {
+      await this.success('### :white_check_mark: Policy Pass \n #### No copyleft licenses were found', undefined);
+      return;
+    } else if (exitCode === 1) {
+      // Technical error occurred
+      core.warning('Copyleft policy check encountered an error');
+      core.debug(`Copyleft policy check stderr: ${stderr}`);
+      const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete copyleft license check';
+      const errorDetails = 'Error details: Check debug logs for more information';
+      await this.technicalError(errorSummary, errorDetails);
       return;
     }
-
+    // exitCode === 2 means policy violations found
     const { id } = await this.uploadArtifact(stdout);
     core.debug(`Copyleft Artifact ID: ${id}`);
     if (id) {
       details = await this.concatPolicyArtifactURLToPolicyCheck(stderr, id);
     }
-
+    // Checking if the summary is too long
     if (isOverMaxCharacterLimitAPI(summary)) {
       summary = '';
     }
-
+    // Reject/fail the policy check (unless disabled)
     return this.reject(summary, details);
   }
 
+  /**
+   * Returns the artifact filename for copyleft policy results.
+   */
   artifactPolicyFileName(): string {
     return 'policy-check-copyleft-results.md';
   }
 
+  /**
+   * Returns the policy name for copyleft checks.
+   */
   getPolicyName(): string {
     return CopyleftPolicyCheck.policyName;
   }

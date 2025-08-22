@@ -21,6 +21,12 @@
    THE SOFTWARE.
  */
 
+/**
+ * Generates a markdown table with the provided headers and rows.
+ * @param headers - Array of column headers
+ * @param rows - Array of row data, where each row is an array of cell values
+ * @param centeredColumns - Optional array of column indices to center-align
+ */
 export const generateTable = (headers: string[], rows: string[][], centeredColumns?: number[]): string => {
   const COL_SEP = ' | ';
   const centeredColumnMapper: Set<number> = new Set<number>();

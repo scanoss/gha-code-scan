@@ -53,6 +53,9 @@ export enum STATUS {
   FINISHED = 'FINISHED'
 }
 
+/**
+ * Abstract base class for policy checks that integrate with GitHub's check runs API.
+ */
 export abstract class PolicyCheck {
   private octokit: InstanceType<typeof GitHub>;
 
@@ -68,7 +71,10 @@ export abstract class PolicyCheck {
 
   private _firstRunId = -1;
 
-  constructor(checkName: string) {
+  /**
+   * Initializes the policy check with GitHub integration.
+   */
+  protected constructor(checkName: string) {
     this.octokit = getOctokit(inputs.GITHUB_TOKEN);
     this.checkName = checkName;
     this._status = STATUS.UNINITIALIZED;
@@ -76,12 +82,24 @@ export abstract class PolicyCheck {
     this.checkRunId = -1;
   }
 
+  /**
+   * Returns the filename for policy check artifacts.
+   */
   abstract artifactPolicyFileName(): string;
 
+  /**
+   * Returns the policy name for display purposes.
+   */
   abstract getPolicyName(): string;
 
+  /**
+   * Executes the policy check logic.
+   */
   abstract run(): Promise<void>;
 
+  /**
+   * Starts a new GitHub check run for this policy.
+   */
   async start(runId: number): Promise<CheckRun> {
     const result = await this.octokit.rest.checks.create({
       owner: context.repo.owner,
@@ -99,22 +117,37 @@ export abstract class PolicyCheck {
     return result.data;
   }
 
+  /**
+   * Returns the check name.
+   */
   get name(): string {
     return this.checkName;
   }
 
+  /**
+   * Returns the check conclusion status.
+   */
   get conclusion(): CONCLUSION {
     return this._conclusion;
   }
 
+  /**
+   * Returns the raw GitHub check run data.
+   */
   get raw(): CheckRun | undefined {
     return this._raw;
   }
 
+  /**
+   * Returns the URL to this check run.
+   */
   get url(): string {
     return `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${this._firstRunId}/job/${this.raw?.id}`;
   }
 
+  /**
+   * Initializes the policy check status to running.
+   */
   initStatus(): void {
     if (this._status === STATUS.UNINITIALIZED)
       throw new Error(`Error on finish. Policy "${this.checkName}" is not created.`);
@@ -123,17 +156,35 @@ export abstract class PolicyCheck {
     this._status = STATUS.RUNNING;
   }
 
+  /**
+   * Marks the policy check as successful.
+   */
   protected async success(summary: string, text?: string): Promise<void> {
     this._conclusion = CONCLUSION.Success;
     return await this.finish(summary, text);
   }
 
+  /**
+   * Marks the policy check as rejected due to policy violations.
+   */
   protected async reject(summary: string, text?: string): Promise<void> {
-    if (inputs.POLICIES_HALT_ON_FAILURE) this._conclusion = CONCLUSION.Failure;
+    if (inputs.POLICIES_HALT_ON_FAILURE) this._conclusion = CONCLUSION.ActionRequired;
     else this._conclusion = CONCLUSION.Neutral;
     await this.finish(summary, text);
   }
 
+  /**
+   * Handles technical errors during policy check execution.
+   */
+  protected async technicalError(summary: string, text?: string): Promise<void> {
+    if (inputs.HALT_ON_ERROR) this._conclusion = CONCLUSION.Failure;
+    else this._conclusion = CONCLUSION.Neutral;
+    await this.finish(summary, text);
+  }
+
+  /**
+   * Finalizes the policy check and updates GitHub status.
+   */
   async finish(summary: string, text?: string): Promise<void> {
     core.debug(`Finish policy check: ${this.checkName}. (conclusion=${this._conclusion})`);
     this._status = STATUS.FINISHED;
@@ -141,6 +192,9 @@ export abstract class PolicyCheck {
     await this.updateCheck(summary, text);
   }
 
+  /**
+   * Updates the GitHub check run with results.
+   */
   async updateCheck(summary: string, text?: string): Promise<void> {
     await this.octokit.rest.checks.update({
       owner: context.repo.owner,
@@ -156,6 +210,9 @@ export abstract class PolicyCheck {
     });
   }
 
+  /**
+   * Appends artifact download link to policy check details.
+   */
   protected async concatPolicyArtifactURLToPolicyCheck(details: string, artifactId: number): Promise<string> {
     const link =
       `\n\nDownload the ` +
@@ -179,6 +236,9 @@ export abstract class PolicyCheck {
     return text;
   }
 
+  /**
+   * Uploads policy check results as a GitHub Actions artifact.
+   */
   async uploadArtifact(file: string): Promise<UploadArtifactResponse> {
     await fs.writeFile(this.artifactPolicyFileName(), file);
     const artifact = new DefaultArtifactClient();

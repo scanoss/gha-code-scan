@@ -38,13 +38,16 @@ import { isOverMaxCharacterLimitAPI } from '../services/github.service';
  *
  */
 export class UndeclaredPolicyCheck extends PolicyCheck {
-  static policyName = 'Undeclared Policy';
+  static policyName = 'Undeclared';
   private argumentBuilder: ArgumentBuilder;
   constructor(argumentBuilder: ArgumentBuilder = new UndeclaredArgumentBuilder()) {
     super(`${CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`);
     this.argumentBuilder = argumentBuilder;
   }
 
+  /**
+   * Executes the undeclared components policy check.
+   */
   async run(): Promise<void> {
     core.info(`Running Undeclared Components Policy Check...`);
     super.initStatus();
@@ -63,9 +66,28 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       core.warning('Undeclared policy is being used with SCANOSS settings disabled');
     }
 
-    if (exitCode === 1) {
-      await this.success('### :white_check_mark: Policy Pass \n #### Not undeclared components were found', undefined);
+    if (exitCode === 0) {
+      await this.success('### :white_check_mark: Policy Pass \n #### No undeclared components were found', undefined);
       return;
+    }
+
+    if (exitCode === 1) {
+      // Technical error occurred
+      core.warning('Undeclared policy check encountered an error');
+      core.debug(`Undeclared policy check stderr: ${stderr}`);
+      const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete undeclared component check';
+      const errorDetails = 'Error details: Check debug logs for more information';
+
+      await this.technicalError(errorSummary, errorDetails);
+      return;
+    }
+
+    // exitCode === 2 means policy violations found
+    // Combine stdout (summary) and stderr (details) for comprehensive reporting
+    if (stderr) {
+      details = `${stdout}\n\n${stderr}`;
+    } else {
+      details = stdout;
     }
 
     const { id } = await this.uploadArtifact(details);
@@ -79,10 +101,16 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     return this.reject(summary, details);
   }
 
+  /**
+   * Returns the filename for undeclared policy check artifact results.
+   */
   artifactPolicyFileName(): string {
     return 'policy-check-undeclared-results.md';
   }
 
+  /**
+   * Returns the name of the undeclared components policy.
+   */
   getPolicyName(): string {
     return UndeclaredPolicyCheck.policyName;
   }

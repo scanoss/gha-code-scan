@@ -13,6 +13,8 @@ ignorePatterns:
   - '**/dist/.*'
   - '**/coverage/.*'
   - '*.json'
+  - '**/.github/*'
+  - '**/__tests__/*'
 
 parser: '@typescript-eslint/parser'
 
