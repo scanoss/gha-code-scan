@@ -74,7 +74,7 @@ describe('DependencyTrackStatusService', () => {
         uploadTime: 1.5
       };
 
-       await service.reportUploadStatus(uploadResult);
+      await service.reportUploadStatus(uploadResult);
 
       expect(uploadResult.checkRunId).toBe(12345);
 
