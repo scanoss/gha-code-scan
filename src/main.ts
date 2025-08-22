@@ -61,12 +61,12 @@ export async function run(): Promise<void> {
     // 3: Dependency Track
     const uploadResult = await dependencyTrackService.uploadToDependencyTrack();
     // 3.1: Report Dependency Track upload status
-      await dependencyTrackStatusService.reportUploadStatus(uploadResult);
+    await dependencyTrackStatusService.reportUploadStatus(uploadResult);
 
     // 4: run policies
     for (const policy of policies) {
       if (policy instanceof DepTrackPolicyCheck) {
-        policy.setUploadAttempted(uploadResult.success);  // Warn if DT upload was disabled or failed
+        policy.setUploadAttempted(uploadResult.success); // Warn if DT upload was disabled or failed
       }
       await policy.run();
     }
