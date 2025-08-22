@@ -41,7 +41,7 @@ import * as inputs from '../app.input';
 export class DepTrackPolicyCheck extends PolicyCheck {
   static policyName = 'Dependency Track';
   private argumentBuilder: ArgumentBuilder;
-  private uploadAttempted = true;
+  private uploadAttempted = false;
 
   constructor(argumentBuilder: DependencyTrackArgumentBuilder = new DependencyTrackArgumentBuilder()) {
     super(`${CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
@@ -68,11 +68,11 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized')) {
         return 'AUTH_ERROR';
       }
-      if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
-        return 'NOT_FOUND_ERROR';
-      }
       if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
         return 'PROJECT_NOT_FOUND';
+      }
+      if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
+        return 'NOT_FOUND_ERROR';
       }
       if (lowerStderr.includes('timeout')) {
         return 'TIMEOUT_ERROR';
@@ -219,6 +219,10 @@ export class DepTrackPolicyCheck extends PolicyCheck {
    */
   async run(): Promise<void> {
     try {
+      // Mask secrets to prevent accidental leakage in logs
+      if (inputs.DEPENDENCY_TRACK_API_KEY) core.setSecret(inputs.DEPENDENCY_TRACK_API_KEY);
+      if (inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN) core.setSecret(inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN);
+
       core.info(`Checking Dependency Track for Project Violations...`);
       super.initStatus();
 

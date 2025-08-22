@@ -242,8 +242,8 @@ jobs:
           deptrack.apikey: ${{ secrets.DT_API_KEY }}
           deptrack.projectname: 'my-project'
           deptrack.projectversion: '1.0.0'
-          # api-url: <YOUR_API_URL>
-          # api-key: <YOUR_API_KEY>
+          # api.url: <YOUR_API_URL>
+          # api.key: <YOUR_API_KEY>
           
       - name: Print stdout scan command
         run: echo "${{ steps.scanoss-code-scan-step.outputs.stdout-scan-command }}"

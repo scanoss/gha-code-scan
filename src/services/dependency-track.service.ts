@@ -147,7 +147,7 @@ export class DependencyTrackService {
           error: 'Configuration validation failed'
         };
       }
-      // Get file information before upload
+      // Get file information before upload if we can
       let fileSize: number | undefined;
       let componentsCount: number | undefined;
       try {
@@ -158,7 +158,7 @@ export class DependencyTrackService {
         const cycloneDxData = JSON.parse(cycloneDxContent);
         componentsCount = cycloneDxData.components?.length || 0;
       } catch (fileError) {
-        core.debug(`Could not read SBOM file details: ${fileError}`);
+        core.warning(`Could not read SBOM file details: ${fileError}`);
       }
       core.info('Starting Dependency Track upload process...');
       const uploadError = await this.uploadCycloneDXToDependencyTrack();

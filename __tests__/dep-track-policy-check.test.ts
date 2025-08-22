@@ -311,15 +311,15 @@ describe('DepTrackPolicyCheck', () => {
   it('should test setUploadAttempted method', () => {
     const depTrackPolicyCheck = new DepTrackPolicyCheck();
 
-    // Default should be true
-    expect((depTrackPolicyCheck as any).uploadAttempted).toBe(true);
-
-    // Set to false
-    depTrackPolicyCheck.setUploadAttempted(false);
+    // Default should be false
     expect((depTrackPolicyCheck as any).uploadAttempted).toBe(false);
 
-    // Set back to true
+    // Set to true
     depTrackPolicyCheck.setUploadAttempted(true);
     expect((depTrackPolicyCheck as any).uploadAttempted).toBe(true);
+
+    // Set back to false
+    depTrackPolicyCheck.setUploadAttempted(false);
+    expect((depTrackPolicyCheck as any).uploadAttempted).toBe(false);
   });
 });

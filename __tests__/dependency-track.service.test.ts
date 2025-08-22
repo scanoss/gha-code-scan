@@ -286,7 +286,7 @@ describe('Dependency track service', () => {
       exitCode: 0
     });
 
-    const debugSpy = jest.spyOn(require('@actions/core'), 'debug').mockImplementation();
+    const warningSpy = jest.spyOn(require('@actions/core'), 'warning').mockImplementation();
 
     const service = new DependencyTrackService({
       enabled: true,
@@ -305,10 +305,10 @@ describe('Dependency track service', () => {
     // Should not have file metadata due to read error
     expect(result.fileSize).toBeUndefined();
     expect(result.componentsCount).toBeUndefined();
-    // Should have logged the debug message about file read error
-    expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Could not read SBOM file details'));
+    // Should have logged the warning message about file read error
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('Could not read SBOM file details'));
 
-    debugSpy.mockRestore();
+    warningSpy.mockRestore();
   });
 
   it('should return success result when upload succeeds', async () => {
@@ -408,6 +408,11 @@ describe('Dependency track service', () => {
     });
 
     it('should succeed without warnings when stderr contains harmless info messages', async () => {
+      // Mock file system operations to succeed (so no file read warnings)
+      const mockStats = { size: 1024 };
+      jest.spyOn(require('fs').promises, 'stat').mockResolvedValue(mockStats);
+      mockReadFile.mockResolvedValue('{"bomFormat":"CycloneDX","components":[]}');
+
       mockGetExecOutput.mockResolvedValue({
         stdout: '{"token": "test-token", "project_uuid": "test-uuid"}',
         stderr: 'Reading SBOM file: ./scanoss-cyclonedx.json',

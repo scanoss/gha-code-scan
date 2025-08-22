@@ -124622,7 +124622,7 @@ const inputs = __importStar(__nccwpck_require__(483));
 class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
     static policyName = 'Dependency Track';
     argumentBuilder;
-    uploadAttempted = true;
+    uploadAttempted = false;
     constructor(argumentBuilder = new dep_track_argument_builder_1.DependencyTrackArgumentBuilder()) {
         super(`${app_config_1.CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
         this.argumentBuilder = argumentBuilder;
@@ -124646,11 +124646,11 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
             if (lowerStderr.includes('401') || lowerStderr.includes('unauthorized')) {
                 return 'AUTH_ERROR';
             }
-            if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
-                return 'NOT_FOUND_ERROR';
-            }
             if (lowerStderr.includes('project') && lowerStderr.includes('not found')) {
                 return 'PROJECT_NOT_FOUND';
+            }
+            if (lowerStderr.includes('404') || lowerStderr.includes('not found')) {
+                return 'NOT_FOUND_ERROR';
             }
             if (lowerStderr.includes('timeout')) {
                 return 'TIMEOUT_ERROR';
@@ -124778,6 +124778,11 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
      */
     async run() {
         try {
+            // Mask secrets to prevent accidental leakage in logs
+            if (inputs.DEPENDENCY_TRACK_API_KEY)
+                core.setSecret(inputs.DEPENDENCY_TRACK_API_KEY);
+            if (inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN)
+                core.setSecret(inputs.DEPENDENCY_TRACK_UPLOAD_TOKEN);
             core.info(`Checking Dependency Track for Project Violations...`);
             super.initStatus();
             // Validate configuration before running
@@ -125755,7 +125760,7 @@ class DependencyTrackService {
                     error: 'Configuration validation failed'
                 };
             }
-            // Get file information before upload
+            // Get file information before upload if we can
             let fileSize;
             let componentsCount;
             try {
@@ -125767,7 +125772,7 @@ class DependencyTrackService {
                 componentsCount = cycloneDxData.components?.length || 0;
             }
             catch (fileError) {
-                core.debug(`Could not read SBOM file details: ${fileError}`);
+                core.warning(`Could not read SBOM file details: ${fileError}`);
             }
             core.info('Starting Dependency Track upload process...');
             const uploadError = await this.uploadCycloneDXToDependencyTrack();
