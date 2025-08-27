@@ -127098,16 +127098,10 @@ exports.sanitiseUrl = void 0;
  * @returns The sanitised URL string, or empty string if input is empty after trimming
  */
 function sanitiseUrl(url) {
-    if (!url) {
-        return '';
+    if (url) {
+        return url.trim().replace(/\/+$/, '');
     }
-    // Trim whitespace from both ends
-    const trimmed = url.trim();
-    if (!trimmed) {
-        return '';
-    }
-    // Remove trailing slashes
-    return trimmed.replace(/\/+$/, '');
+    return url;
 }
 exports.sanitiseUrl = sanitiseUrl;
 

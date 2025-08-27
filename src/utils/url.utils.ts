@@ -27,16 +27,8 @@
  * @returns The sanitised URL string, or empty string if input is empty after trimming
  */
 export function sanitiseUrl(url: string): string {
-  if (!url) {
-    return '';
+  if (url) {
+    return url.trim().replace(/\/+$/, '');
   }
-
-  // Trim whitespace from both ends
-  const trimmed = url.trim();
-  if (!trimmed) {
-    return '';
+  return url;
   }
-
-  // Remove trailing slashes
-  return trimmed.replace(/\/+$/, '');
-}
