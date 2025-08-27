@@ -33,7 +33,6 @@ export function sanitiseUrl(url: string): string {
 
   // Trim whitespace from both ends
   const trimmed = url.trim();
-  
   if (!trimmed) {
     return '';
   }

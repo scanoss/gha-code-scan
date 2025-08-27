@@ -125,7 +125,6 @@ describe('Test report service', () => {
       componentsCount: 25,
       uploadTime: 1500
     };
-
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
 
     // Verify that the summary was called with the Details section and subsections

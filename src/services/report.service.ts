@@ -126,7 +126,6 @@ export async function generateJobSummary(
 
     let statusIcon: string;
     let details: string;
-    
     if (!uploadResult.enabled) {
       statusIcon = ':white_circle:';
       details = 'Dependency Track Upload disabled';
