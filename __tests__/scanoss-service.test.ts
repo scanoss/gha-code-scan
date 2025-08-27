@@ -31,9 +31,6 @@ import * as core from '@actions/core';
 jest.mock('@actions/exec');
 jest.mock('@actions/core');
 
-// Mock fs module for dynamic import
-const mockAccess = jest.fn();
-
 // Mock node:fs module which is used by dynamic import
 jest.mock('node:fs', () => ({
   constants: { F_OK: 0 },
@@ -68,10 +65,15 @@ const mockGetExecOutput = exec.getExecOutput as jest.MockedFunction<typeof exec.
 
 describe('Scanoss service tests', () => {
   let scanossService: ScanOssService;
+  let mockFsAccess: jest.Mock;
 
   beforeEach(() => {
     scanossService = new ScanOssService();
     jest.clearAllMocks();
+    
+    // Get reference to the mocked fs.promises.access function
+    const fs = require('fs');
+    mockFsAccess = fs.promises.access as jest.Mock;
   });
 
   describe('buildCycloneDXParameters', () => {
@@ -135,7 +137,7 @@ describe('Scanoss service tests', () => {
 
       expect(result).toBeInstanceOf(Error);
       expect(result?.message).toBe('Error converting scan results into CycloneDX format');
-      expect(mockAccess).not.toHaveBeenCalled();
+      expect(mockFsAccess).not.toHaveBeenCalled();
     });
 
     it('should handle missing CycloneDX file (empty repository)', async () => {
@@ -144,7 +146,7 @@ describe('Scanoss service tests', () => {
         stderr: '',
         exitCode: 0
       });
-      mockAccess.mockRejectedValue(new Error('File not found'));
+      mockFsAccess.mockRejectedValue(new Error('File not found'));
 
       const infoSpy = jest.spyOn(core, 'info').mockImplementation();
 
@@ -179,7 +181,7 @@ describe('Scanoss service tests', () => {
         stderr: '',
         exitCode: 0
       });
-      mockAccess.mockResolvedValue(undefined);
+      mockFsAccess.mockResolvedValue(undefined);
       (uploadToArtifacts as jest.Mock).mockRejectedValue(new Error('Upload failed'));
 
       const infoSpy = jest.spyOn(core, 'info').mockImplementation();
