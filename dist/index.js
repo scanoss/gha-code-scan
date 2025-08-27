@@ -123720,6 +123720,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.REPO_DIR = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.HALT_ON_ERROR = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const path = __importStar(__nccwpck_require__(71017));
+const url_utils_1 = __nccwpck_require__(13060);
 /**
  * Validates a filename to prevent directory traversal and ensure safe file operations.
  * @param filename - The filename to validate
@@ -123774,7 +123775,7 @@ exports.DEPENDENCY_SCOPE_INCLUDE = core.getInput('dependencies.scope.include');
 /** API key for SCANOSS service authentication */
 exports.API_KEY = core.getInput('api.key');
 /** SCANOSS API endpoint URL */
-exports.API_URL = core.getInput('api.url');
+exports.API_URL = (0, url_utils_1.sanitiseUrl)(core.getInput('api.url'));
 // File System Configuration
 /** Path for scan results output */
 exports.OUTPUT_FILEPATH = validateFilename(core.getInput('output.filepath'));
@@ -123808,7 +123809,7 @@ exports.DEBUG = core.getInput('debug') === 'true';
 /** Enable Dependency Track integration */
 exports.DEPENDENCY_TRACK_ENABLED = core.getInput('deptrack.upload') === 'true';
 /** Dependency Track server URL */
-exports.DEPENDENCY_TRACK_URL = core.getInput('deptrack.url');
+exports.DEPENDENCY_TRACK_URL = (0, url_utils_1.sanitiseUrl)(core.getInput('deptrack.url'));
 /** Dependency Track API key */
 exports.DEPENDENCY_TRACK_API_KEY = core.getInput('deptrack.apikey');
 /** Dependency Track project ID (mutable) */
@@ -126232,27 +126233,37 @@ async function generateJobSummary(policies, uploadResult) {
         const HEADERS = ['Status Check', 'Status', 'Details'];
         const ROWS = [];
         let statusIcon;
+        let details;
         if (!uploadResult.enabled) {
             statusIcon = ':white_circle:';
+            details = 'Dependency Track Upload disabled';
         }
         else if (uploadResult.success) {
             statusIcon = ':white_check_mark:';
+            // Generate link to GitHub status check details
+            // Use specific job ID if available, otherwise fallback to general run page
+            if (uploadResult.checkRunId) {
+                const firstRunId = await (0, github_utils_1.getFirstRunId)();
+                details = `[More Details](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId})`;
+            }
+            else {
+                const firstRunId = await (0, github_utils_1.getFirstRunId)();
+                details = `[More Details](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId})`;
+            }
         }
         else {
             statusIcon = ':x:';
+            // Generate link to GitHub status check details for failed uploads
+            if (uploadResult.checkRunId) {
+                const firstRunId = await (0, github_utils_1.getFirstRunId)();
+                details = `[More Details](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId})`;
+            }
+            else {
+                const firstRunId = await (0, github_utils_1.getFirstRunId)();
+                details = `[More Details](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId})`;
+            }
         }
-        // Generate link to GitHub status check details
-        // Use specific job ID if available, otherwise fallback to general run page
-        let statusCheckUrl;
-        if (uploadResult.checkRunId) {
-            const firstRunId = await (0, github_utils_1.getFirstRunId)();
-            statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId}`;
-        }
-        else {
-            const firstRunId = await (0, github_utils_1.getFirstRunId)();
-            statusCheckUrl = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}`;
-        }
-        ROWS.push(['Dependency Track Upload', statusIcon, `[More Details](${statusCheckUrl})`]);
+        ROWS.push(['Dependency Track Upload', statusIcon, details]);
         return (0, markdown_utils_1.generateTable)(HEADERS, ROWS);
     };
     const LinksTable = (uploadResult) => {
@@ -127048,6 +127059,57 @@ const generateTable = (headers, rows, centeredColumns) => {
   `;
 };
 exports.generateTable = generateTable;
+
+
+/***/ }),
+
+/***/ 13060:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.sanitiseUrl = void 0;
+/**
+ * Sanitises a URL input by trimming whitespace and removing trailing slashes.
+ * @param url - The URL string to sanitise
+ * @returns The sanitised URL string, or empty string if input is empty after trimming
+ */
+function sanitiseUrl(url) {
+    if (!url) {
+        return '';
+    }
+    // Trim whitespace from both ends
+    const trimmed = url.trim();
+    if (!trimmed) {
+        return '';
+    }
+    // Remove trailing slashes
+    return trimmed.replace(/\/+$/, '');
+}
+exports.sanitiseUrl = sanitiseUrl;
 
 
 /***/ }),

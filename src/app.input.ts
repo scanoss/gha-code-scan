@@ -23,6 +23,7 @@
 
 import * as core from '@actions/core';
 import * as path from 'path';
+import { sanitiseUrl } from './utils/url.utils';
 
 /**
  * Validates a filename to prevent directory traversal and ensure safe file operations.
@@ -88,7 +89,7 @@ export const DEPENDENCY_SCOPE_INCLUDE = core.getInput('dependencies.scope.includ
 /** API key for SCANOSS service authentication */
 export const API_KEY = core.getInput('api.key');
 /** SCANOSS API endpoint URL */
-export const API_URL = core.getInput('api.url');
+export const API_URL = sanitiseUrl(core.getInput('api.url'));
 
 // File System Configuration
 /** Path for scan results output */
@@ -126,7 +127,7 @@ export const DEBUG = core.getInput('debug') === 'true';
 /** Enable Dependency Track integration */
 export const DEPENDENCY_TRACK_ENABLED = core.getInput('deptrack.upload') === 'true';
 /** Dependency Track server URL */
-export const DEPENDENCY_TRACK_URL = core.getInput('deptrack.url');
+export const DEPENDENCY_TRACK_URL = sanitiseUrl(core.getInput('deptrack.url'));
 /** Dependency Track API key */
 export const DEPENDENCY_TRACK_API_KEY = core.getInput('deptrack.apikey');
 /** Dependency Track project ID (mutable) */
