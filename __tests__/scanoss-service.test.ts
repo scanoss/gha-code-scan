@@ -70,7 +70,7 @@ describe('Scanoss service tests', () => {
   beforeEach(() => {
     scanossService = new ScanOssService();
     jest.clearAllMocks();
-    
+
     // Get reference to the mocked fs.promises.access function
     const fs = require('fs');
     mockFsAccess = fs.promises.access as jest.Mock;
