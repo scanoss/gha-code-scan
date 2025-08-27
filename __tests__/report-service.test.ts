@@ -159,9 +159,7 @@ describe('Test report service', () => {
     expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
 
     // Verify that "Dependency Track Upload disabled" is shown instead of a link
-    expect(core.summary.addRaw).toHaveBeenCalledWith(
-      expect.stringContaining('Dependency Track Upload disabled')
-    );
+    expect(core.summary.addRaw).toHaveBeenCalledWith(expect.stringContaining('Dependency Track Upload disabled'));
 
     // Verify that the project link is still shown even when disabled
     expect(core.summary.addRaw).toHaveBeenCalledWith(
@@ -203,16 +201,14 @@ describe('Test report service', () => {
     };
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
-    
+
     // Verify that the summary was called with the Details section and subsections
     expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
     expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
 
     // Verify that "Dependency Track Upload disabled" is shown when disabled
-    expect(core.summary.addRaw).toHaveBeenCalledWith(
-      expect.stringContaining('Dependency Track Upload disabled')
-    );
+    expect(core.summary.addRaw).toHaveBeenCalledWith(expect.stringContaining('Dependency Track Upload disabled'));
 
     // Verify that the project link from configuration is included
     expect(core.summary.addRaw).toHaveBeenCalledWith(
