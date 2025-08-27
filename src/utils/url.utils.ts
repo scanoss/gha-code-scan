@@ -31,4 +31,4 @@ export function sanitiseUrl(url: string): string {
     return url.trim().replace(/\/+$/, '');
   }
   return url;
-  }
+}
