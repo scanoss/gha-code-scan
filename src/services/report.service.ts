@@ -126,6 +126,7 @@ export async function generateJobSummary(
 
     let statusIcon: string;
     let details: string;
+    const firstRunId = await getFirstRunId();
     if (!uploadResult.enabled) {
       statusIcon = ':white_circle:';
       details = 'Dependency Track Upload disabled';
@@ -134,20 +135,16 @@ export async function generateJobSummary(
       // Generate link to GitHub status check details
       // Use specific job ID if available, otherwise fallback to general run page
       if (uploadResult.checkRunId) {
-        const firstRunId = await getFirstRunId();
         details = `[More Details](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId})`;
       } else {
-        const firstRunId = await getFirstRunId();
         details = `[More Details](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${firstRunId})`;
       }
     } else {
       statusIcon = ':x:';
       // Generate link to GitHub status check details for failed uploads
       if (uploadResult.checkRunId) {
-        const firstRunId = await getFirstRunId();
         details = `[More Details](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId})`;
       } else {
-        const firstRunId = await getFirstRunId();
         details = `[More Details](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${firstRunId})`;
       }
     }

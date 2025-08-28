@@ -125699,8 +125699,8 @@ class DependencyTrackService {
                     invalidParams.push('deptrack.url (must use http:// or https://)');
                 }
             }
-            catch (error) {
-                invalidParams.push('deptrack.url (invalid URL format)');
+            catch (e) {
+                invalidParams.push(`deptrack.url (invalid URL format): ${e.message}`);
             }
         }
         if (!this.options.apiKey) {
@@ -126234,6 +126234,7 @@ async function generateJobSummary(policies, uploadResult) {
         const ROWS = [];
         let statusIcon;
         let details;
+        const firstRunId = await (0, github_utils_1.getFirstRunId)();
         if (!uploadResult.enabled) {
             statusIcon = ':white_circle:';
             details = 'Dependency Track Upload disabled';
@@ -126243,11 +126244,9 @@ async function generateJobSummary(policies, uploadResult) {
             // Generate link to GitHub status check details
             // Use specific job ID if available, otherwise fallback to general run page
             if (uploadResult.checkRunId) {
-                const firstRunId = await (0, github_utils_1.getFirstRunId)();
                 details = `[More Details](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId})`;
             }
             else {
-                const firstRunId = await (0, github_utils_1.getFirstRunId)();
                 details = `[More Details](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId})`;
             }
         }
@@ -126255,11 +126254,9 @@ async function generateJobSummary(policies, uploadResult) {
             statusIcon = ':x:';
             // Generate link to GitHub status check details for failed uploads
             if (uploadResult.checkRunId) {
-                const firstRunId = await (0, github_utils_1.getFirstRunId)();
                 details = `[More Details](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId}/job/${uploadResult.checkRunId})`;
             }
             else {
-                const firstRunId = await (0, github_utils_1.getFirstRunId)();
                 details = `[More Details](${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${firstRunId})`;
             }
         }
