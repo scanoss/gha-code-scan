@@ -75,8 +75,8 @@ export class DependencyTrackService {
         if (!['http:', 'https:'].includes(url.protocol)) {
           invalidParams.push('deptrack.url (must use http:// or https://)');
         }
-      } catch (error) {
-        invalidParams.push('deptrack.url (invalid URL format)');
+      } catch (e: any) {
+        invalidParams.push(`deptrack.url (invalid URL format): ${e.message}`);
       }
     }
 

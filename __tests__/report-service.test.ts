@@ -29,6 +29,14 @@ import { generateJobSummary, generatePRSummary } from '../src/services/report.se
 import { DependencyTrackUploadResult } from '../src/services/dependency-track-status.service';
 import path from 'path';
 
+// Mock the github utils
+jest.mock('../src/utils/github.utils', () => ({
+  getFirstRunId: jest.fn().mockResolvedValue(12345),
+  getSHA: jest.fn().mockReturnValue('mock-sha'),
+  isPullRequest: jest.fn().mockReturnValue(false),
+  createCommentOnPR: jest.fn()
+}));
+
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
   REPO_DIR: '',
@@ -117,18 +125,22 @@ describe('Test report service', () => {
       componentsCount: 25,
       uploadTime: 1500
     };
-
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
 
     // Verify that the summary was called with the Details section and subsections
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
+
+    // Verify that a "More Details" link is shown for successful uploads
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.stringContaining('[More Details](https://github.com/x/y/actions/runs/12345)')
+    );
 
     // Verify that the project link was included in the Links table
-    // expect(core.summary.addRaw).toHaveBeenCalledWith(
-    //   expect.stringContaining('[View Project](https://dt.example.com/projects/abc-123-def)')
-    // );
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.stringContaining('[View Project](https://dt.example.com/projects/abc-123-def)')
+    );
   }, 10000);
 
   it('Should generate job summary with disabled Dependency Track upload', async () => {
@@ -141,14 +153,17 @@ describe('Test report service', () => {
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
 
     // Verify that the summary was called with the Details section and subsections
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
+
+    // Verify that "Dependency Track Upload disabled" is shown instead of a link
+    expect(core.summary.addRaw).toHaveBeenCalledWith(expect.stringContaining('Dependency Track Upload disabled'));
 
     // Verify that the project link is still shown even when disabled
-    // expect(core.summary.addRaw).toHaveBeenCalledWith(
-    //   expect.stringContaining('[View Project](https://dt.example.com/projects/disabled-project-123)')
-    // );
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.stringContaining('[View Project](https://dt.example.com/projects/disabled-project-123)')
+    );
   }, 10000);
 
   it('Should generate job summary with failed Dependency Track upload', async () => {
@@ -162,14 +177,19 @@ describe('Test report service', () => {
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
 
     // Verify that the summary was called with the Details section and subsections
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
+
+    // Verify that a "More Details" link is shown for failed uploads
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.stringContaining('[More Details](https://github.com/x/y/actions/runs/12345)')
+    );
 
     // Verify that the project link appears even for failed uploads
-    // expect(core.summary.addRaw).toHaveBeenCalledWith(
-    //   expect.stringContaining('[View Project](https://dt.example.com/projects/failed-project-456)')
-    // );
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.stringContaining('[View Project](https://dt.example.com/projects/failed-project-456)')
+    );
   }, 10000);
 
   it('Should generate job summary with project link from configuration when upload result has no project ID', async () => {
@@ -180,16 +200,19 @@ describe('Test report service', () => {
     };
 
     await expect(generateJobSummary([], uploadResult)).resolves.toEqual(undefined);
-    // TODO review these tests
+
     // Verify that the summary was called with the Details section and subsections
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
-    // expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Details', 3);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Status Checks', 4);
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Links', 4);
+
+    // Verify that "Dependency Track Upload disabled" is shown when disabled
+    expect(core.summary.addRaw).toHaveBeenCalledWith(expect.stringContaining('Dependency Track Upload disabled'));
 
     // Verify that the project link from configuration is included
-    // expect(core.summary.addRaw).toHaveBeenCalledWith(
-    //   expect.stringContaining('[View Project](https://dt.example.com/projects/config-project-789)')
-    // );
+    expect(core.summary.addRaw).toHaveBeenCalledWith(
+      expect.stringContaining('[View Project](https://dt.example.com/projects/config-project-789)')
+    );
   }, 10000);
 
   it('Should generate PR summary', async () => {
