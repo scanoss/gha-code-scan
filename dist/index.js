@@ -126820,6 +126820,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getFirstRunId = exports.createReviewWithSuggestions = exports.createCommentOnPR = exports.getSHA = exports.isPullRequest = void 0;
 const github_1 = __nccwpck_require__(95438);
 const core = __importStar(__nccwpck_require__(42186));
+const fs = __importStar(__nccwpck_require__(57147));
 const inputs = __importStar(__nccwpck_require__(483));
 const prEvents = ['pull_request', 'pull_request_review', 'pull_request_review_comment'];
 const FIND_FIRST_RUN_EVENT = 'workflow_dispatch';
@@ -126879,6 +126880,22 @@ async function createReviewWithSuggestions(suggestions) {
     }));
     core.debug(`Review comments: ${JSON.stringify(comments, null, 2)}`);
     try {
+        // For files that don't exist in the PR, create a general review comment without file targeting
+        if (comments.length === 1 && !fs.existsSync(suggestions[0].path)) {
+            core.info('File does not exist in repository, creating general review comment with suggestion');
+            const suggestion = suggestions[0];
+            const reviewBody = `${suggestion.body}\n\n\`\`\`suggestion\n${suggestion.suggestedFix}\n\`\`\``;
+            const result = await octokit.rest.pulls.createReview({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                pull_number: github_1.context.issue.number,
+                event: 'COMMENT',
+                body: reviewBody
+            });
+            core.info(`Successfully created PR review comment with commit suggestion. Review ID: ${result.data.id}`);
+            return;
+        }
+        // For existing files, create line-specific comments
         const result = await octokit.rest.pulls.createReview({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,

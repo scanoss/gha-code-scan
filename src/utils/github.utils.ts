@@ -23,6 +23,7 @@
 
 import { context, getOctokit } from '@actions/github';
 import * as core from '@actions/core';
+import * as fs from 'fs';
 import * as inputs from '../app.input';
 import type { Endpoints } from '@octokit/types';
 
@@ -106,6 +107,24 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
   core.debug(`Review comments: ${JSON.stringify(comments, null, 2)}`);
 
   try {
+    // For files that don't exist in the PR, create a general review comment without file targeting
+    if (comments.length === 1 && !fs.existsSync(suggestions[0].path)) {
+      core.info('File does not exist in repository, creating general review comment with suggestion');
+      const suggestion = suggestions[0];
+      const reviewBody = `${suggestion.body}\n\n\`\`\`suggestion\n${suggestion.suggestedFix}\n\`\`\``;
+      
+      const result = await octokit.rest.pulls.createReview({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        pull_number: context.issue.number,
+        event: 'COMMENT',
+        body: reviewBody
+      });
+      core.info(`Successfully created PR review comment with commit suggestion. Review ID: ${result.data.id}`);
+      return;
+    }
+    
+    // For existing files, create line-specific comments
     const result = await octokit.rest.pulls.createReview({
       owner: context.repo.owner,
       repo: context.repo.repo,
