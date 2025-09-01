@@ -98,7 +98,7 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
   const comments = suggestions.map(suggestion => ({
     path: suggestion.path,
     line: suggestion.line,
-    body: suggestion.suggestedFix 
+    body: suggestion.suggestedFix
       ? `${suggestion.body}\n\n\`\`\`suggestion\n${suggestion.suggestedFix}\n\`\`\``
       : suggestion.body
   }));
@@ -113,18 +113,23 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
       event: 'COMMENT',
       comments
     });
-    core.info(`Successfully created PR review with ${suggestions.length} commit suggestions. Review ID: ${result.data.id}`);
+    core.info(
+      `Successfully created PR review with ${suggestions.length} commit suggestions. Review ID: ${result.data.id}`
+    );
   } catch (error) {
     core.error(`Failed to create PR review with suggestions: ${error}`);
     core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
-    
+
     // Try fallback: create a regular issue comment instead
     try {
       core.info('Attempting fallback: creating regular PR comment instead of review');
-      const fallbackBody = suggestions.map(s => 
-        `## 📦 Scanoss.json Suggestion\n\n${s.body}\n\n**File:** \`${s.path}\`\n\n\`\`\`json\n${s.suggestedFix || 'No suggestion content'}\n\`\`\``
-      ).join('\n\n---\n\n');
-      
+      const fallbackBody = suggestions
+        .map(
+          s =>
+            `## 📦 Scanoss.json Suggestion\n\n${s.body}\n\n**File:** \`${s.path}\`\n\n\`\`\`json\n${s.suggestedFix || 'No suggestion content'}\n\`\`\``
+        )
+        .join('\n\n---\n\n');
+
       await createCommentOnPR(fallbackBody);
       core.info('Fallback comment created successfully');
     } catch (fallbackError) {

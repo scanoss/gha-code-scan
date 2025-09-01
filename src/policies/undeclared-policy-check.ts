@@ -98,10 +98,10 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       try {
         core.info('This is a PR, attempting to create commit suggestions for undeclared components');
         core.debug(`Policy output details for parsing: ${details}`);
-        
+
         const suggestions = createUndeclaredComponentSuggestions(details);
         core.info(`Generated ${suggestions.length} suggestions`);
-        
+
         if (suggestions.length > 0) {
           core.info(`Creating ${suggestions.length} commit suggestions for undeclared components`);
           await createReviewWithSuggestions(suggestions);

@@ -125284,6 +125284,8 @@ const app_input_1 = __nccwpck_require__(483);
 const exec = __importStar(__nccwpck_require__(71514));
 const undeclared_argument_builder_1 = __nccwpck_require__(25721);
 const github_service_1 = __nccwpck_require__(43123);
+const scanoss_suggestions_utils_1 = __nccwpck_require__(53037);
+const github_utils_1 = __nccwpck_require__(17889);
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
  * The run method compares components found by the scanner against those declared in the SBOM.
@@ -125336,6 +125338,31 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         }
         else {
             details = stdout;
+        }
+        // Create commit suggestions for undeclared components if this is a PR
+        core.debug(`Checking if this is a PR: ${(0, github_utils_1.isPullRequest)()}`);
+        if ((0, github_utils_1.isPullRequest)()) {
+            try {
+                core.info('This is a PR, attempting to create commit suggestions for undeclared components');
+                core.debug(`Policy output details for parsing: ${details}`);
+                const suggestions = (0, scanoss_suggestions_utils_1.createUndeclaredComponentSuggestions)(details);
+                core.info(`Generated ${suggestions.length} suggestions`);
+                if (suggestions.length > 0) {
+                    core.info(`Creating ${suggestions.length} commit suggestions for undeclared components`);
+                    await (0, github_utils_1.createReviewWithSuggestions)(suggestions);
+                    core.info('Commit suggestions creation completed');
+                }
+                else {
+                    core.info('No suggestions generated - either no undeclared components found or they are already declared');
+                }
+            }
+            catch (error) {
+                core.error(`Failed to create commit suggestions: ${error}`);
+                core.debug(`Error stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
+            }
+        }
+        else {
+            core.info('This is not a PR, skipping commit suggestions');
         }
         const { id } = await this.uploadArtifact(details);
         core.debug(`Undeclared Artifact ID: ${id}`);
@@ -126790,7 +126817,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getFirstRunId = exports.createCommentOnPR = exports.getSHA = exports.isPullRequest = void 0;
+exports.getFirstRunId = exports.createReviewWithSuggestions = exports.createCommentOnPR = exports.getSHA = exports.isPullRequest = void 0;
 const github_1 = __nccwpck_require__(95438);
 const core = __importStar(__nccwpck_require__(42186));
 const inputs = __importStar(__nccwpck_require__(483));
@@ -126823,7 +126850,7 @@ exports.getSHA = getSHA;
 async function createCommentOnPR(message) {
     const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
     core.debug('Creating comment on PR');
-    octokit.rest.issues.createComment({
+    await octokit.rest.issues.createComment({
         issue_number: github_1.context.issue.number,
         owner: github_1.context.repo.owner,
         repo: github_1.context.repo.repo,
@@ -126831,6 +126858,55 @@ async function createCommentOnPR(message) {
     });
 }
 exports.createCommentOnPR = createCommentOnPR;
+/**
+ * Creates a PR review with commit suggestions for specific file changes.
+ * Uses GitHub's native commit suggestion feature with ```suggestion markdown blocks.
+ */
+async function createReviewWithSuggestions(suggestions) {
+    if (suggestions.length === 0) {
+        core.debug('No suggestions provided, skipping review creation');
+        return;
+    }
+    const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+    core.info(`Creating PR review with ${suggestions.length} suggestions`);
+    core.debug(`PR context: owner=${github_1.context.repo.owner}, repo=${github_1.context.repo.repo}, pull_number=${github_1.context.issue.number}`);
+    const comments = suggestions.map(suggestion => ({
+        path: suggestion.path,
+        line: suggestion.line,
+        body: suggestion.suggestedFix
+            ? `${suggestion.body}\n\n\`\`\`suggestion\n${suggestion.suggestedFix}\n\`\`\``
+            : suggestion.body
+    }));
+    core.debug(`Review comments: ${JSON.stringify(comments, null, 2)}`);
+    try {
+        const result = await octokit.rest.pulls.createReview({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            pull_number: github_1.context.issue.number,
+            event: 'COMMENT',
+            comments
+        });
+        core.info(`Successfully created PR review with ${suggestions.length} commit suggestions. Review ID: ${result.data.id}`);
+    }
+    catch (error) {
+        core.error(`Failed to create PR review with suggestions: ${error}`);
+        core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+        // Try fallback: create a regular issue comment instead
+        try {
+            core.info('Attempting fallback: creating regular PR comment instead of review');
+            const fallbackBody = suggestions
+                .map(s => `## 📦 Scanoss.json Suggestion\n\n${s.body}\n\n**File:** \`${s.path}\`\n\n\`\`\`json\n${s.suggestedFix || 'No suggestion content'}\n\`\`\``)
+                .join('\n\n---\n\n');
+            await createCommentOnPR(fallbackBody);
+            core.info('Fallback comment created successfully');
+        }
+        catch (fallbackError) {
+            core.error(`Fallback comment also failed: ${fallbackError}`);
+            throw error;
+        }
+    }
+}
+exports.createReviewWithSuggestions = createReviewWithSuggestions;
 /**
  * Gets the first workflow run ID for linking purposes.
  * For workflow_dispatch events, finds the original triggering run.
@@ -127056,6 +127132,173 @@ const generateTable = (headers, rows, centeredColumns) => {
   `;
 };
 exports.generateTable = generateTable;
+
+
+/***/ }),
+
+/***/ 53037:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2024, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createUndeclaredComponentSuggestions = exports.generateScanossJsonSuggestions = exports.parseUndeclaredComponents = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const fs = __importStar(__nccwpck_require__(57147));
+const app_input_1 = __nccwpck_require__(483);
+/**
+ * Parses undeclared components from the policy check output
+ * Extracts components that need to be added to scanoss.json
+ */
+function parseUndeclaredComponents(policyOutput) {
+    const components = [];
+    core.debug(`Parsing policy output for undeclared components. Output length: ${policyOutput.length} chars`);
+    core.debug(`First 500 chars of output: ${policyOutput.substring(0, 500)}`);
+    // Look for lines that mention components not declared in SBOM
+    // Example: "- wfp@6afc1f6 found in crc32c.c but not declared in SBOM"
+    const componentRegex = /^- ([^@\s]+)(?:@([^\s]+))? found in .+ but not declared in SBOM/gm;
+    let match;
+    while ((match = componentRegex.exec(policyOutput)) !== null) {
+        const [fullMatch, name, version] = match;
+        const purl = version ? `pkg:generic/${name}@${version}` : `pkg:generic/${name}`;
+        core.debug(`Found undeclared component match: "${fullMatch}" -> name: "${name}", version: "${version}", purl: "${purl}"`);
+        components.push({
+            name,
+            version,
+            purl
+        });
+    }
+    core.info(`Parsed ${components.length} undeclared components from policy output`);
+    if (components.length === 0) {
+        core.warning('No undeclared components found in policy output. Check if the regex pattern matches the actual output format.');
+    }
+    return components;
+}
+exports.parseUndeclaredComponents = parseUndeclaredComponents;
+/**
+ * Generates commit suggestions to add undeclared components to scanoss.json
+ */
+function generateScanossJsonSuggestions(undeclaredComponents) {
+    if (undeclaredComponents.length === 0) {
+        core.debug('No undeclared components found, skipping suggestion generation');
+        return [];
+    }
+    const scanossJsonPath = app_input_1.SETTINGS_FILE_PATH || 'scanoss.json';
+    core.debug(`Generating suggestions for ${undeclaredComponents.length} components to ${scanossJsonPath}`);
+    try {
+        // Create the updated configuration
+        const updatedConfig = { bom: { include: [] } };
+        let fileContent = '';
+        // Check if scanoss.json exists and read its content
+        if (fs.existsSync(scanossJsonPath)) {
+            core.debug(`Reading existing ${scanossJsonPath}`);
+            fileContent = fs.readFileSync(scanossJsonPath, 'utf8');
+            try {
+                const existingConfig = JSON.parse(fileContent);
+                updatedConfig.bom = existingConfig.bom || { include: [] };
+                if (!updatedConfig.bom.include) {
+                    updatedConfig.bom.include = [];
+                }
+            }
+            catch (error) {
+                core.warning(`Failed to parse existing ${scanossJsonPath}: ${error}`);
+                updatedConfig.bom = { include: [] };
+            }
+        }
+        else {
+            core.debug(`${scanossJsonPath} does not exist, will suggest creating it`);
+        }
+        // Add undeclared components to the include list
+        const componentsToAdd = [];
+        for (const component of undeclaredComponents) {
+            // Check if component is already declared
+            const alreadyExists = updatedConfig.bom.include.some(existing => existing.purl === component.purl);
+            if (!alreadyExists) {
+                updatedConfig.bom.include.push({ purl: component.purl });
+                componentsToAdd.push(component);
+            }
+        }
+        if (componentsToAdd.length === 0) {
+            core.info('All undeclared components are already in scanoss.json');
+            return [];
+        }
+        // Generate the new file content
+        const newContent = JSON.stringify(updatedConfig, null, 2);
+        const suggestions = [];
+        const componentNames = componentsToAdd.map(c => c.name).join(', ');
+        // For GitHub PR reviews, we need to use line 1 for new files or the last line for existing files
+        // GitHub's PR review API has specific requirements about which lines can be commented on
+        suggestions.push({
+            path: scanossJsonPath,
+            line: 1, // Always use line 1 - GitHub will handle this appropriately
+            body: fs.existsSync(scanossJsonPath)
+                ? `📦 Add undeclared component(s): **${componentNames}** to resolve policy violations.\n\nClick "Commit suggestion" to automatically add these components to your scanoss.json file.`
+                : `📦 Create scanoss.json with ${componentsToAdd.length} undeclared component(s): **${componentNames}** to resolve policy violations.\n\nClick "Commit suggestion" to create the configuration file.`,
+            suggestedFix: newContent
+        });
+        core.info(`Generated ${suggestions.length} commit suggestions for ${componentsToAdd.length} undeclared components`);
+        core.debug(`Suggestion details: ${JSON.stringify(suggestions, null, 2)}`);
+        return suggestions;
+    }
+    catch (error) {
+        core.error(`Failed to generate scanoss.json suggestions: ${error}`);
+        return [];
+    }
+}
+exports.generateScanossJsonSuggestions = generateScanossJsonSuggestions;
+/**
+ * Creates commit suggestions for undeclared components found in policy output
+ */
+function createUndeclaredComponentSuggestions(policyOutput) {
+    const undeclaredComponents = parseUndeclaredComponents(policyOutput);
+    return generateScanossJsonSuggestions(undeclaredComponents);
+}
+exports.createUndeclaredComponentSuggestions = createUndeclaredComponentSuggestions;
 
 
 /***/ }),
