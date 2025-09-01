@@ -127199,18 +127199,22 @@ function parseUndeclaredComponents(policyOutput) {
     const components = [];
     core.debug(`Parsing policy output for undeclared components. Output length: ${policyOutput.length} chars`);
     core.debug(`First 500 chars of output: ${policyOutput.substring(0, 500)}`);
-    // Look for lines that mention components not declared in SBOM
-    // Example: "- wfp@6afc1f6 found in crc32c.c but not declared in SBOM"
-    const componentRegex = /^- ([^@\s]+)(?:@([^\s]+))? found in .+ but not declared in SBOM/gm;
+    // Look for lines in the markdown table format
+    // Example: "| pkg:github/scanoss/scanner.c | GPL-2.0-only |"
+    const componentRegex = /^\s*\|\s*([^|]+?)\s*\|\s*[^|]*\s*\|/gm;
     let match;
     while ((match = componentRegex.exec(policyOutput)) !== null) {
-        const [fullMatch, name, version] = match;
-        const purl = version ? `pkg:generic/${name}@${version}` : `pkg:generic/${name}`;
-        core.debug(`Found undeclared component match: "${fullMatch}" -> name: "${name}", version: "${version}", purl: "${purl}"`);
+        const [fullMatch, purl] = match;
+        // Skip header rows
+        if (purl.includes('Component') || purl.includes('-')) {
+            continue;
+        }
+        const cleanPurl = purl.trim();
+        const name = cleanPurl.split('/').pop() || cleanPurl; // Get the last part for display name
+        core.debug(`Found undeclared component match: "${fullMatch}" -> purl: "${cleanPurl}", name: "${name}"`);
         components.push({
             name,
-            version,
-            purl
+            purl: cleanPurl
         });
     }
     core.info(`Parsed ${components.length} undeclared components from policy output`);
