@@ -93,16 +93,28 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     }
 
     // Create commit suggestions for undeclared components if this is a PR
+    core.debug(`Checking if this is a PR: ${isPullRequest()}`);
     if (isPullRequest()) {
       try {
+        core.info('This is a PR, attempting to create commit suggestions for undeclared components');
+        core.debug(`Policy output details for parsing: ${details}`);
+        
         const suggestions = createUndeclaredComponentSuggestions(details);
+        core.info(`Generated ${suggestions.length} suggestions`);
+        
         if (suggestions.length > 0) {
           core.info(`Creating ${suggestions.length} commit suggestions for undeclared components`);
           await createReviewWithSuggestions(suggestions);
+          core.info('Commit suggestions creation completed');
+        } else {
+          core.info('No suggestions generated - either no undeclared components found or they are already declared');
         }
       } catch (error) {
-        core.warning(`Failed to create commit suggestions: ${error}`);
+        core.error(`Failed to create commit suggestions: ${error}`);
+        core.debug(`Error stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
       }
+    } else {
+      core.info('This is not a PR, skipping commit suggestions');
     }
 
     const { id } = await this.uploadArtifact(details);

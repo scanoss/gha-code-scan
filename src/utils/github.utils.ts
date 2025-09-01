@@ -62,7 +62,7 @@ export async function createCommentOnPR(message: string): Promise<void> {
   const octokit = getOctokit(inputs.GITHUB_TOKEN);
 
   core.debug('Creating comment on PR');
-  octokit.rest.issues.createComment({
+  await octokit.rest.issues.createComment({
     issue_number: context.issue.number,
     owner: context.repo.owner,
     repo: context.repo.repo,
@@ -92,7 +92,8 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
 
   const octokit = getOctokit(inputs.GITHUB_TOKEN);
 
-  core.debug(`Creating PR review with ${suggestions.length} suggestions`);
+  core.info(`Creating PR review with ${suggestions.length} suggestions`);
+  core.debug(`PR context: owner=${context.repo.owner}, repo=${context.repo.repo}, pull_number=${context.issue.number}`);
 
   const comments = suggestions.map(suggestion => ({
     path: suggestion.path,
@@ -102,18 +103,34 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
       : suggestion.body
   }));
 
+  core.debug(`Review comments: ${JSON.stringify(comments, null, 2)}`);
+
   try {
-    await octokit.rest.pulls.createReview({
+    const result = await octokit.rest.pulls.createReview({
       owner: context.repo.owner,
       repo: context.repo.repo,
       pull_number: context.issue.number,
       event: 'COMMENT',
       comments
     });
-    core.info(`Successfully created PR review with ${suggestions.length} commit suggestions`);
+    core.info(`Successfully created PR review with ${suggestions.length} commit suggestions. Review ID: ${result.data.id}`);
   } catch (error) {
     core.error(`Failed to create PR review with suggestions: ${error}`);
-    throw error;
+    core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+    
+    // Try fallback: create a regular issue comment instead
+    try {
+      core.info('Attempting fallback: creating regular PR comment instead of review');
+      const fallbackBody = suggestions.map(s => 
+        `## 📦 Scanoss.json Suggestion\n\n${s.body}\n\n**File:** \`${s.path}\`\n\n\`\`\`json\n${s.suggestedFix || 'No suggestion content'}\n\`\`\``
+      ).join('\n\n---\n\n');
+      
+      await createCommentOnPR(fallbackBody);
+      core.info('Fallback comment created successfully');
+    } catch (fallbackError) {
+      core.error(`Fallback comment also failed: ${fallbackError}`);
+      throw error;
+    }
   }
 }
 
