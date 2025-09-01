@@ -29,6 +29,8 @@ import * as exec from '@actions/exec';
 import { UndeclaredArgumentBuilder } from './argument_builders/components/undeclared-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
+import { createUndeclaredComponentSuggestions } from '../utils/scanoss-suggestions.utils';
+import { createReviewWithSuggestions, isPullRequest } from '../utils/github.utils';
 
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
@@ -88,6 +90,19 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       details = `${stdout}\n\n${stderr}`;
     } else {
       details = stdout;
+    }
+
+    // Create commit suggestions for undeclared components if this is a PR
+    if (isPullRequest()) {
+      try {
+        const suggestions = createUndeclaredComponentSuggestions(details);
+        if (suggestions.length > 0) {
+          core.info(`Creating ${suggestions.length} commit suggestions for undeclared components`);
+          await createReviewWithSuggestions(suggestions);
+        }
+      } catch (error) {
+        core.warning(`Failed to create commit suggestions: ${error}`);
+      }
     }
 
     const { id } = await this.uploadArtifact(details);

@@ -71,6 +71,53 @@ export async function createCommentOnPR(message: string): Promise<void> {
 }
 
 /**
+ * Interface for commit suggestions on specific files and lines
+ */
+export interface CommitSuggestion {
+  path: string;
+  line: number;
+  body: string;
+  suggestedFix?: string;
+}
+
+/**
+ * Creates a PR review with commit suggestions for specific file changes.
+ * Uses GitHub's native commit suggestion feature with ```suggestion markdown blocks.
+ */
+export async function createReviewWithSuggestions(suggestions: CommitSuggestion[]): Promise<void> {
+  if (suggestions.length === 0) {
+    core.debug('No suggestions provided, skipping review creation');
+    return;
+  }
+
+  const octokit = getOctokit(inputs.GITHUB_TOKEN);
+
+  core.debug(`Creating PR review with ${suggestions.length} suggestions`);
+
+  const comments = suggestions.map(suggestion => ({
+    path: suggestion.path,
+    line: suggestion.line,
+    body: suggestion.suggestedFix 
+      ? `${suggestion.body}\n\n\`\`\`suggestion\n${suggestion.suggestedFix}\n\`\`\``
+      : suggestion.body
+  }));
+
+  try {
+    await octokit.rest.pulls.createReview({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: context.issue.number,
+      event: 'COMMENT',
+      comments
+    });
+    core.info(`Successfully created PR review with ${suggestions.length} commit suggestions`);
+  } catch (error) {
+    core.error(`Failed to create PR review with suggestions: ${error}`);
+    throw error;
+  }
+}
+
+/**
  * Gets the first workflow run ID for linking purposes.
  * For workflow_dispatch events, finds the original triggering run.
  */
