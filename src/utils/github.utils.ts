@@ -109,8 +109,15 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
     core.debug(`File path: ${suggestion.path}`);
     
     // Get the current file content to determine how many lines to replace
-    let startLine = 1;
-    let endLine = 1;
+    let commentConfig: any = {
+      path: suggestion.path,
+      body: `${suggestion.body}
+
+\`\`\`suggestion
+${suggestion.suggestedFix || '{}'}
+\`\`\``,
+      side: 'RIGHT'
+    };
     
     try {
       const fileResponse = await octokit.rest.repos.getContent({
@@ -121,11 +128,22 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
       
       if ('content' in fileResponse.data) {
         const currentContent = Buffer.from(fileResponse.data.content, 'base64').toString();
-        endLine = currentContent.split('\n').length;
-        core.debug(`File has ${endLine} lines, suggesting replacement of lines ${startLine}-${endLine}`);
+        const totalLines = currentContent.split('\n').length;
+        
+        if (totalLines > 1) {
+          // Multi-line file: replace from line 1 to last line
+          commentConfig.start_line = 1;
+          commentConfig.line = totalLines;
+          core.debug(`File has ${totalLines} lines, suggesting replacement of lines 1-${totalLines}`);
+        } else {
+          // Single line file: just target line 1
+          commentConfig.line = 1;
+          core.debug(`File has 1 line, suggesting replacement of line 1`);
+        }
       }
     } catch (getContentError) {
-      core.debug(`Could not get current file content: ${getContentError}`);
+      core.debug(`Could not get current file content, using line 1: ${getContentError}`);
+      commentConfig.line = 1;
     }
     
     const result = await octokit.rest.pulls.createReview({
@@ -133,17 +151,7 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
       repo: context.repo.repo,
       pull_number: context.issue.number,
       event: 'COMMENT',
-      comments: [{
-        path: suggestion.path,
-        body: `${suggestion.body}
-
-\`\`\`suggestion
-${suggestion.suggestedFix || '{}'}
-\`\`\``,
-        start_line: startLine,
-        line: endLine,
-        side: 'RIGHT'
-      }]
+      comments: [commentConfig]
     });
     
     core.info(`Successfully created PR review with commit suggestion. Review ID: ${result.data.id}`);
@@ -155,20 +163,40 @@ ${suggestion.suggestedFix || '{}'}
     
     // Second try: Create the file first, then create PR review
     try {
-      core.info('Creating/updating file first, then PR review...');
+      core.info('File not in diff, creating/updating it first...');
       
-      // Use the actual suggested content, not empty JSON
+      // Check if file exists to determine if we need to get SHA for updates
+      let sha: string | undefined;
+      try {
+        const existingFile = await octokit.rest.repos.getContent({
+          owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
+          repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
+          path: suggestion.path,
+          ref: headBranch
+        });
+        
+        if ('sha' in existingFile.data) {
+          sha = existingFile.data.sha;
+          core.debug(`Found existing file with SHA: ${sha}`);
+        }
+      } catch (getError) {
+        core.debug(`File doesn't exist yet, will create new: ${getError}`);
+      }
+      
+      // Create or update the file
       await octokit.rest.repos.createOrUpdateFileContents({
         owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
         repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
         path: suggestion.path,
         message: `Add undeclared components to ${suggestion.path}`,
         content: Buffer.from(suggestion.suggestedFix || '{}').toString('base64'),
-        branch: headBranch
+        branch: headBranch,
+        ...(sha && { sha }) // Include SHA if updating existing file
       });
       
       core.info('Successfully created/updated file, now creating PR review...');
       
+      // Now create PR review with simple line targeting
       const result = await octokit.rest.pulls.createReview({
         owner: context.repo.owner,
         repo: context.repo.repo,
