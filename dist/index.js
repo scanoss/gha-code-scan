@@ -126888,6 +126888,9 @@ async function createReviewWithSuggestions(suggestions) {
         });
         core.info('Successfully created empty scanoss.json file');
         // Now create a PR review with suggestion to replace the empty content
+        core.debug(`Creating PR review comment for file: ${suggestion.path}`);
+        core.debug(`PR number: ${github_1.context.issue.number}`);
+        core.debug(`Owner: ${github_1.context.repo.owner}, Repo: ${github_1.context.repo.repo}`);
         const result = await octokit.rest.pulls.createReview({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
@@ -126904,11 +126907,38 @@ ${suggestion.suggestedFix || '{}'}
                     position: 1
                 }]
         });
+        core.debug(`PR review created with ID: ${result.data.id}`);
         core.info(`Successfully created PR review with commit suggestion button. Review ID: ${result.data.id}`);
     }
     catch (error) {
-        core.warning(`Failed to create file and suggestion: ${error}`);
-        // Fallback: create regular issue comment
+        core.error(`Failed to create file and suggestion: ${error}`);
+        core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+        // Try just creating the PR review without creating the file first
+        try {
+            core.info('Trying PR review without file creation...');
+            const result = await octokit.rest.pulls.createReview({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                pull_number: github_1.context.issue.number,
+                event: 'COMMENT',
+                comments: [{
+                        path: suggestion.path,
+                        body: `${suggestion.body}
+
+\`\`\`suggestion
+${suggestion.suggestedFix || '{}'}
+\`\`\``,
+                        position: 1
+                    }]
+            });
+            core.info(`Created PR review without file creation. Review ID: ${result.data.id}`);
+            return;
+        }
+        catch (reviewError) {
+            core.error(`PR review also failed: ${reviewError}`);
+            core.debug(`Review error details: ${JSON.stringify(reviewError, null, 2)}`);
+        }
+        // Final fallback: create regular issue comment
         try {
             const fallbackBody = `## 📦 ${suggestion.body}
 

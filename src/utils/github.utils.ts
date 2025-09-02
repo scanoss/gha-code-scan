@@ -94,50 +94,35 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
   core.info(`Creating PR review with ${suggestions.length} suggestions`);
 
   const suggestion = suggestions[0];
-  const headBranch = context.payload.pull_request?.head?.ref;
 
-  if (!headBranch) {
-    core.warning('Could not determine PR head branch');
-    return;
-  }
-
+  // Try to create a simple PR review first (without file creation)
   try {
-    // First, create the scanoss.json file using Contents API (simpler approach)
-    core.info('Creating scanoss.json file using Contents API');
+    core.info('Attempting to create PR review...');
+    core.debug(`PR number: ${context.issue.number}`);
+    core.debug(`Owner: ${context.repo.owner}, Repo: ${context.repo.repo}`);
     
-    await octokit.rest.repos.createOrUpdateFileContents({
-      owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
-      repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
-      path: suggestion.path,
-      message: `Add ${suggestion.path} for undeclared components`,
-      content: Buffer.from('{}').toString('base64'),
-      branch: headBranch
-    });
-    
-    core.info('Successfully created empty scanoss.json file');
-    
-    // Now create a PR review with suggestion to replace the empty content
     const result = await octokit.rest.pulls.createReview({
       owner: context.repo.owner,
       repo: context.repo.repo,
       pull_number: context.issue.number,
       event: 'COMMENT',
-      comments: [{
-        path: suggestion.path,
-        body: `${suggestion.body}
+      body: `## 📦 ${suggestion.body}
 
-\`\`\`suggestion
+**Suggested fix for undeclared components:**
+
+\`\`\`json
 ${suggestion.suggestedFix || '{}'}
-\`\`\``,
-        // Use position 1 (first line of the file in the diff)
-        position: 1
-      }]
+\`\`\`
+
+This review is testing the PR review creation functionality.`
     });
     
-    core.info(`Successfully created PR review with commit suggestion button. Review ID: ${result.data.id}`);
+    core.info(`Successfully created PR review. Review ID: ${result.data.id}`);
+    return;
     
   } catch (error) {
-    core.warning(`Failed to create file and suggestion: ${error}`);
+    core.error(`Failed to create PR review: ${error}`);
+    core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
     
     // Fallback: create regular issue comment
     try {
