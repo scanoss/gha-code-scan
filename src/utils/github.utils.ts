@@ -113,15 +113,19 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
       const suggestion = suggestions[0];
       
       try {
-        // Get current branch info
-        const branch = context.ref.replace('refs/heads/', '');
-        core.debug(`Working on branch: ${branch}`);
+        // For PRs, use the head branch, not the base branch
+        const headBranch = context.payload.pull_request?.head?.ref;
+        if (!headBranch) {
+          throw new Error('Could not determine PR head branch');
+        }
         
-        // Get the current commit SHA for this branch
+        core.debug(`Working on PR head branch: ${headBranch}`);
+        
+        // Get the current commit SHA for the PR head branch
         const { data: ref } = await octokit.rest.git.getRef({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          ref: `heads/${branch}`
+          owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
+          repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
+          ref: `heads/${headBranch}`
         });
         
         // Create an empty file first
@@ -168,7 +172,7 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
         await octokit.rest.git.updateRef({
           owner: context.repo.owner,
           repo: context.repo.repo,
-          ref: `heads/${branch}`,
+          ref: `heads/${headBranch}`,
           sha: newCommit.sha
         });
         
@@ -209,14 +213,19 @@ ${suggestion.suggestedFix || '{}'}
       const suggestion = suggestions[0];
       
       try {
-        // Get current branch info
-        const branch = context.ref.replace('refs/heads/', '');
+        // For PRs, use the head branch, not the base branch
+        const headBranch = context.payload.pull_request?.head?.ref;
+        if (!headBranch) {
+          throw new Error('Could not determine PR head branch');
+        }
         
-        // Get the current commit SHA for this branch
+        core.debug(`Working on PR head branch: ${headBranch}`);
+        
+        // Get the current commit SHA for the PR head branch
         const { data: ref } = await octokit.rest.git.getRef({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          ref: `heads/${branch}`
+          owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
+          repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
+          ref: `heads/${headBranch}`
         });
         
         // Create blob for updated file content
@@ -260,7 +269,7 @@ ${suggestion.suggestedFix || '{}'}
         await octokit.rest.git.updateRef({
           owner: context.repo.owner,
           repo: context.repo.repo,
-          ref: `heads/${branch}`,
+          ref: `heads/${headBranch}`,
           sha: newCommit.sha
         });
         

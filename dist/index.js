@@ -126885,14 +126885,17 @@ async function createReviewWithSuggestions(suggestions) {
             core.info('File does not exist, creating empty file then suggesting content for commit suggestion button');
             const suggestion = suggestions[0];
             try {
-                // Get current branch info
-                const branch = github_1.context.ref.replace('refs/heads/', '');
-                core.debug(`Working on branch: ${branch}`);
-                // Get the current commit SHA for this branch
+                // For PRs, use the head branch, not the base branch
+                const headBranch = github_1.context.payload.pull_request?.head?.ref;
+                if (!headBranch) {
+                    throw new Error('Could not determine PR head branch');
+                }
+                core.debug(`Working on PR head branch: ${headBranch}`);
+                // Get the current commit SHA for the PR head branch
                 const { data: ref } = await octokit.rest.git.getRef({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    ref: `heads/${branch}`
+                    owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
+                    repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
+                    ref: `heads/${headBranch}`
                 });
                 // Create an empty file first
                 const emptyContent = '{}';
@@ -126933,7 +126936,7 @@ async function createReviewWithSuggestions(suggestions) {
                 await octokit.rest.git.updateRef({
                     owner: github_1.context.repo.owner,
                     repo: github_1.context.repo.repo,
-                    ref: `heads/${branch}`,
+                    ref: `heads/${headBranch}`,
                     sha: newCommit.sha
                 });
                 core.info(`Created empty ${suggestion.path} file in commit ${newCommit.sha}`);
@@ -126968,13 +126971,17 @@ ${suggestion.suggestedFix || '{}'}
             core.info('File exists, creating commit suggestion for existing file');
             const suggestion = suggestions[0];
             try {
-                // Get current branch info
-                const branch = github_1.context.ref.replace('refs/heads/', '');
-                // Get the current commit SHA for this branch
+                // For PRs, use the head branch, not the base branch
+                const headBranch = github_1.context.payload.pull_request?.head?.ref;
+                if (!headBranch) {
+                    throw new Error('Could not determine PR head branch');
+                }
+                core.debug(`Working on PR head branch: ${headBranch}`);
+                // Get the current commit SHA for the PR head branch
                 const { data: ref } = await octokit.rest.git.getRef({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    ref: `heads/${branch}`
+                    owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
+                    repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
+                    ref: `heads/${headBranch}`
                 });
                 // Create blob for updated file content
                 const { data: updatedBlob } = await octokit.rest.git.createBlob({
@@ -127013,7 +127020,7 @@ ${suggestion.suggestedFix || '{}'}
                 await octokit.rest.git.updateRef({
                     owner: github_1.context.repo.owner,
                     repo: github_1.context.repo.repo,
-                    ref: `heads/${branch}`,
+                    ref: `heads/${headBranch}`,
                     sha: newCommit.sha
                 });
                 core.info(`Updated existing ${suggestion.path} file in commit ${newCommit.sha}`);
