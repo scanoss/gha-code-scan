@@ -126881,6 +126881,24 @@ async function createReviewWithSuggestions(suggestions) {
         core.debug(`PR number: ${github_1.context.issue.number}`);
         core.debug(`Owner: ${github_1.context.repo.owner}, Repo: ${github_1.context.repo.repo}`);
         core.debug(`File path: ${suggestion.path}`);
+        // Get the current file content to determine how many lines to replace
+        let startLine = 1;
+        let endLine = 1;
+        try {
+            const fileResponse = await octokit.rest.repos.getContent({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                path: suggestion.path
+            });
+            if ('content' in fileResponse.data) {
+                const currentContent = Buffer.from(fileResponse.data.content, 'base64').toString();
+                endLine = currentContent.split('\n').length;
+                core.debug(`File has ${endLine} lines, suggesting replacement of lines ${startLine}-${endLine}`);
+            }
+        }
+        catch (getContentError) {
+            core.debug(`Could not get current file content: ${getContentError}`);
+        }
         const result = await octokit.rest.pulls.createReview({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
@@ -126893,7 +126911,9 @@ async function createReviewWithSuggestions(suggestions) {
 \`\`\`suggestion
 ${suggestion.suggestedFix || '{}'}
 \`\`\``,
-                    position: 1
+                    start_line: startLine,
+                    line: endLine,
+                    side: 'RIGHT'
                 }]
         });
         core.info(`Successfully created PR review with commit suggestion. Review ID: ${result.data.id}`);
@@ -126927,7 +126947,8 @@ ${suggestion.suggestedFix || '{}'}
 \`\`\`suggestion
 ${suggestion.suggestedFix || '{}'}
 \`\`\``,
-                        position: 1
+                        line: 1,
+                        side: 'RIGHT'
                     }]
             });
             core.info(`Successfully created PR review after file creation. Review ID: ${result.data.id}`);

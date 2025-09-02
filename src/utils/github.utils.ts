@@ -108,6 +108,26 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
     core.debug(`Owner: ${context.repo.owner}, Repo: ${context.repo.repo}`);
     core.debug(`File path: ${suggestion.path}`);
     
+    // Get the current file content to determine how many lines to replace
+    let startLine = 1;
+    let endLine = 1;
+    
+    try {
+      const fileResponse = await octokit.rest.repos.getContent({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        path: suggestion.path
+      });
+      
+      if ('content' in fileResponse.data) {
+        const currentContent = Buffer.from(fileResponse.data.content, 'base64').toString();
+        endLine = currentContent.split('\n').length;
+        core.debug(`File has ${endLine} lines, suggesting replacement of lines ${startLine}-${endLine}`);
+      }
+    } catch (getContentError) {
+      core.debug(`Could not get current file content: ${getContentError}`);
+    }
+    
     const result = await octokit.rest.pulls.createReview({
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -120,7 +140,9 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
 \`\`\`suggestion
 ${suggestion.suggestedFix || '{}'}
 \`\`\``,
-        position: 1
+        start_line: startLine,
+        line: endLine,
+        side: 'RIGHT'
       }]
     });
     
@@ -159,7 +181,8 @@ ${suggestion.suggestedFix || '{}'}
 \`\`\`suggestion
 ${suggestion.suggestedFix || '{}'}
 \`\`\``,
-          position: 1
+          line: 1,
+          side: 'RIGHT'
         }]
       });
       
