@@ -112,14 +112,32 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
     if (fs.existsSync(scanossJsonPath)) {
       core.debug(`Reading existing ${scanossJsonPath}`);
       fileContent = fs.readFileSync(scanossJsonPath, 'utf8');
+      core.debug(`Raw file content: ${fileContent}`);
+      
       try {
-        const existingConfig = JSON.parse(fileContent);
+        // Try to clean up malformed JSON (like extra opening braces)
+        let cleanedContent = fileContent.trim();
+        
+        // Remove extra opening braces at the start
+        while (cleanedContent.startsWith('{{')) {
+          cleanedContent = cleanedContent.substring(1);
+          core.debug(`Removed extra opening brace, content now: ${cleanedContent.substring(0, 100)}...`);
+        }
+        
+        const existingConfig = JSON.parse(cleanedContent);
         updatedConfig.bom = existingConfig.bom || { include: [] };
         if (!updatedConfig.bom.include) {
           updatedConfig.bom.include = [];
         }
+        
+        core.debug(`Successfully parsed existing config with ${updatedConfig.bom.include.length} components`);
+        updatedConfig.bom.include.forEach((comp, idx) => {
+          core.debug(`Existing component ${idx + 1}: ${comp.purl}`);
+        });
+        
       } catch (error) {
         core.warning(`Failed to parse existing ${scanossJsonPath}: ${error}`);
+        core.debug(`Failed content was: ${fileContent}`);
         updatedConfig.bom = { include: [] };
       }
     } else {
@@ -131,10 +149,16 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
     for (const component of undeclaredComponents) {
       // Check if component is already declared
       const alreadyExists = updatedConfig.bom.include.some(existing => existing.purl === component.purl);
-
+      
+      core.debug(`Checking component: ${component.purl}`);
+      core.debug(`Already exists: ${alreadyExists}`);
+      
       if (!alreadyExists) {
         updatedConfig.bom.include.push({ purl: component.purl });
         componentsToAdd.push(component);
+        core.debug(`Added component: ${component.purl}`);
+      } else {
+        core.debug(`Skipped already declared component: ${component.purl}`);
       }
     }
 
@@ -143,20 +167,18 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
       return [];
     }
 
-    // Generate the new file content
+    // Generate the complete merged content (existing + new components)
     const newContent = JSON.stringify(updatedConfig, null, 2);
 
     const suggestions: CommitSuggestion[] = [];
     const componentNames = componentsToAdd.map(c => c.name).join(', ');
 
-    // For GitHub PR reviews, we need to use line 1 for new files or the last line for existing files
-    // GitHub's PR review API has specific requirements about which lines can be commented on
     suggestions.push({
       path: scanossJsonPath,
-      line: 1, // Always use line 1 - GitHub will handle this appropriately
+      line: 1,
       body: fs.existsSync(scanossJsonPath)
-        ? `📦 Add undeclared component(s): **${componentNames}** to resolve policy violations.\n\nClick "Commit suggestion" to automatically add these components to your scanoss.json file.`
-        : `📦 Create scanoss.json with ${componentsToAdd.length} undeclared component(s): **${componentNames}** to resolve policy violations.\n\nClick "Commit suggestion" to create the configuration file.`,
+        ? `📦 Add undeclared component(s): **${componentNames}** to resolve policy violations.\n\nThis will merge the new components with your existing ones.`
+        : `📦 Create scanoss.json with ${componentsToAdd.length} undeclared component(s): **${componentNames}** to resolve policy violations.`,
       suggestedFix: newContent
     });
 
