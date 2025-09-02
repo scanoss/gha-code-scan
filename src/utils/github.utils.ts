@@ -23,7 +23,6 @@
 
 import { context, getOctokit } from '@actions/github';
 import * as core from '@actions/core';
-import * as fs from 'fs';
 import * as inputs from '../app.input';
 import type { Endpoints } from '@octokit/types';
 
@@ -92,243 +91,73 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
   }
 
   const octokit = getOctokit(inputs.GITHUB_TOKEN);
-
   core.info(`Creating PR review with ${suggestions.length} suggestions`);
-  core.debug(`PR context: owner=${context.repo.owner}, repo=${context.repo.repo}, pull_number=${context.issue.number}`);
 
-  const comments = suggestions.map(suggestion => ({
-    path: suggestion.path,
-    line: suggestion.line,
-    body: suggestion.suggestedFix
-      ? `${suggestion.body}\n\n\`\`\`suggestion\n${suggestion.suggestedFix}\n\`\`\``
-      : suggestion.body
-  }));
+  const suggestion = suggestions[0];
+  const headBranch = context.payload.pull_request?.head?.ref;
 
-  core.debug(`Review comments: ${JSON.stringify(comments, null, 2)}`);
+  if (!headBranch) {
+    core.warning('Could not determine PR head branch');
+    return;
+  }
 
   try {
-    // For files that don't exist, we need to create an empty file first, then suggest content
-    if (comments.length === 1 && !fs.existsSync(suggestions[0].path)) {
-      core.info('File does not exist, creating empty file then suggesting content for commit suggestion button');
-      const suggestion = suggestions[0];
-      
-      try {
-        // For PRs, use the head branch, not the base branch
-        const headBranch = context.payload.pull_request?.head?.ref;
-        if (!headBranch) {
-          throw new Error('Could not determine PR head branch');
-        }
-        
-        core.debug(`Working on PR head branch: ${headBranch}`);
-        
-        // Get the current commit SHA for the PR head branch
-        const { data: ref } = await octokit.rest.git.getRef({
-          owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
-          repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
-          ref: `heads/${headBranch}`
-        });
-        
-        // Create an empty file first
-        const emptyContent = '{}';
-        
-        // Create blob for empty file
-        const { data: emptyBlob } = await octokit.rest.git.createBlob({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          content: Buffer.from(emptyContent).toString('base64'),
-          encoding: 'base64'
-        });
-        
-        // Get current tree
-        const { data: currentCommit } = await octokit.rest.git.getCommit({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          commit_sha: ref.object.sha
-        });
-        
-        // Create new tree with empty file
-        const { data: newTree } = await octokit.rest.git.createTree({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          base_tree: currentCommit.tree.sha,
-          tree: [{
-            path: suggestion.path,
-            mode: '100644',
-            type: 'blob',
-            sha: emptyBlob.sha
-          }]
-        });
-        
-        // Create commit with empty file
-        const { data: newCommit } = await octokit.rest.git.createCommit({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          message: `Add empty ${suggestion.path} for component declarations`,
-          tree: newTree.sha,
-          parents: [ref.object.sha]
-        });
-        
-        // Update branch to point to new commit
-        await octokit.rest.git.updateRef({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          ref: `heads/${headBranch}`,
-          sha: newCommit.sha
-        });
-        
-        core.info(`Created empty ${suggestion.path} file in commit ${newCommit.sha}`);
-        
-        // Now create a PR review comment with suggestion to replace empty content
-        const reviewBody = `${suggestion.body}
-
-\`\`\`suggestion
-${suggestion.suggestedFix || '{}'}
-\`\`\``;
-        
-        // Create line-specific comment on the newly created file
-        const result = await octokit.rest.pulls.createReview({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          pull_number: context.issue.number,
-          event: 'COMMENT',
-          comments: [{
-            path: suggestion.path,
-            line: 1,
-            body: reviewBody
-          }]
-        });
-        
-        core.info(`Successfully created PR review with commit suggestion button. Review ID: ${result.data.id}`);
-        return;
-        
-      } catch (apiError) {
-        core.error(`Failed to create file and suggestion: ${apiError}`);
-        // Fall through to existing file logic or error handling
-      }
-    }
+    // First, create the scanoss.json file using Contents API (simpler approach)
+    core.info('Creating scanoss.json file using Contents API');
     
-    // For existing files, we need to ensure they're part of the PR diff to create suggestions
-    if (comments.length === 1 && fs.existsSync(suggestions[0].path)) {
-      core.info('File exists, creating commit suggestion for existing file');
-      const suggestion = suggestions[0];
-      
-      try {
-        // For PRs, use the head branch, not the base branch
-        const headBranch = context.payload.pull_request?.head?.ref;
-        if (!headBranch) {
-          throw new Error('Could not determine PR head branch');
-        }
-        
-        core.debug(`Working on PR head branch: ${headBranch}`);
-        
-        // Get the current commit SHA for the PR head branch
-        const { data: ref } = await octokit.rest.git.getRef({
-          owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
-          repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
-          ref: `heads/${headBranch}`
-        });
-        
-        // Create blob for updated file content
-        const { data: updatedBlob } = await octokit.rest.git.createBlob({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          content: Buffer.from(suggestion.suggestedFix || '{}').toString('base64'),
-          encoding: 'base64'
-        });
-        
-        // Get current tree
-        const { data: currentCommit } = await octokit.rest.git.getCommit({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          commit_sha: ref.object.sha
-        });
-        
-        // Create new tree with updated file
-        const { data: newTree } = await octokit.rest.git.createTree({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          base_tree: currentCommit.tree.sha,
-          tree: [{
-            path: suggestion.path,
-            mode: '100644',
-            type: 'blob',
-            sha: updatedBlob.sha
-          }]
-        });
-        
-        // Create commit with updated file
-        const { data: newCommit } = await octokit.rest.git.createCommit({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          message: `Update ${suggestion.path} with undeclared components`,
-          tree: newTree.sha,
-          parents: [ref.object.sha]
-        });
-        
-        // Update branch to point to new commit
-        await octokit.rest.git.updateRef({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          ref: `heads/${headBranch}`,
-          sha: newCommit.sha
-        });
-        
-        core.info(`Updated existing ${suggestion.path} file in commit ${newCommit.sha}`);
-        
-        // Create a review comment explaining what was done
-        const reviewBody = `## ✅ Updated ${suggestion.path}
-
-I've automatically updated your \`${suggestion.path}\` file to include the undeclared components found in the scan.
-
-The file now includes all required component declarations to resolve the policy violation. 🎉`;
-        
-        const result = await octokit.rest.pulls.createReview({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          pull_number: context.issue.number,
-          event: 'COMMENT',
-          body: reviewBody
-        });
-        
-        core.info(`Successfully updated existing file and created review. Review ID: ${result.data.id}`);
-        return;
-        
-      } catch (apiError) {
-        core.error(`Failed to update existing file: ${apiError}`);
-        // Fall through to fallback
-      }
-    }
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
+      repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
+      path: suggestion.path,
+      message: `Add ${suggestion.path} for undeclared components`,
+      content: Buffer.from('{}').toString('base64'),
+      branch: headBranch
+    });
     
-    // Fallback: create line-specific comments (may not work without proper diff)
+    core.info('Successfully created empty scanoss.json file');
+    
+    // Now create a PR review with suggestion to replace the empty content
     const result = await octokit.rest.pulls.createReview({
       owner: context.repo.owner,
       repo: context.repo.repo,
       pull_number: context.issue.number,
       event: 'COMMENT',
-      comments
-    });
-    core.info(
-      `Successfully created PR review with ${suggestions.length} commit suggestions. Review ID: ${result.data.id}`
-    );
-  } catch (error) {
-    core.error(`Failed to create PR review with suggestions: ${error}`);
-    core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+      comments: [{
+        path: suggestion.path,
+        body: `${suggestion.body}
 
-    // Try fallback: create a regular issue comment instead
+\`\`\`suggestion
+${suggestion.suggestedFix || '{}'}
+\`\`\``,
+        // Use position 1 (first line of the file in the diff)
+        position: 1
+      }]
+    });
+    
+    core.info(`Successfully created PR review with commit suggestion button. Review ID: ${result.data.id}`);
+    
+  } catch (error) {
+    core.warning(`Failed to create file and suggestion: ${error}`);
+    
+    // Fallback: create regular issue comment
     try {
-      core.info('Attempting fallback: creating regular PR comment instead of review');
-      const fallbackBody = suggestions
-        .map(
-          s =>
-            `## 📦 Scanoss.json Suggestion\n\n${s.body}\n\n**File:** \`${s.path}\`\n\n\`\`\`json\n${s.suggestedFix || 'No suggestion content'}\n\`\`\``
-        )
-        .join('\n\n---\n\n');
+      const fallbackBody = `## 📦 ${suggestion.body}
+
+**To fix the undeclared components policy violation:**
+
+Create a \`${suggestion.path}\` file with this content:
+
+\`\`\`json
+${suggestion.suggestedFix || '{}'}
+\`\`\`
+
+This will declare the undeclared components and resolve the policy check.`;
 
       await createCommentOnPR(fallbackBody);
-      core.info('Fallback comment created successfully');
+      core.info('Created fallback comment successfully');
+      
     } catch (fallbackError) {
-      core.error(`Fallback comment also failed: ${fallbackError}`);
-      throw error;
+      core.error(`All approaches failed: ${fallbackError}`);
     }
   }
 }
