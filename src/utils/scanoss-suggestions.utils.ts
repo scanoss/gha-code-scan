@@ -167,20 +167,73 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
       return [];
     }
 
-    // Generate the complete merged content (existing + new components)
-    const newContent = JSON.stringify(updatedConfig, null, 2);
-
     const suggestions: CommitSuggestion[] = [];
     const componentNames = componentsToAdd.map(c => c.name).join(', ');
 
-    suggestions.push({
-      path: scanossJsonPath,
-      line: 1,
-      body: fs.existsSync(scanossJsonPath)
-        ? `📦 Add undeclared component(s): **${componentNames}** to resolve policy violations.\n\nThis will merge the new components with your existing ones.`
-        : `📦 Create scanoss.json with ${componentsToAdd.length} undeclared component(s): **${componentNames}** to resolve policy violations.`,
-      suggestedFix: newContent
-    });
+    if (fs.existsSync(scanossJsonPath)) {
+      // Smart insertion: find the right place to add components
+      try {
+        const lines = fileContent.split('\n');
+        let targetLineNumber = -1;
+        let replacementText = '';
+        
+        // Find the last component in the include array or the empty array
+        for (let i = lines.length - 1; i >= 0; i--) {
+          const line = lines[i].trim();
+          
+          // Look for the closing brace of the last component without a comma
+          if (line === '}' && i > 0) {
+            const previousLine = lines[i - 1].trim();
+            if (previousLine.endsWith('"')) {
+              // Found last component, add comma and new components
+              targetLineNumber = i + 1; // Line numbers are 1-based
+              const newComponents = componentsToAdd.map(c => 
+                `      {\n        "purl": "${c.purl}"\n      }`
+              ).join(',\n');
+              replacementText = `},\n${newComponents}\n    ]`;
+              break;
+            }
+          }
+          
+          // Look for empty include array: "include": []
+          if (line === ']' && i > 0) {
+            const previousLine = lines[i - 1].trim();
+            if (previousLine.includes('"include":') && previousLine.includes('[')) {
+              // Found empty array, replace with components
+              targetLineNumber = i + 1;
+              const newComponents = componentsToAdd.map(c => 
+                `      {\n        "purl": "${c.purl}"\n      }`
+              ).join(',\n');
+              replacementText = `[\n${newComponents}\n    ]`;
+              break;
+            }
+          }
+        }
+        
+        if (targetLineNumber > 0) {
+          suggestions.push({
+            path: scanossJsonPath,
+            line: targetLineNumber,
+            body: `📦 Add undeclared component(s): **${componentNames}** to resolve policy violations.\n\nThis will add the components to your existing include array.`,
+            suggestedFix: replacementText
+          });
+        } else {
+          core.warning('Could not find appropriate insertion point in scanoss.json');
+        }
+        
+      } catch (parseError) {
+        core.warning(`Could not parse file for smart insertion: ${parseError}`);
+      }
+    } else {
+      // For new files, create the complete structure
+      const newContent = JSON.stringify(updatedConfig, null, 2);
+      suggestions.push({
+        path: scanossJsonPath,
+        line: 1,
+        body: `📦 Create scanoss.json with ${componentsToAdd.length} undeclared component(s): **${componentNames}** to resolve policy violations.`,
+        suggestedFix: newContent
+      });
+    }
 
     core.info(`Generated ${suggestions.length} commit suggestions for ${componentsToAdd.length} undeclared components`);
     core.debug(`Suggestion details: ${JSON.stringify(suggestions, null, 2)}`);

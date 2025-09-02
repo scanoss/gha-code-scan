@@ -101,90 +101,31 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
     return;
   }
 
-  // First try: Create PR review with commit suggestion (works if file exists in diff)
+  // Try to create PR review with smart line-targeted suggestions
   try {
-    core.info('Attempting to create PR review with commit suggestion...');
+    core.info('Attempting to create PR review with targeted line suggestion...');
     core.debug(`PR number: ${context.issue.number}`);
     core.debug(`Owner: ${context.repo.owner}, Repo: ${context.repo.repo}`);
-    core.debug(`File path: ${suggestion.path}`);
-    
-    // Validate the suggestion by checking current GitHub repository state
-    let shouldSkipSuggestion = false;
-    try {
-      const fileResponse = await octokit.rest.repos.getContent({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        path: suggestion.path
-      });
-      
-      if ('content' in fileResponse.data) {
-        const currentContent = Buffer.from(fileResponse.data.content, 'base64').toString();
-        core.debug(`Current GitHub file content: ${currentContent.substring(0, 200)}...`);
-        
-        // Check if the suggested content is the same as current content
-        const currentNormalized = currentContent.trim();
-        const suggestedNormalized = (suggestion.suggestedFix || '{}').trim();
-        
-        if (currentNormalized === suggestedNormalized) {
-          core.info('Suggested content is identical to current file, skipping suggestion');
-          shouldSkipSuggestion = true;
-        }
-      }
-    } catch (getContentError) {
-      core.debug(`Could not get current file content: ${getContentError}`);
-    }
-    
-    if (shouldSkipSuggestion) {
-      core.info('No changes needed, skipping PR review creation');
-      return;
-    }
-    
-    // Get the current file content to determine how many lines to replace
-    let commentConfig: any = {
-      path: suggestion.path,
-      body: `${suggestion.body}
-
-\`\`\`suggestion
-${suggestion.suggestedFix || '{}'}
-\`\`\``,
-      side: 'RIGHT'
-    };
-    
-    try {
-      const fileResponse = await octokit.rest.repos.getContent({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        path: suggestion.path
-      });
-      
-      if ('content' in fileResponse.data) {
-        const currentContent = Buffer.from(fileResponse.data.content, 'base64').toString();
-        const totalLines = currentContent.split('\n').length;
-        
-        // Replace the entire file content by targeting all lines
-        if (totalLines > 1) {
-          commentConfig.start_line = 1;
-          commentConfig.line = totalLines;
-          core.debug(`File has ${totalLines} lines, suggesting replacement of entire file (lines 1-${totalLines})`);
-        } else {
-          commentConfig.line = 1;
-          core.debug(`File has 1 line, suggesting replacement of line 1`);
-        }
-      }
-    } catch (getContentError) {
-      core.debug(`Could not get current file content, using line 1: ${getContentError}`);
-      commentConfig.line = 1;
-    }
+    core.debug(`File path: ${suggestion.path}, Target line: ${suggestion.line}`);
     
     const result = await octokit.rest.pulls.createReview({
       owner: context.repo.owner,
       repo: context.repo.repo,
       pull_number: context.issue.number,
       event: 'COMMENT',
-      comments: [commentConfig]
+      comments: [{
+        path: suggestion.path,
+        body: `${suggestion.body}
+
+\`\`\`suggestion
+${suggestion.suggestedFix || '{}'}
+\`\`\``,
+        line: suggestion.line,
+        side: 'RIGHT'
+      }]
     });
     
-    core.info(`Successfully created PR review with commit suggestion. Review ID: ${result.data.id}`);
+    core.info(`Successfully created PR review with targeted suggestion. Review ID: ${result.data.id}`);
     return;
     
   } catch (error) {

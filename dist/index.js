@@ -126875,82 +126875,29 @@ async function createReviewWithSuggestions(suggestions) {
         core.warning('Could not determine PR head branch');
         return;
     }
-    // First try: Create PR review with commit suggestion (works if file exists in diff)
+    // Try to create PR review with smart line-targeted suggestions
     try {
-        core.info('Attempting to create PR review with commit suggestion...');
+        core.info('Attempting to create PR review with targeted line suggestion...');
         core.debug(`PR number: ${github_1.context.issue.number}`);
         core.debug(`Owner: ${github_1.context.repo.owner}, Repo: ${github_1.context.repo.repo}`);
-        core.debug(`File path: ${suggestion.path}`);
-        // Validate the suggestion by checking current GitHub repository state
-        let shouldSkipSuggestion = false;
-        try {
-            const fileResponse = await octokit.rest.repos.getContent({
-                owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                path: suggestion.path
-            });
-            if ('content' in fileResponse.data) {
-                const currentContent = Buffer.from(fileResponse.data.content, 'base64').toString();
-                core.debug(`Current GitHub file content: ${currentContent.substring(0, 200)}...`);
-                // Check if the suggested content is the same as current content
-                const currentNormalized = currentContent.trim();
-                const suggestedNormalized = (suggestion.suggestedFix || '{}').trim();
-                if (currentNormalized === suggestedNormalized) {
-                    core.info('Suggested content is identical to current file, skipping suggestion');
-                    shouldSkipSuggestion = true;
-                }
-            }
-        }
-        catch (getContentError) {
-            core.debug(`Could not get current file content: ${getContentError}`);
-        }
-        if (shouldSkipSuggestion) {
-            core.info('No changes needed, skipping PR review creation');
-            return;
-        }
-        // Get the current file content to determine how many lines to replace
-        let commentConfig = {
-            path: suggestion.path,
-            body: `${suggestion.body}
-
-\`\`\`suggestion
-${suggestion.suggestedFix || '{}'}
-\`\`\``,
-            side: 'RIGHT'
-        };
-        try {
-            const fileResponse = await octokit.rest.repos.getContent({
-                owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                path: suggestion.path
-            });
-            if ('content' in fileResponse.data) {
-                const currentContent = Buffer.from(fileResponse.data.content, 'base64').toString();
-                const totalLines = currentContent.split('\n').length;
-                // Replace the entire file content by targeting all lines
-                if (totalLines > 1) {
-                    commentConfig.start_line = 1;
-                    commentConfig.line = totalLines;
-                    core.debug(`File has ${totalLines} lines, suggesting replacement of entire file (lines 1-${totalLines})`);
-                }
-                else {
-                    commentConfig.line = 1;
-                    core.debug(`File has 1 line, suggesting replacement of line 1`);
-                }
-            }
-        }
-        catch (getContentError) {
-            core.debug(`Could not get current file content, using line 1: ${getContentError}`);
-            commentConfig.line = 1;
-        }
+        core.debug(`File path: ${suggestion.path}, Target line: ${suggestion.line}`);
         const result = await octokit.rest.pulls.createReview({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
             pull_number: github_1.context.issue.number,
             event: 'COMMENT',
-            comments: [commentConfig]
+            comments: [{
+                    path: suggestion.path,
+                    body: `${suggestion.body}
+
+\`\`\`suggestion
+${suggestion.suggestedFix || '{}'}
+\`\`\``,
+                    line: suggestion.line,
+                    side: 'RIGHT'
+                }]
         });
-        core.info(`Successfully created PR review with commit suggestion. Review ID: ${result.data.id}`);
+        core.info(`Successfully created PR review with targeted suggestion. Review ID: ${result.data.id}`);
         return;
     }
     catch (error) {
@@ -127416,18 +127363,66 @@ function generateScanossJsonSuggestions(undeclaredComponents) {
             core.info('All undeclared components are already in scanoss.json');
             return [];
         }
-        // Generate the complete merged content (existing + new components)
-        const newContent = JSON.stringify(updatedConfig, null, 2);
         const suggestions = [];
         const componentNames = componentsToAdd.map(c => c.name).join(', ');
-        suggestions.push({
-            path: scanossJsonPath,
-            line: 1,
-            body: fs.existsSync(scanossJsonPath)
-                ? `📦 Add undeclared component(s): **${componentNames}** to resolve policy violations.\n\nThis will merge the new components with your existing ones.`
-                : `📦 Create scanoss.json with ${componentsToAdd.length} undeclared component(s): **${componentNames}** to resolve policy violations.`,
-            suggestedFix: newContent
-        });
+        if (fs.existsSync(scanossJsonPath)) {
+            // Smart insertion: find the right place to add components
+            try {
+                const lines = fileContent.split('\n');
+                let targetLineNumber = -1;
+                let replacementText = '';
+                // Find the last component in the include array or the empty array
+                for (let i = lines.length - 1; i >= 0; i--) {
+                    const line = lines[i].trim();
+                    // Look for the closing brace of the last component without a comma
+                    if (line === '}' && i > 0) {
+                        const previousLine = lines[i - 1].trim();
+                        if (previousLine.endsWith('"')) {
+                            // Found last component, add comma and new components
+                            targetLineNumber = i + 1; // Line numbers are 1-based
+                            const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
+                            replacementText = `},\n${newComponents}\n    ]`;
+                            break;
+                        }
+                    }
+                    // Look for empty include array: "include": []
+                    if (line === ']' && i > 0) {
+                        const previousLine = lines[i - 1].trim();
+                        if (previousLine.includes('"include":') && previousLine.includes('[')) {
+                            // Found empty array, replace with components
+                            targetLineNumber = i + 1;
+                            const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
+                            replacementText = `[\n${newComponents}\n    ]`;
+                            break;
+                        }
+                    }
+                }
+                if (targetLineNumber > 0) {
+                    suggestions.push({
+                        path: scanossJsonPath,
+                        line: targetLineNumber,
+                        body: `📦 Add undeclared component(s): **${componentNames}** to resolve policy violations.\n\nThis will add the components to your existing include array.`,
+                        suggestedFix: replacementText
+                    });
+                }
+                else {
+                    core.warning('Could not find appropriate insertion point in scanoss.json');
+                }
+            }
+            catch (parseError) {
+                core.warning(`Could not parse file for smart insertion: ${parseError}`);
+            }
+        }
+        else {
+            // For new files, create the complete structure
+            const newContent = JSON.stringify(updatedConfig, null, 2);
+            suggestions.push({
+                path: scanossJsonPath,
+                line: 1,
+                body: `📦 Create scanoss.json with ${componentsToAdd.length} undeclared component(s): **${componentNames}** to resolve policy violations.`,
+                suggestedFix: newContent
+            });
+        }
         core.info(`Generated ${suggestions.length} commit suggestions for ${componentsToAdd.length} undeclared components`);
         core.debug(`Suggestion details: ${JSON.stringify(suggestions, null, 2)}`);
         return suggestions;
