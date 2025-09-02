@@ -127381,7 +127381,7 @@ function generateScanossJsonSuggestions(undeclaredComponents) {
                             // Found last component, add comma and new components
                             targetLineNumber = i + 1; // Line numbers are 1-based
                             const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
-                            replacementText = `},\n${newComponents}\n    ]`;
+                            replacementText = `},\n${newComponents}`;
                             break;
                         }
                     }
