@@ -94,43 +94,89 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
   core.info(`Creating PR review with ${suggestions.length} suggestions`);
 
   const suggestion = suggestions[0];
+  const headBranch = context.payload.pull_request?.head?.ref;
 
-  // Try to create a simple PR review first (without file creation)
+  if (!headBranch) {
+    core.warning('Could not determine PR head branch');
+    return;
+  }
+
+  // First try: Create PR review with commit suggestion (works if file exists in diff)
   try {
-    core.info('Attempting to create PR review...');
+    core.info('Attempting to create PR review with commit suggestion...');
     core.debug(`PR number: ${context.issue.number}`);
     core.debug(`Owner: ${context.repo.owner}, Repo: ${context.repo.repo}`);
+    core.debug(`File path: ${suggestion.path}`);
     
     const result = await octokit.rest.pulls.createReview({
       owner: context.repo.owner,
       repo: context.repo.repo,
       pull_number: context.issue.number,
       event: 'COMMENT',
-      body: `## 📦 ${suggestion.body}
+      comments: [{
+        path: suggestion.path,
+        body: `${suggestion.body}
 
-**Suggested fix for undeclared components:**
-
-\`\`\`json
+\`\`\`suggestion
 ${suggestion.suggestedFix || '{}'}
-\`\`\`
-
-This review is testing the PR review creation functionality.`
+\`\`\``,
+        position: 1
+      }]
     });
     
-    core.info(`Successfully created PR review. Review ID: ${result.data.id}`);
+    core.info(`Successfully created PR review with commit suggestion. Review ID: ${result.data.id}`);
     return;
     
   } catch (error) {
-    core.error(`Failed to create PR review: ${error}`);
+    core.error(`Failed to create PR review with commit suggestion: ${error}`);
     core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
     
-    // Fallback: create regular issue comment
+    // Second try: Create the file first, then create PR review
+    try {
+      core.info('Creating file first, then PR review...');
+      
+      await octokit.rest.repos.createOrUpdateFileContents({
+        owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
+        repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
+        path: suggestion.path,
+        message: `Add ${suggestion.path} for undeclared components`,
+        content: Buffer.from('{}').toString('base64'),
+        branch: headBranch
+      });
+      
+      core.info('Successfully created empty file, now creating PR review...');
+      
+      const result = await octokit.rest.pulls.createReview({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        pull_number: context.issue.number,
+        event: 'COMMENT',
+        comments: [{
+          path: suggestion.path,
+          body: `${suggestion.body}
+
+\`\`\`suggestion
+${suggestion.suggestedFix || '{}'}
+\`\`\``,
+          position: 1
+        }]
+      });
+      
+      core.info(`Successfully created PR review after file creation. Review ID: ${result.data.id}`);
+      return;
+      
+    } catch (fileError) {
+      core.error(`Failed to create file and PR review: ${fileError}`);
+      core.debug(`File creation error details: ${JSON.stringify(fileError, null, 2)}`);
+    }
+    
+    // Final fallback: create regular issue comment
     try {
       const fallbackBody = `## 📦 ${suggestion.body}
 
 **To fix the undeclared components policy violation:**
 
-Create a \`${suggestion.path}\` file with this content:
+Create or update \`${suggestion.path}\` with this content:
 
 \`\`\`json
 ${suggestion.suggestedFix || '{}'}

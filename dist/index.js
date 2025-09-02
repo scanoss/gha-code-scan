@@ -126875,22 +126875,12 @@ async function createReviewWithSuggestions(suggestions) {
         core.warning('Could not determine PR head branch');
         return;
     }
+    // First try: Create PR review with commit suggestion (works if file exists in diff)
     try {
-        // First, create the scanoss.json file using Contents API (simpler approach)
-        core.info('Creating scanoss.json file using Contents API');
-        await octokit.rest.repos.createOrUpdateFileContents({
-            owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
-            repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
-            path: suggestion.path,
-            message: `Add ${suggestion.path} for undeclared components`,
-            content: Buffer.from('{}').toString('base64'),
-            branch: headBranch
-        });
-        core.info('Successfully created empty scanoss.json file');
-        // Now create a PR review with suggestion to replace the empty content
-        core.debug(`Creating PR review comment for file: ${suggestion.path}`);
+        core.info('Attempting to create PR review with commit suggestion...');
         core.debug(`PR number: ${github_1.context.issue.number}`);
         core.debug(`Owner: ${github_1.context.repo.owner}, Repo: ${github_1.context.repo.repo}`);
+        core.debug(`File path: ${suggestion.path}`);
         const result = await octokit.rest.pulls.createReview({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
@@ -126903,19 +126893,27 @@ async function createReviewWithSuggestions(suggestions) {
 \`\`\`suggestion
 ${suggestion.suggestedFix || '{}'}
 \`\`\``,
-                    // Use position 1 (first line of the file in the diff)
                     position: 1
                 }]
         });
-        core.debug(`PR review created with ID: ${result.data.id}`);
-        core.info(`Successfully created PR review with commit suggestion button. Review ID: ${result.data.id}`);
+        core.info(`Successfully created PR review with commit suggestion. Review ID: ${result.data.id}`);
+        return;
     }
     catch (error) {
-        core.error(`Failed to create file and suggestion: ${error}`);
+        core.error(`Failed to create PR review with commit suggestion: ${error}`);
         core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
-        // Try just creating the PR review without creating the file first
+        // Second try: Create the file first, then create PR review
         try {
-            core.info('Trying PR review without file creation...');
+            core.info('Creating file first, then PR review...');
+            await octokit.rest.repos.createOrUpdateFileContents({
+                owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
+                repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
+                path: suggestion.path,
+                message: `Add ${suggestion.path} for undeclared components`,
+                content: Buffer.from('{}').toString('base64'),
+                branch: headBranch
+            });
+            core.info('Successfully created empty file, now creating PR review...');
             const result = await octokit.rest.pulls.createReview({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
@@ -126931,12 +126929,12 @@ ${suggestion.suggestedFix || '{}'}
                         position: 1
                     }]
             });
-            core.info(`Created PR review without file creation. Review ID: ${result.data.id}`);
+            core.info(`Successfully created PR review after file creation. Review ID: ${result.data.id}`);
             return;
         }
-        catch (reviewError) {
-            core.error(`PR review also failed: ${reviewError}`);
-            core.debug(`Review error details: ${JSON.stringify(reviewError, null, 2)}`);
+        catch (fileError) {
+            core.error(`Failed to create file and PR review: ${fileError}`);
+            core.debug(`File creation error details: ${JSON.stringify(fileError, null, 2)}`);
         }
         // Final fallback: create regular issue comment
         try {
@@ -126944,7 +126942,7 @@ ${suggestion.suggestedFix || '{}'}
 
 **To fix the undeclared components policy violation:**
 
-Create a \`${suggestion.path}\` file with this content:
+Create or update \`${suggestion.path}\` with this content:
 
 \`\`\`json
 ${suggestion.suggestedFix || '{}'}
