@@ -126904,16 +126904,17 @@ ${suggestion.suggestedFix || '{}'}
         core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
         // Second try: Create the file first, then create PR review
         try {
-            core.info('Creating file first, then PR review...');
+            core.info('Creating/updating file first, then PR review...');
+            // Use the actual suggested content, not empty JSON
             await octokit.rest.repos.createOrUpdateFileContents({
                 owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
                 repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
                 path: suggestion.path,
-                message: `Add ${suggestion.path} for undeclared components`,
-                content: Buffer.from('{}').toString('base64'),
+                message: `Add undeclared components to ${suggestion.path}`,
+                content: Buffer.from(suggestion.suggestedFix || '{}').toString('base64'),
                 branch: headBranch
             });
-            core.info('Successfully created empty file, now creating PR review...');
+            core.info('Successfully created/updated file, now creating PR review...');
             const result = await octokit.rest.pulls.createReview({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
