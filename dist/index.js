@@ -126859,9 +126859,9 @@ async function createCommentOnPR(message) {
 }
 exports.createCommentOnPR = createCommentOnPR;
 /**
- * Creates PR reviews with commit suggestions for specific file changes.
+ * Creates a single PR review with multiple commit suggestions.
  * Uses GitHub's native commit suggestion feature with ```suggestion markdown blocks.
- * Creates separate reviews for each suggestion to give users distinct options.
+ * Creates one review with multiple comments to give users distinct options in the same thread.
  */
 async function createReviewWithSuggestions(suggestions) {
     if (suggestions.length === 0) {
@@ -126869,99 +126869,102 @@ async function createReviewWithSuggestions(suggestions) {
         return;
     }
     const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
-    core.info(`Creating ${suggestions.length} separate PR reviews with suggestions`);
+    core.info(`Creating single PR review with ${suggestions.length} commit suggestions`);
     const headBranch = github_1.context.payload.pull_request?.head?.ref;
     if (!headBranch) {
         core.warning('Could not determine PR head branch');
         return;
     }
-    let successCount = 0;
-    let fallbackCount = 0;
-    // Create separate PR reviews for each suggestion to give users distinct options
+    // Prepare comments array for the single review
+    const reviewComments = [];
     for (let i = 0; i < suggestions.length; i++) {
         const suggestion = suggestions[i];
-        core.info(`Creating PR review ${i + 1}/${suggestions.length}`);
-        // Try to create PR review with smart line-targeted suggestions
+        core.debug(`Preparing comment ${i + 1}: ${suggestion.path}, line: ${suggestion.line}`);
+        reviewComments.push({
+            path: suggestion.path,
+            body: `${suggestion.body}
+
+\`\`\`suggestion
+${suggestion.suggestedFix || '{}'}
+\`\`\``,
+            line: suggestion.line,
+            side: 'RIGHT'
+        });
+    }
+    // Try to create single PR review with multiple comments
+    try {
+        core.info('Attempting to create single PR review with multiple commit suggestions...');
+        core.debug(`PR number: ${github_1.context.issue.number}`);
+        core.debug(`Owner: ${github_1.context.repo.owner}, Repo: ${github_1.context.repo.repo}`);
+        core.debug(`Creating review with ${reviewComments.length} comments`);
+        const result = await octokit.rest.pulls.createReview({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            pull_number: github_1.context.issue.number,
+            event: 'COMMENT',
+            comments: reviewComments
+        });
+        core.info(`Successfully created PR review with ${reviewComments.length} commit suggestions. Review ID: ${result.data.id}`);
+    }
+    catch (error) {
+        core.error(`Failed to create PR review with multiple suggestions: ${error}`);
+        core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+        // Fallback: try file creation approach then create review
         try {
-            core.debug(`PR number: ${github_1.context.issue.number}`);
-            core.debug(`Owner: ${github_1.context.repo.owner}, Repo: ${github_1.context.repo.repo}`);
-            core.debug(`File path: ${suggestion.path}, Target line: ${suggestion.line}`);
+            core.info('Trying file creation fallback...');
+            // Only need to create file once (use first suggestion)
+            const firstSuggestion = suggestions[0];
+            // Check if file exists to determine if we need to get SHA for updates
+            let sha;
+            try {
+                const existingFile = await octokit.rest.repos.getContent({
+                    owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
+                    repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
+                    path: firstSuggestion.path,
+                    ref: headBranch
+                });
+                if ('sha' in existingFile.data) {
+                    sha = existingFile.data.sha;
+                }
+            }
+            catch (getError) {
+                core.debug(`File doesn't exist yet, will create new: ${getError}`);
+            }
+            // Create or update the file with first suggestion content
+            await octokit.rest.repos.createOrUpdateFileContents({
+                owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
+                repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
+                path: firstSuggestion.path,
+                message: `Add undeclared components to ${firstSuggestion.path}`,
+                content: Buffer.from(firstSuggestion.suggestedFix || '{}').toString('base64'),
+                branch: headBranch,
+                ...(sha && { sha })
+            });
+            // Update all comments to use line 1 after file creation
+            const updatedComments = reviewComments.map(comment => ({
+                ...comment,
+                line: 1
+            }));
+            // Now try to create PR review again
             const result = await octokit.rest.pulls.createReview({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
                 pull_number: github_1.context.issue.number,
                 event: 'COMMENT',
-                comments: [{
-                        path: suggestion.path,
-                        body: `${suggestion.body}
-
-\`\`\`suggestion
-${suggestion.suggestedFix || '{}'}
-\`\`\``,
-                        line: suggestion.line,
-                        side: 'RIGHT'
-                    }]
+                comments: updatedComments
             });
-            core.info(`Successfully created PR review ${i + 1}. Review ID: ${result.data.id}`);
-            successCount++;
+            core.info(`Successfully created PR review after file creation. Review ID: ${result.data.id}`);
         }
-        catch (error) {
-            core.error(`Failed to create PR review ${i + 1}: ${error}`);
-            core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
-            // Fallback: try file creation approach
+        catch (fallbackError) {
+            core.error(`File creation fallback also failed: ${fallbackError}`);
+            // Final fallback: create regular issue comment with both options
             try {
-                core.info(`Trying file creation fallback for suggestion ${i + 1}...`);
-                // Check if file exists to determine if we need to get SHA for updates
-                let sha;
-                try {
-                    const existingFile = await octokit.rest.repos.getContent({
-                        owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
-                        repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
-                        path: suggestion.path,
-                        ref: headBranch
-                    });
-                    if ('sha' in existingFile.data) {
-                        sha = existingFile.data.sha;
-                    }
-                }
-                catch (getError) {
-                    core.debug(`File doesn't exist yet, will create new: ${getError}`);
-                }
-                // Create or update the file
-                await octokit.rest.repos.createOrUpdateFileContents({
-                    owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
-                    repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
-                    path: suggestion.path,
-                    message: `Add undeclared components to ${suggestion.path}`,
-                    content: Buffer.from(suggestion.suggestedFix || '{}').toString('base64'),
-                    branch: headBranch,
-                    ...(sha && { sha })
-                });
-                // Now try to create PR review again
-                const result = await octokit.rest.pulls.createReview({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    pull_number: github_1.context.issue.number,
-                    event: 'COMMENT',
-                    comments: [{
-                            path: suggestion.path,
-                            body: `${suggestion.body}
+                const fallbackBody = `## 📦 Undeclared Components Policy Violation
 
-\`\`\`suggestion
-${suggestion.suggestedFix || '{}'}
-\`\`\``,
-                            line: 1,
-                            side: 'RIGHT'
-                        }]
-                });
-                core.info(`Successfully created PR review ${i + 1} after file creation. Review ID: ${result.data.id}`);
-                successCount++;
-            }
-            catch (fallbackError) {
-                core.error(`File creation fallback also failed for suggestion ${i + 1}: ${fallbackError}`);
-                // Final fallback: create regular issue comment
-                try {
-                    const fallbackBody = `${suggestion.body}
+Choose how to handle these undeclared components:
+
+${suggestions
+                    .map(suggestion => `### ${suggestion.body}
 
 **Suggested content:**
 
@@ -126969,18 +126972,18 @@ ${suggestion.suggestedFix || '{}'}
 ${suggestion.suggestedFix || '{}'}
 \`\`\`
 
-*Note: This suggestion couldn't be made as a commit suggestion button. Please apply manually.*`;
-                    await createCommentOnPR(fallbackBody);
-                    core.info(`Created fallback comment for suggestion ${i + 1}`);
-                    fallbackCount++;
-                }
-                catch (commentError) {
-                    core.error(`All approaches failed for suggestion ${i + 1}: ${commentError}`);
-                }
+`)
+                    .join('\n')}
+
+*Note: These suggestions couldn't be made as commit suggestion buttons. Please apply manually to your \`${suggestions[0]?.path || 'scanoss.json'}\` file.*`;
+                await createCommentOnPR(fallbackBody);
+                core.info('Created comprehensive fallback comment with all suggestions');
+            }
+            catch (commentError) {
+                core.error(`All approaches failed: ${commentError}`);
             }
         }
     }
-    core.info(`Completed: ${successCount} PR reviews created, ${fallbackCount} fallback comments`);
 }
 exports.createReviewWithSuggestions = createReviewWithSuggestions;
 /**
@@ -127329,7 +127332,7 @@ function generateScanossJsonSuggestions(undeclaredComponents) {
                 }
                 // Fix common JSON issues like missing commas between properties
                 core.debug(`Before comma fixes: ${cleanedContent.substring(0, 200)}...`);
-                // Look for pattern: ]\s*"property" and add comma: ],\s*"property" 
+                // Look for pattern: ]\s*"property" and add comma: ],\s*"property"
                 const beforeArrayFix = cleanedContent;
                 cleanedContent = cleanedContent.replace(/]\s*\n\s*"([^"]+)":/g, '],\n    "$1":');
                 if (cleanedContent !== beforeArrayFix) {
@@ -127400,9 +127403,16 @@ function generateScanossJsonSuggestions(undeclaredComponents) {
                 // Generate suggestion 2: Add to remove array
                 const removeInsertion = findRemoveInsertionPoint(lines, componentsToAdd);
                 if (removeInsertion.targetLineNumber > 0) {
+                    // Ensure remove suggestion doesn't conflict with include suggestion line
+                    let removeTargetLine = removeInsertion.targetLineNumber;
+                    if (includeInsertion.targetLineNumber > 0 && removeTargetLine === includeInsertion.targetLineNumber) {
+                        // If both target same line, offset remove suggestion by 1 line
+                        removeTargetLine = removeTargetLine + 1;
+                        core.debug(`Adjusted remove suggestion line from ${removeInsertion.targetLineNumber} to ${removeTargetLine} to avoid conflict`);
+                    }
                     suggestions.push({
                         path: scanossJsonPath,
-                        line: removeInsertion.targetLineNumber,
+                        line: removeTargetLine,
                         body: `🚫 **Option 2: Remove Components** - Add undeclared component(s): **${componentNames}** to remove list.\n\nThis will add the components to your remove array to explicitly exclude them.`,
                         suggestedFix: removeInsertion.replacementText
                     });
@@ -127488,7 +127498,9 @@ function findIncludeInsertionPoint(lines, componentsToAdd) {
     if (includeStartIndex >= 0 && includeEndIndex >= 0) {
         const includeLineContent = lines[includeStartIndex].trim();
         // Check if it's a one-liner like "include": []
-        if (includeStartIndex === includeEndIndex && includeLineContent.includes('"include":') && includeLineContent.includes('[]')) {
+        if (includeStartIndex === includeEndIndex &&
+            includeLineContent.includes('"include":') &&
+            includeLineContent.includes('[]')) {
             // One-liner: "include": [] - replace the entire line
             targetLineNumber = includeStartIndex + 1; // Line numbers are 1-based
             const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
@@ -127520,7 +127532,9 @@ function findIncludeInsertionPoint(lines, componentsToAdd) {
                         if (previousLine.endsWith('"')) {
                             // Found last component in include array
                             targetLineNumber = i + 1;
-                            const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
+                            const newComponents = componentsToAdd
+                                .map(c => `      {\n        "purl": "${c.purl}"\n      }`)
+                                .join(',\n');
                             replacementText = `},\n${newComponents}`;
                             break;
                         }
