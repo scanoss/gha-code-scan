@@ -313,31 +313,51 @@ function findIncludeInsertionPoint(lines: string[], componentsToAdd: UndeclaredC
   }
   
   if (includeStartIndex >= 0 && includeEndIndex >= 0) {
-    // Check if include array is empty
-    const isEmpty = includeStartIndex === includeEndIndex || 
-                   (includeEndIndex - includeStartIndex === 1);
+    const includeLineContent = lines[includeStartIndex].trim();
     
-    if (isEmpty) {
-      // Empty include array, replace the ]
-      targetLineNumber = includeEndIndex + 1; // Line numbers are 1-based
+    // Check if it's a one-liner like "include": []
+    if (includeStartIndex === includeEndIndex && includeLineContent.includes('"include":') && includeLineContent.includes('[]')) {
+      // One-liner: "include": [] - replace the entire line
+      targetLineNumber = includeStartIndex + 1; // Line numbers are 1-based
       const newComponents = componentsToAdd.map(c => 
         `      {\n        "purl": "${c.purl}"\n      }`
       ).join(',\n');
-      replacementText = `[\n${newComponents}\n    ]`;
-    } else {
-      // Find last component in include array
-      for (let i = includeEndIndex - 1; i > includeStartIndex; i--) {
-        const line = lines[i].trim();
-        if (line === '}') {
-          const previousLine = lines[i - 1].trim();
-          if (previousLine.endsWith('"')) {
-            // Found last component in include array
-            targetLineNumber = i + 1;
-            const newComponents = componentsToAdd.map(c => 
-              `      {\n        "purl": "${c.purl}"\n      }`
-            ).join(',\n');
-            replacementText = `},\n${newComponents}`;
-            break;
+      
+      // Preserve the indentation and comma from original line
+      const indentation = lines[includeStartIndex].match(/^(\s*)/)?.[1] || '    ';
+      const hasCommaAfter = lines[includeStartIndex].includes('],');
+      
+      if (hasCommaAfter) {
+        replacementText = `${indentation}"include": [\n${newComponents}\n    ],`;
+      } else {
+        replacementText = `${indentation}"include": [\n${newComponents}\n    ]`;
+      }
+    } else if (includeEndIndex > includeStartIndex) {
+      // Multi-line array - check if it's empty
+      const isEmpty = includeEndIndex - includeStartIndex === 1;
+      
+      if (isEmpty) {
+        // Empty multi-line array, replace the ]
+        targetLineNumber = includeEndIndex + 1;
+        const newComponents = componentsToAdd.map(c => 
+          `      {\n        "purl": "${c.purl}"\n      }`
+        ).join(',\n');
+        replacementText = `${newComponents}\n    ]`;
+      } else {
+        // Find last component in include array
+        for (let i = includeEndIndex - 1; i > includeStartIndex; i--) {
+          const line = lines[i].trim();
+          if (line === '}') {
+            const previousLine = lines[i - 1].trim();
+            if (previousLine.endsWith('"')) {
+              // Found last component in include array
+              targetLineNumber = i + 1;
+              const newComponents = componentsToAdd.map(c => 
+                `      {\n        "purl": "${c.purl}"\n      }`
+              ).join(',\n');
+              replacementText = `},\n${newComponents}`;
+              break;
+            }
           }
         }
       }
