@@ -43,7 +43,18 @@ interface ScanossConfig {
     include: {
       purl: string;
     }[];
+    remove?: {
+      purl: string;
+    }[];
   };
+}
+
+/**
+ * Interface for insertion point results
+ */
+interface InsertionPoint {
+  targetLineNumber: number;
+  replacementText: string;
 }
 
 /**
@@ -115,7 +126,7 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
       core.debug(`Raw file content: ${fileContent}`);
       
       try {
-        // Try to clean up malformed JSON (like extra opening braces)
+        // Try to clean up malformed JSON (like extra opening braces, missing commas)
         let cleanedContent = fileContent.trim();
         
         // Remove extra opening braces at the start
@@ -123,6 +134,11 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
           cleanedContent = cleanedContent.substring(1);
           core.debug(`Removed extra opening brace, content now: ${cleanedContent.substring(0, 100)}...`);
         }
+        
+        // Fix common JSON issues like missing commas between properties
+        // Look for pattern: ]\s*"property" and add comma: ],\s*"property"
+        cleanedContent = cleanedContent.replace(/]\s*"([^"]+)":/g, '],\n    "$1":');
+        core.debug(`Fixed missing commas, content now: ${cleanedContent.substring(0, 200)}...`);
         
         const existingConfig = JSON.parse(cleanedContent);
         updatedConfig.bom = existingConfig.bom || { include: [] };
@@ -174,64 +190,61 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
       // Smart insertion: find the right place to add components
       try {
         const lines = fileContent.split('\n');
-        let targetLineNumber = -1;
-        let replacementText = '';
         
-        // Find the last component in the include array or the empty array
-        for (let i = lines.length - 1; i >= 0; i--) {
-          const line = lines[i].trim();
-          
-          // Look for the closing brace of the last component without a comma
-          if (line === '}' && i > 0) {
-            const previousLine = lines[i - 1].trim();
-            if (previousLine.endsWith('"')) {
-              // Found last component, add comma and new components
-              targetLineNumber = i + 1; // Line numbers are 1-based
-              const newComponents = componentsToAdd.map(c => 
-                `      {\n        "purl": "${c.purl}"\n      }`
-              ).join(',\n');
-              replacementText = `},\n${newComponents}`;
-              break;
-            }
-          }
-          
-          // Look for empty include array: "include": []
-          if (line === ']' && i > 0) {
-            const previousLine = lines[i - 1].trim();
-            if (previousLine.includes('"include":') && previousLine.includes('[')) {
-              // Found empty array, replace with components
-              targetLineNumber = i + 1;
-              const newComponents = componentsToAdd.map(c => 
-                `      {\n        "purl": "${c.purl}"\n      }`
-              ).join(',\n');
-              replacementText = `[\n${newComponents}\n    ]`;
-              break;
-            }
-          }
-        }
-        
-        if (targetLineNumber > 0) {
+        // Generate suggestion 1: Add to include array
+        const includeInsertion = findIncludeInsertionPoint(lines, componentsToAdd);
+        if (includeInsertion.targetLineNumber > 0) {
           suggestions.push({
             path: scanossJsonPath,
-            line: targetLineNumber,
-            body: `📦 Add undeclared component(s): **${componentNames}** to resolve policy violations.\n\nThis will add the components to your existing include array.`,
-            suggestedFix: replacementText
+            line: includeInsertion.targetLineNumber,
+            body: `📦 **Option 1: Include Components** - Add undeclared component(s): **${componentNames}** to resolve policy violations.\n\nThis will add the components to your include array to allow them.`,
+            suggestedFix: includeInsertion.replacementText
           });
-        } else {
-          core.warning('Could not find appropriate insertion point in scanoss.json');
+        }
+        
+        // Generate suggestion 2: Add to remove array
+        const removeInsertion = findRemoveInsertionPoint(lines, componentsToAdd);
+        if (removeInsertion.targetLineNumber > 0) {
+          suggestions.push({
+            path: scanossJsonPath,
+            line: removeInsertion.targetLineNumber,
+            body: `🚫 **Option 2: Remove Components** - Add undeclared component(s): **${componentNames}** to remove list.\n\nThis will add the components to your remove array to explicitly exclude them.`,
+            suggestedFix: removeInsertion.replacementText
+          });
+        }
+        
+        if (suggestions.length === 0) {
+          core.warning('Could not find appropriate insertion points in scanoss.json');
         }
         
       } catch (parseError) {
         core.warning(`Could not parse file for smart insertion: ${parseError}`);
       }
     } else {
-      // For new files, create the complete structure
-      const newContent = JSON.stringify(updatedConfig, null, 2);
+      // For new files, create two options
+      
+      // Option 1: File with include array
+      const includeContent = JSON.stringify(updatedConfig, null, 2);
       suggestions.push({
         path: scanossJsonPath,
         line: 1,
-        body: `📦 Create scanoss.json with ${componentsToAdd.length} undeclared component(s): **${componentNames}** to resolve policy violations.`,
-        suggestedFix: newContent
+        body: `📦 **Option 1: Include Components** - Create scanoss.json with ${componentsToAdd.length} component(s) in include array.\n\nThis will allow the undeclared components.`,
+        suggestedFix: includeContent
+      });
+      
+      // Option 2: File with remove array
+      const removeConfig = {
+        bom: {
+          include: [],
+          remove: componentsToAdd.map(c => ({ purl: c.purl }))
+        }
+      };
+      const removeContent = JSON.stringify(removeConfig, null, 2);
+      suggestions.push({
+        path: scanossJsonPath,
+        line: 1,
+        body: `🚫 **Option 2: Remove Components** - Create scanoss.json with ${componentsToAdd.length} component(s) in remove array.\n\nThis will explicitly exclude the undeclared components.`,
+        suggestedFix: removeContent
       });
     }
 
@@ -250,4 +263,125 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
 export function createUndeclaredComponentSuggestions(policyOutput: string): CommitSuggestion[] {
   const undeclaredComponents = parseUndeclaredComponents(policyOutput);
   return generateScanossJsonSuggestions(undeclaredComponents);
+}
+
+/**
+ * Finds the insertion point for adding components to the include array
+ */
+function findIncludeInsertionPoint(lines: string[], componentsToAdd: UndeclaredComponent[]): InsertionPoint {
+  let targetLineNumber = -1;
+  let replacementText = '';
+  
+  // Find the last component in the include array or the empty array
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    
+    // Look for the closing brace of the last component without a comma
+    if (line === '}' && i > 0) {
+      const previousLine = lines[i - 1].trim();
+      if (previousLine.endsWith('"')) {
+        // Found last component, add comma and new components
+        targetLineNumber = i + 1; // Line numbers are 1-based
+        const newComponents = componentsToAdd.map(c => 
+          `      {\n        "purl": "${c.purl}"\n      }`
+        ).join(',\n');
+        replacementText = `},\n${newComponents}`;
+        break;
+      }
+    }
+    
+    // Look for empty include array: "include": []
+    if (line === ']' && i > 0) {
+      const previousLine = lines[i - 1].trim();
+      if (previousLine.includes('"include":') && previousLine.includes('[')) {
+        // Found empty array, replace with components
+        targetLineNumber = i + 1;
+        const newComponents = componentsToAdd.map(c => 
+          `      {\n        "purl": "${c.purl}"\n      }`
+        ).join(',\n');
+        replacementText = `[\n${newComponents}\n    ]`;
+        break;
+      }
+    }
+  }
+  
+  return { targetLineNumber, replacementText };
+}
+
+/**
+ * Finds the insertion point for adding components to the remove array
+ */
+function findRemoveInsertionPoint(lines: string[], componentsToAdd: UndeclaredComponent[]): InsertionPoint {
+  let targetLineNumber = -1;
+  let replacementText = '';
+  
+  // Look for existing remove array
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    
+    // Look for closing brace of last component in remove array
+    if (line === '}' && i > 0) {
+      const previousLine = lines[i - 1].trim();
+      if (previousLine.endsWith('"')) {
+        // Check if we're in a remove array context
+        let isInRemoveArray = false;
+        for (let j = i - 1; j >= 0; j--) {
+          if (lines[j].includes('"remove":')) {
+            isInRemoveArray = true;
+            break;
+          }
+          if (lines[j].includes('"include":')) {
+            break; // Found include first, so we're not in remove
+          }
+        }
+        
+        if (isInRemoveArray) {
+          // Found last component in remove array, add comma and new components
+          targetLineNumber = i + 1;
+          const newComponents = componentsToAdd.map(c => 
+            `      {\n        "purl": "${c.purl}"\n      }`
+          ).join(',\n');
+          replacementText = `},\n${newComponents}`;
+          break;
+        }
+      }
+    }
+    
+    // Look for empty remove array: "remove": []
+    if (line === ']' && i > 0) {
+      const previousLine = lines[i - 1].trim();
+      if (previousLine.includes('"remove":') && previousLine.includes('[')) {
+        // Found empty remove array, replace with components
+        targetLineNumber = i + 1;
+        const newComponents = componentsToAdd.map(c => 
+          `      {\n        "purl": "${c.purl}"\n      }`
+        ).join(',\n');
+        replacementText = `[\n${newComponents}\n    ]`;
+        break;
+      }
+    }
+  }
+  
+  // If no remove array found, create one after include array
+  if (targetLineNumber === -1) {
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim();
+      
+      // Look for end of include array
+      if (line === ']' && i > 0) {
+        const previousLine = lines[i - 1].trim();
+        if (previousLine.endsWith('}') || previousLine.includes('"include":')) {
+          // Found end of include array, add remove array after it
+          targetLineNumber = i + 1;
+          const newComponents = componentsToAdd.map(c => 
+            `      {\n        "purl": "${c.purl}"\n      }`
+          ).join(',\n');
+          replacementText = `],\n    "remove": [\n${newComponents}\n    ]`;
+          break;
+        }
+      }
+    }
+  }
+  
+  return { targetLineNumber, replacementText };
 }

@@ -19,7 +19,7 @@
    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE.
- */
+*/
 
 import { context, getOctokit } from '@actions/github';
 import * as core from '@actions/core';
@@ -81,8 +81,9 @@ export interface CommitSuggestion {
 }
 
 /**
- * Creates a PR review with commit suggestions for specific file changes.
+ * Creates PR reviews with commit suggestions for specific file changes.
  * Uses GitHub's native commit suggestion feature with ```suggestion markdown blocks.
+ * Creates separate reviews for each suggestion to give users distinct options.
  */
 export async function createReviewWithSuggestions(suggestions: CommitSuggestion[]): Promise<void> {
   if (suggestions.length === 0) {
@@ -91,83 +92,28 @@ export async function createReviewWithSuggestions(suggestions: CommitSuggestion[
   }
 
   const octokit = getOctokit(inputs.GITHUB_TOKEN);
-  core.info(`Creating PR review with ${suggestions.length} suggestions`);
+  core.info(`Creating ${suggestions.length} separate PR reviews with suggestions`);
 
-  const suggestion = suggestions[0];
   const headBranch = context.payload.pull_request?.head?.ref;
-
   if (!headBranch) {
     core.warning('Could not determine PR head branch');
     return;
   }
 
-  // Try to create PR review with smart line-targeted suggestions
-  try {
-    core.info('Attempting to create PR review with targeted line suggestion...');
-    core.debug(`PR number: ${context.issue.number}`);
-    core.debug(`Owner: ${context.repo.owner}, Repo: ${context.repo.repo}`);
-    core.debug(`File path: ${suggestion.path}, Target line: ${suggestion.line}`);
-    
-    const result = await octokit.rest.pulls.createReview({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      pull_number: context.issue.number,
-      event: 'COMMENT',
-      comments: [{
-        path: suggestion.path,
-        body: `${suggestion.body}
+  let successCount = 0;
+  let fallbackCount = 0;
 
-\`\`\`suggestion
-${suggestion.suggestedFix || '{}'}
-\`\`\``,
-        line: suggestion.line,
-        side: 'RIGHT'
-      }]
-    });
+  // Create separate PR reviews for each suggestion to give users distinct options
+  for (let i = 0; i < suggestions.length; i++) {
+    const suggestion = suggestions[i];
+    core.info(`Creating PR review ${i + 1}/${suggestions.length}`);
     
-    core.info(`Successfully created PR review with targeted suggestion. Review ID: ${result.data.id}`);
-    return;
-    
-  } catch (error) {
-    core.error(`Failed to create PR review with commit suggestion: ${error}`);
-    core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
-    
-    // Second try: Create the file first, then create PR review
+    // Try to create PR review with smart line-targeted suggestions
     try {
-      core.info('File not in diff, creating/updating it first...');
+      core.debug(`PR number: ${context.issue.number}`);
+      core.debug(`Owner: ${context.repo.owner}, Repo: ${context.repo.repo}`);
+      core.debug(`File path: ${suggestion.path}, Target line: ${suggestion.line}`);
       
-      // Check if file exists to determine if we need to get SHA for updates
-      let sha: string | undefined;
-      try {
-        const existingFile = await octokit.rest.repos.getContent({
-          owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
-          repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
-          path: suggestion.path,
-          ref: headBranch
-        });
-        
-        if ('sha' in existingFile.data) {
-          sha = existingFile.data.sha;
-          core.debug(`Found existing file with SHA: ${sha}`);
-        }
-      } catch (getError) {
-        core.debug(`File doesn't exist yet, will create new: ${getError}`);
-      }
-      
-      // Create or update the file
-      await octokit.rest.repos.createOrUpdateFileContents({
-        owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
-        repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
-        path: suggestion.path,
-        message: `Add undeclared components to ${suggestion.path}`,
-        content: Buffer.from(suggestion.suggestedFix || '{}').toString('base64'),
-        branch: headBranch,
-        ...(sha && { sha }) // Include SHA if updating existing file
-      });
-      
-      core.info('Successfully created/updated file, now creating PR review...');
-      
-      // Now create PR review with simple line targeting
       const result = await octokit.rest.pulls.createReview({
         owner: context.repo.owner,
         repo: context.repo.repo,
@@ -180,40 +126,98 @@ ${suggestion.suggestedFix || '{}'}
 \`\`\`suggestion
 ${suggestion.suggestedFix || '{}'}
 \`\`\``,
-          line: 1,
+          line: suggestion.line,
           side: 'RIGHT'
         }]
       });
       
-      core.info(`Successfully created PR review after file creation. Review ID: ${result.data.id}`);
-      return;
+      core.info(`Successfully created PR review ${i + 1}. Review ID: ${result.data.id}`);
+      successCount++;
       
-    } catch (fileError) {
-      core.error(`Failed to create file and PR review: ${fileError}`);
-      core.debug(`File creation error details: ${JSON.stringify(fileError, null, 2)}`);
-    }
-    
-    // Final fallback: create regular issue comment
-    try {
-      const fallbackBody = `## 📦 ${suggestion.body}
+    } catch (error) {
+      core.error(`Failed to create PR review ${i + 1}: ${error}`);
+      core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+      
+      // Fallback: try file creation approach
+      try {
+        core.info(`Trying file creation fallback for suggestion ${i + 1}...`);
+        
+        // Check if file exists to determine if we need to get SHA for updates
+        let sha: string | undefined;
+        try {
+          const existingFile = await octokit.rest.repos.getContent({
+            owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
+            repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
+            path: suggestion.path,
+            ref: headBranch
+          });
+          
+          if ('sha' in existingFile.data) {
+            sha = existingFile.data.sha;
+          }
+        } catch (getError) {
+          core.debug(`File doesn't exist yet, will create new: ${getError}`);
+        }
+        
+        // Create or update the file
+        await octokit.rest.repos.createOrUpdateFileContents({
+          owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
+          repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
+          path: suggestion.path,
+          message: `Add undeclared components to ${suggestion.path}`,
+          content: Buffer.from(suggestion.suggestedFix || '{}').toString('base64'),
+          branch: headBranch,
+          ...(sha && { sha })
+        });
+        
+        // Now try to create PR review again
+        const result = await octokit.rest.pulls.createReview({
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          pull_number: context.issue.number,
+          event: 'COMMENT',
+          comments: [{
+            path: suggestion.path,
+            body: `${suggestion.body}
 
-**To fix the undeclared components policy violation:**
+\`\`\`suggestion
+${suggestion.suggestedFix || '{}'}
+\`\`\``,
+            line: 1,
+            side: 'RIGHT'
+          }]
+        });
+        
+        core.info(`Successfully created PR review ${i + 1} after file creation. Review ID: ${result.data.id}`);
+        successCount++;
+        
+      } catch (fallbackError) {
+        core.error(`File creation fallback also failed for suggestion ${i + 1}: ${fallbackError}`);
+        
+        // Final fallback: create regular issue comment
+        try {
+          const fallbackBody = `${suggestion.body}
 
-Create or update \`${suggestion.path}\` with this content:
+**Suggested content:**
 
 \`\`\`json
 ${suggestion.suggestedFix || '{}'}
 \`\`\`
 
-This will declare the undeclared components and resolve the policy check.`;
+*Note: This suggestion couldn't be made as a commit suggestion button. Please apply manually.*`;
 
-      await createCommentOnPR(fallbackBody);
-      core.info('Created fallback comment successfully');
-      
-    } catch (fallbackError) {
-      core.error(`All approaches failed: ${fallbackError}`);
+          await createCommentOnPR(fallbackBody);
+          core.info(`Created fallback comment for suggestion ${i + 1}`);
+          fallbackCount++;
+          
+        } catch (commentError) {
+          core.error(`All approaches failed for suggestion ${i + 1}: ${commentError}`);
+        }
+      }
     }
   }
+
+  core.info(`Completed: ${successCount} PR reviews created, ${fallbackCount} fallback comments`);
 }
 
 /**
