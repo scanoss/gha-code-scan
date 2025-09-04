@@ -127464,29 +127464,51 @@ exports.createUndeclaredComponentSuggestions = createUndeclaredComponentSuggesti
 function findIncludeInsertionPoint(lines, componentsToAdd) {
     let targetLineNumber = -1;
     let replacementText = '';
-    // Find the last component in the include array or the empty array
-    for (let i = lines.length - 1; i >= 0; i--) {
+    // Find the include array specifically
+    let includeStartIndex = -1;
+    let includeEndIndex = -1;
+    // First, locate the include array boundaries
+    for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
-        // Look for the closing brace of the last component without a comma
-        if (line === '}' && i > 0) {
-            const previousLine = lines[i - 1].trim();
-            if (previousLine.endsWith('"')) {
-                // Found last component, add comma and new components
-                targetLineNumber = i + 1; // Line numbers are 1-based
-                const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
-                replacementText = `},\n${newComponents}`;
+        // Found start of include array
+        if (line.includes('"include":') && line.includes('[')) {
+            includeStartIndex = i;
+            // If it's a one-liner like "include": []
+            if (line.includes(']')) {
+                includeEndIndex = i;
                 break;
             }
         }
-        // Look for empty include array: "include": []
-        if (line === ']' && i > 0) {
-            const previousLine = lines[i - 1].trim();
-            if (previousLine.includes('"include":') && previousLine.includes('[')) {
-                // Found empty array, replace with components
-                targetLineNumber = i + 1;
-                const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
-                replacementText = `[\n${newComponents}\n    ]`;
-                break;
+        // Found end of include array (if we already found the start)
+        if (includeStartIndex >= 0 && line === ']') {
+            includeEndIndex = i;
+            break;
+        }
+    }
+    if (includeStartIndex >= 0 && includeEndIndex >= 0) {
+        // Check if include array is empty
+        const isEmpty = includeStartIndex === includeEndIndex ||
+            (includeEndIndex - includeStartIndex === 1);
+        if (isEmpty) {
+            // Empty include array, replace the ]
+            targetLineNumber = includeEndIndex + 1; // Line numbers are 1-based
+            const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
+            replacementText = `[\n${newComponents}\n    ]`;
+        }
+        else {
+            // Find last component in include array
+            for (let i = includeEndIndex - 1; i > includeStartIndex; i--) {
+                const line = lines[i].trim();
+                if (line === '}') {
+                    const previousLine = lines[i - 1].trim();
+                    if (previousLine.endsWith('"')) {
+                        // Found last component in include array
+                        targetLineNumber = i + 1;
+                        const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
+                        replacementText = `},\n${newComponents}`;
+                        break;
+                    }
+                }
             }
         }
     }
