@@ -136,9 +136,23 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
         }
         
         // Fix common JSON issues like missing commas between properties
-        // Look for pattern: ]\s*"property" and add comma: ],\s*"property"
-        cleanedContent = cleanedContent.replace(/]\s*"([^"]+)":/g, '],\n    "$1":');
-        core.debug(`Fixed missing commas, content now: ${cleanedContent.substring(0, 200)}...`);
+        core.debug(`Before comma fixes: ${cleanedContent.substring(0, 200)}...`);
+        
+        // Look for pattern: ]\s*"property" and add comma: ],\s*"property" 
+        const beforeArrayFix = cleanedContent;
+        cleanedContent = cleanedContent.replace(/]\s*\n\s*"([^"]+)":/g, '],\n    "$1":');
+        if (cleanedContent !== beforeArrayFix) {
+          core.debug(`Fixed missing comma after array`);
+        }
+        
+        // Also fix missing commas after closing braces: }\s*"property"
+        const beforeBraceFix = cleanedContent;
+        cleanedContent = cleanedContent.replace(/}\s*\n\s*"([^"]+)":/g, '},\n    "$1":');
+        if (cleanedContent !== beforeBraceFix) {
+          core.debug(`Fixed missing comma after brace`);
+        }
+        
+        core.debug(`After comma fixes: ${cleanedContent.substring(0, 200)}...`);
         
         const existingConfig = JSON.parse(cleanedContent);
         updatedConfig.bom = existingConfig.bom || { include: [] };
