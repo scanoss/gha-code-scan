@@ -123949,6 +123949,7 @@ const dependency_track_service_1 = __nccwpck_require__(57356);
 const dependency_track_status_service_1 = __nccwpck_require__(55414);
 const scanoss_service_1 = __nccwpck_require__(73406);
 const snippet_display_utils_1 = __nccwpck_require__(34325);
+const snippet_annotations_utils_1 = __nccwpck_require__(71325);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -123980,6 +123981,10 @@ async function run() {
             }
             await policy.run();
         }
+        // 5: Create snippet match annotations (demo feature)
+        core.info('Creating snippet match annotations...');
+        (0, snippet_annotations_utils_1.createSnippetAnnotationDemo)(inputs.OUTPUT_FILEPATH);
+        (0, snippet_annotations_utils_1.createMixedSnippetAnnotations)(inputs.OUTPUT_FILEPATH);
         if ((0, github_utils_1.isPullRequest)()) {
             // create reports
             const report = await (0, report_service_1.generatePRSummary)(policies);
@@ -127617,6 +127622,206 @@ function findRemoveInsertionPoint(lines, componentsToAdd) {
     }
     return { targetLineNumber, replacementText };
 }
+
+
+/***/ }),
+
+/***/ 71325:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2024, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createSnippetAnnotationDemo = exports.createMixedSnippetAnnotations = exports.createSnippetMatchAnnotations = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const snippet_display_utils_1 = __nccwpck_require__(34325);
+/**
+ * Creates GitHub Actions annotations for snippet matches
+ */
+function createSnippetMatchAnnotations(resultsPath, annotationType = 'notice') {
+    const snippets = (0, snippet_display_utils_1.parseSnippetMatches)(resultsPath);
+    if (snippets.length === 0) {
+        core.debug('No snippet matches found, skipping annotations');
+        return;
+    }
+    core.info(`Creating ${snippets.length} snippet match annotations`);
+    for (const snippet of snippets) {
+        const message = formatSnippetAnnotationMessage(snippet);
+        const title = `${snippet.matchPercentage} match with ${snippet.component}`;
+        const annotationOptions = {
+            type: annotationType,
+            file: snippet.filePath,
+            startLine: snippet.localLines.start,
+            endLine: snippet.localLines.end,
+            title
+        };
+        createAnnotation(message, annotationOptions);
+    }
+}
+exports.createSnippetMatchAnnotations = createSnippetMatchAnnotations;
+/**
+ * Creates different types of annotations for testing purposes
+ */
+function createMixedSnippetAnnotations(resultsPath) {
+    const snippets = (0, snippet_display_utils_1.parseSnippetMatches)(resultsPath);
+    if (snippets.length === 0) {
+        core.debug('No snippet matches found for mixed annotations');
+        return;
+    }
+    core.info(`Creating mixed annotations for ${snippets.length} snippet matches`);
+    snippets.forEach(snippet => {
+        const message = formatSnippetAnnotationMessage(snippet);
+        const title = `${snippet.matchPercentage} match with ${snippet.component}`;
+        let annotationType = 'notice';
+        // Create different annotation types based on match percentage for testing
+        const matchPercentage = parseFloat(snippet.matchPercentage.replace('%', ''));
+        if (matchPercentage >= 90) {
+            annotationType = 'error'; // High matches might indicate potential issues
+        }
+        else if (matchPercentage >= 70) {
+            annotationType = 'warning'; // Medium matches warrant attention
+        }
+        else {
+            annotationType = 'notice'; // Low matches are informational
+        }
+        const annotationOptions = {
+            type: annotationType,
+            file: snippet.filePath,
+            startLine: snippet.localLines.start,
+            endLine: snippet.localLines.end,
+            title: `[${annotationType.toUpperCase()}] ${title}`
+        };
+        createAnnotation(message, annotationOptions);
+    });
+}
+exports.createMixedSnippetAnnotations = createMixedSnippetAnnotations;
+/**
+ * Formats the snippet information into an annotation message
+ */
+function formatSnippetAnnotationMessage(snippet) {
+    let message = `Code snippet matches ${snippet.component}`;
+    if (snippet.version) {
+        message += ` v${snippet.version}`;
+    }
+    message += ` (${snippet.matchPercentage} similarity)`;
+    if (snippet.licenses && snippet.licenses.length > 0) {
+        message += ` - License(s): ${snippet.licenses.join(', ')}`;
+    }
+    if (snippet.url) {
+        message += ` - Source: ${snippet.url}`;
+    }
+    message += ` - OSS Lines: ${snippet.ossLines.start}-${snippet.ossLines.end}`;
+    return message;
+}
+/**
+ * Creates a GitHub Actions annotation using the appropriate method
+ */
+function createAnnotation(message, options) {
+    const annotationProperties = {
+        file: options.file,
+        ...(options.startLine && { startLine: options.startLine }),
+        ...(options.endLine && { endLine: options.endLine }),
+        ...(options.startColumn && { startColumn: options.startColumn }),
+        ...(options.endColumn && { endColumn: options.endColumn }),
+        ...(options.title && { title: options.title })
+    };
+    switch (options.type) {
+        case 'error':
+            core.error(message, annotationProperties);
+            break;
+        case 'warning':
+            core.warning(message, annotationProperties);
+            break;
+        case 'notice':
+        default:
+            core.notice(message, annotationProperties);
+            break;
+    }
+    core.debug(`Created ${options.type} annotation for ${options.file}:${options.startLine}-${options.endLine}: ${message}`);
+}
+/**
+ * Demo function to test various annotation styles
+ */
+function createSnippetAnnotationDemo(resultsPath) {
+    core.info('🔧 Creating snippet annotation demo with various styles');
+    const snippets = (0, snippet_display_utils_1.parseSnippetMatches)(resultsPath);
+    if (snippets.length === 0) {
+        core.notice('No snippet matches found in results for demo');
+        return;
+    }
+    // Take first snippet for demo
+    const snippet = snippets[0];
+    // Demo 1: Notice annotation (informational)
+    core.notice(`Demo Notice: Found code similarity with ${snippet.component} (${snippet.matchPercentage} match)`, {
+        file: snippet.filePath,
+        startLine: snippet.localLines.start,
+        endLine: Math.min(snippet.localLines.start + 5, snippet.localLines.end), // Show first 5 lines
+        title: '📘 Code Similarity Notice'
+    });
+    // Demo 2: Warning annotation (attention needed)
+    core.warning(`Demo Warning: High similarity detected with ${snippet.component} - review licensing requirements`, {
+        file: snippet.filePath,
+        startLine: snippet.localLines.start + 10 < snippet.localLines.end ? snippet.localLines.start + 10 : snippet.localLines.start,
+        endLine: Math.min(snippet.localLines.start + 15, snippet.localLines.end),
+        title: '⚠️ Licensing Review Required'
+    });
+    // Demo 3: Error annotation (requires action)
+    core.error(`Demo Error: Potential license conflict detected with ${snippet.component} - immediate attention required`, {
+        file: snippet.filePath,
+        startLine: snippet.localLines.start + 20 < snippet.localLines.end
+            ? snippet.localLines.start + 20
+            : snippet.localLines.start,
+        endLine: Math.min(snippet.localLines.start + 25, snippet.localLines.end),
+        title: '🚨 License Conflict Alert'
+    });
+    core.info(`Demo annotations created for ${snippet.filePath} with line ranges`);
+}
+exports.createSnippetAnnotationDemo = createSnippetAnnotationDemo;
 
 
 /***/ }),
