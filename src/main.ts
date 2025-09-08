@@ -32,6 +32,7 @@ import { DepTrackPolicyCheck } from './policies/dep-track-policy-check';
 import { dependencyTrackService } from './services/dependency-track.service';
 import { dependencyTrackStatusService } from './services/dependency-track-status.service';
 import { scanossService } from './services/scanoss.service';
+import { createSnippetMatchesComment } from './utils/snippet-display.utils';
 
 /**
  * The main function for the action.
@@ -74,7 +75,14 @@ export async function run(): Promise<void> {
     if (isPullRequest()) {
       // create reports
       const report = await generatePRSummary(policies);
-      await createCommentOnPR(report);
+
+      // Check for snippet matches and create additional comment if found
+      const snippetComment = createSnippetMatchesComment(inputs.OUTPUT_FILEPATH);
+      if (snippetComment) {
+        await createCommentOnPR(`${report}\n\n${snippetComment}`);
+      } else {
+        await createCommentOnPR(report);
+      }
     }
 
     await generateJobSummary(policies, uploadResult);

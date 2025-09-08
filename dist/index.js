@@ -123948,6 +123948,7 @@ const dep_track_policy_check_1 = __nccwpck_require__(1669);
 const dependency_track_service_1 = __nccwpck_require__(57356);
 const dependency_track_status_service_1 = __nccwpck_require__(55414);
 const scanoss_service_1 = __nccwpck_require__(73406);
+const snippet_display_utils_1 = __nccwpck_require__(34325);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -123982,7 +123983,14 @@ async function run() {
         if ((0, github_utils_1.isPullRequest)()) {
             // create reports
             const report = await (0, report_service_1.generatePRSummary)(policies);
-            await (0, github_utils_1.createCommentOnPR)(report);
+            // Check for snippet matches and create additional comment if found
+            const snippetComment = (0, snippet_display_utils_1.createSnippetMatchesComment)(inputs.OUTPUT_FILEPATH);
+            if (snippetComment) {
+                await (0, github_utils_1.createCommentOnPR)(`${report}\n\n${snippetComment}`);
+            }
+            else {
+                await (0, github_utils_1.createCommentOnPR)(report);
+            }
         }
         await (0, report_service_1.generateJobSummary)(policies, uploadResult);
         // set outputs for other workflow steps to use
@@ -127609,6 +127617,209 @@ function findRemoveInsertionPoint(lines, componentsToAdd) {
     }
     return { targetLineNumber, replacementText };
 }
+
+
+/***/ }),
+
+/***/ 34325:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2024, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createSnippetMatchesComment = exports.formatSnippetMatchesComment = exports.parseSnippetMatches = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const fs = __importStar(__nccwpck_require__(57147));
+/**
+ * Parses SCANOSS results.json to extract snippet matches
+ */
+function parseSnippetMatches(resultsPath) {
+    const snippetDisplays = [];
+    try {
+        core.debug(`Reading SCANOSS results from: ${resultsPath}`);
+        if (!fs.existsSync(resultsPath)) {
+            core.warning(`Results file not found: ${resultsPath}`);
+            return [];
+        }
+        const resultsContent = fs.readFileSync(resultsPath, 'utf8');
+        const results = JSON.parse(resultsContent);
+        for (const [filePath, matches] of Object.entries(results)) {
+            if (!Array.isArray(matches))
+                continue;
+            for (const match of matches) {
+                // Only process snippet matches
+                if (match.id !== 'snippet')
+                    continue;
+                const snippetMatch = match;
+                core.debug(`Processing snippet match for file: ${filePath}`);
+                const localLines = parseLineRange(snippetMatch.lines);
+                const ossLines = parseLineRange(snippetMatch.oss_lines);
+                if (!localLines) {
+                    core.warning(`Could not parse line range: ${snippetMatch.lines} for file: ${filePath}`);
+                    continue;
+                }
+                // Read the actual code snippet from the file
+                const codeSnippet = readCodeSnippet(filePath, localLines);
+                const licenses = snippetMatch.licenses?.map(license => license.name) || [];
+                snippetDisplays.push({
+                    filePath,
+                    component: snippetMatch.component,
+                    version: snippetMatch.version,
+                    matchPercentage: snippetMatch.matched,
+                    localLines,
+                    ossLines: ossLines || { start: 1, end: 1 },
+                    codeSnippet,
+                    url: snippetMatch.url,
+                    licenses
+                });
+            }
+        }
+        core.info(`Found ${snippetDisplays.length} snippet matches in results`);
+        return snippetDisplays;
+    }
+    catch (error) {
+        core.error(`Failed to parse snippet matches from ${resultsPath}: ${error}`);
+        return [];
+    }
+}
+exports.parseSnippetMatches = parseSnippetMatches;
+/**
+ * Parses line range strings like "4-142" or "all"
+ */
+function parseLineRange(lineRange) {
+    if (lineRange === 'all') {
+        return { start: 1, end: Number.MAX_SAFE_INTEGER };
+    }
+    const match = lineRange.match(/^(\d+)-(\d+)$/);
+    if (match) {
+        return {
+            start: parseInt(match[1], 10),
+            end: parseInt(match[2], 10)
+        };
+    }
+    // Single line number
+    const singleLine = parseInt(lineRange, 10);
+    if (!isNaN(singleLine)) {
+        return { start: singleLine, end: singleLine };
+    }
+    return null;
+}
+/**
+ * Reads code snippet from a file within the specified line range
+ */
+function readCodeSnippet(filePath, lineRange) {
+    try {
+        if (!fs.existsSync(filePath)) {
+            core.debug(`File not found for snippet reading: ${filePath}`);
+            return [`// File not found: ${filePath}`];
+        }
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const lines = fileContent.split('\n');
+        const start = Math.max(0, lineRange.start - 1); // Convert to 0-based index
+        const end = Math.min(lines.length, lineRange.end);
+        return lines.slice(start, end);
+    }
+    catch (error) {
+        core.debug(`Failed to read snippet from ${filePath}: ${error}`);
+        return [`// Error reading file: ${error}`];
+    }
+}
+/**
+ * Formats snippet matches into a markdown comment
+ */
+function formatSnippetMatchesComment(snippets) {
+    if (snippets.length === 0) {
+        return '';
+    }
+    let comment = '## 🔍 Code Snippet Matches Found\n\n';
+    comment += `Found ${snippets.length} partial code matches in your files:\n\n`;
+    for (let i = 0; i < snippets.length; i++) {
+        const snippet = snippets[i];
+        comment += `### ${i + 1}. ${snippet.filePath} (${snippet.matchPercentage} match)\n\n`;
+        comment += `**Matched Component:** ${snippet.component}`;
+        if (snippet.version) {
+            comment += ` v${snippet.version}`;
+        }
+        comment += '\n';
+        if (snippet.url) {
+            comment += `**Source:** ${snippet.url}\n`;
+        }
+        if (snippet.licenses && snippet.licenses.length > 0) {
+            comment += `**License(s):** ${snippet.licenses.join(', ')}\n`;
+        }
+        comment += `**Local Lines:** ${snippet.localLines.start}-${snippet.localLines.end}\n`;
+        comment += `**OSS Lines:** ${snippet.ossLines.start}-${snippet.ossLines.end}\n\n`;
+        // Add code snippet with line numbers
+        comment += '**Matched Code:**\n';
+        comment += '```\n';
+        const maxLines = 20; // Limit display to reasonable number of lines
+        const linesToShow = snippet.codeSnippet.slice(0, maxLines);
+        linesToShow.forEach((line, index) => {
+            const lineNumber = snippet.localLines.start + index;
+            comment += `${lineNumber.toString().padStart(4, ' ')} | ${line}\n`;
+        });
+        if (snippet.codeSnippet.length > maxLines) {
+            comment += `... (${snippet.codeSnippet.length - maxLines} more lines)\n`;
+        }
+        comment += '```\n\n';
+    }
+    comment += '*These matches indicate potential code reuse. Review licensing and compliance requirements.*\n';
+    return comment;
+}
+exports.formatSnippetMatchesComment = formatSnippetMatchesComment;
+/**
+ * Creates snippet matches comment for PR
+ */
+function createSnippetMatchesComment(resultsPath) {
+    const snippets = parseSnippetMatches(resultsPath);
+    return formatSnippetMatchesComment(snippets);
+}
+exports.createSnippetMatchesComment = createSnippetMatchesComment;
 
 
 /***/ }),
