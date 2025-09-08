@@ -126922,12 +126922,12 @@ ${suggestion.suggestedFix || '{}'}
     catch (error) {
         core.error(`Failed to create PR review with multiple suggestions: ${error}`);
         core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
-        // Fallback: try file creation approach then create review
+        // Fallback: Initialize file in diff then retry PR review
         try {
-            core.info('Trying file creation fallback...');
-            // Only need to create file once (use first suggestion)
+            core.info('File not in diff - initializing file to enable commit suggestions...');
             const firstSuggestion = suggestions[0];
-            // Check if file exists to determine if we need to get SHA for updates
+            // Check if file exists and get current content
+            let currentContent = '';
             let sha;
             try {
                 const existingFile = await octokit.rest.repos.getContent({
@@ -126936,45 +126936,72 @@ ${suggestion.suggestedFix || '{}'}
                     path: firstSuggestion.path,
                     ref: headBranch
                 });
-                if ('sha' in existingFile.data) {
+                if ('sha' in existingFile.data && existingFile.data.type === 'file') {
                     sha = existingFile.data.sha;
+                    currentContent = Buffer.from(existingFile.data.content, 'base64').toString('utf8');
                 }
             }
             catch (getError) {
-                core.debug(`File doesn't exist yet, will create new: ${getError}`);
+                core.debug(`File doesn't exist yet: ${getError}`);
+                // Create minimal file structure
+                currentContent = '{\n  "bom": {\n    "include": []\n  }\n}';
             }
-            // Create or update the file with first suggestion content
+            // Add minimal change (extra newline) to ensure file appears in diff
+            const minimalChange = currentContent.endsWith('\n') ? currentContent + '\n' : currentContent + '\n';
+            // Create minimal change to initialize file in PR diff
             await octokit.rest.repos.createOrUpdateFileContents({
                 owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
                 repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
                 path: firstSuggestion.path,
-                message: `Add undeclared components to ${firstSuggestion.path}`,
-                content: Buffer.from(firstSuggestion.suggestedFix || '{}').toString('base64'),
+                message: `Initialize ${firstSuggestion.path} for commit suggestions`,
+                content: Buffer.from(minimalChange).toString('base64'),
                 branch: headBranch,
                 ...(sha && { sha })
             });
-            // Update all comments to use line 1 after file creation
-            const updatedComments = reviewComments.map(comment => ({
-                ...comment,
-                line: 1
-            }));
-            // Now try to create PR review again
-            const result = await octokit.rest.pulls.createReview({
-                owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                pull_number: github_1.context.issue.number,
-                event: 'COMMENT',
-                comments: updatedComments
-            });
-            core.info(`Successfully created PR review after file creation. Review ID: ${result.data.id}`);
+            core.info('File initialized in PR diff. Attempting to create commit suggestions...');
+            // Wait a moment for GitHub to process the file change
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Now try to create PR review with the initialized file
+            try {
+                const result = await octokit.rest.pulls.createReview({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    pull_number: github_1.context.issue.number,
+                    event: 'COMMENT',
+                    comments: reviewComments
+                });
+                core.info(`Successfully created PR review with commit suggestions after file initialization. Review ID: ${result.data.id}`);
+                return; // Success - no need for fallback comment
+            }
+            catch (retryError) {
+                core.warning(`Still couldn't create PR review after file initialization: ${retryError}`);
+                // Continue to fallback comment
+            }
+            // Fallback comment if retry still fails
+            await createCommentOnPR(`## 📦 Undeclared Components Policy Violation
+
+The \`${firstSuggestion.path}\` file has been initialized in this PR, but commit suggestions still couldn't be created.
+
+**Please manually add the undeclared components:**
+
+${suggestions
+                .map(suggestion => `### ${suggestion.body}
+
+**Suggested content:**
+\`\`\`json
+${suggestion.suggestedFix || '{}'}
+\`\`\`
+`)
+                .join('\n')}
+`);
         }
         catch (fallbackError) {
-            core.error(`File creation fallback also failed: ${fallbackError}`);
-            // Final fallback: create regular issue comment with both options
+            core.error(`File initialization failed: ${fallbackError}`);
+            // Final fallback: create regular issue comment
             try {
                 const fallbackBody = `## 📦 Undeclared Components Policy Violation
 
-Choose how to handle these undeclared components:
+Could not create commit suggestion buttons. Please manually add these undeclared components:
 
 ${suggestions
                     .map(suggestion => `### ${suggestion.body}
@@ -126988,9 +127015,9 @@ ${suggestion.suggestedFix || '{}'}
 `)
                     .join('\n')}
 
-*Note: These suggestions couldn't be made as commit suggestion buttons. Please apply manually to your \`${suggestions[0]?.path || 'scanoss.json'}\` file.*`;
+*Note: Apply these changes manually to your \`${suggestions[0]?.path || 'scanoss.json'}\` file.*`;
                 await createCommentOnPR(fallbackBody);
-                core.info('Created comprehensive fallback comment with all suggestions');
+                core.info('Created manual fallback comment');
             }
             catch (commentError) {
                 core.error(`All approaches failed: ${commentError}`);
@@ -127717,7 +127744,7 @@ function createMixedSnippetAnnotations(resultsPath) {
     snippets.forEach(snippet => {
         const message = formatSnippetAnnotationMessage(snippet);
         const title = `${snippet.matchPercentage} match with ${snippet.component}`;
-        let annotationType = 'notice';
+        let annotationType;
         // Create different annotation types based on match percentage for testing
         const matchPercentage = parseFloat(snippet.matchPercentage.replace('%', ''));
         if (matchPercentage >= 90) {
