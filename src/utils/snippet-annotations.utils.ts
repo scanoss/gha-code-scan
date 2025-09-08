@@ -22,6 +22,7 @@
  */
 
 import * as core from '@actions/core';
+import { context } from '@actions/github';
 import { parseSnippetMatches } from './snippet-display.utils';
 
 /**
@@ -134,7 +135,25 @@ function formatSnippetAnnotationMessage(snippet: any): string {
 
   message += ` - OSS Lines: ${snippet.ossLines.start}-${snippet.ossLines.end}`;
 
+  // Add direct link to the file with line highlighting
+  message += ` - View: ${getFileUrlWithLineHighlight(snippet.filePath, snippet.localLines)}`;
+
   return message;
+}
+
+/**
+ * Creates a GitHub URL with line highlighting for the file
+ */
+function getFileUrlWithLineHighlight(filePath: string, lineRange: { start: number; end: number }): string {
+  const baseUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${context.sha}/${filePath}`;
+
+  if (lineRange.start === lineRange.end) {
+    // Single line
+    return `${baseUrl}#L${lineRange.start}`;
+  } else {
+    // Line range
+    return `${baseUrl}#L${lineRange.start}-L${lineRange.end}`;
+  }
 }
 
 /**

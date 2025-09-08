@@ -23,6 +23,7 @@
 
 import * as core from '@actions/core';
 import * as fs from 'fs';
+import { context } from '@actions/github';
 
 /**
  * Interface representing a snippet match from SCANOSS results
@@ -188,7 +189,8 @@ export function formatSnippetMatchesComment(snippets: SnippetDisplay[]): string 
 
   for (let i = 0; i < snippets.length; i++) {
     const snippet = snippets[i];
-    comment += `### ${i + 1}. ${snippet.filePath} (${snippet.matchPercentage} match)\n\n`;
+    const fileUrl = getFileUrlWithLineHighlight(snippet.filePath, snippet.localLines);
+    comment += `### ${i + 1}. [${snippet.filePath}](${fileUrl}) (${snippet.matchPercentage} match)\n\n`;
 
     comment += `**Matched Component:** ${snippet.component}`;
     if (snippet.version) {
@@ -204,7 +206,7 @@ export function formatSnippetMatchesComment(snippets: SnippetDisplay[]): string 
       comment += `**License(s):** ${snippet.licenses.join(', ')}\n`;
     }
 
-    comment += `**Local Lines:** ${snippet.localLines.start}-${snippet.localLines.end}\n`;
+    comment += `**Local Lines:** [${snippet.localLines.start}-${snippet.localLines.end}](${fileUrl})\n`;
     comment += `**OSS Lines:** ${snippet.ossLines.start}-${snippet.ossLines.end}\n\n`;
 
     // Add code snippet with line numbers
@@ -229,6 +231,21 @@ export function formatSnippetMatchesComment(snippets: SnippetDisplay[]): string 
   comment += '*These matches indicate potential code reuse. Review licensing and compliance requirements.*\n';
 
   return comment;
+}
+
+/**
+ * Creates a GitHub URL with line highlighting for the file
+ */
+function getFileUrlWithLineHighlight(filePath: string, lineRange: { start: number; end: number }): string {
+  const baseUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${context.sha}/${filePath}`;
+
+  if (lineRange.start === lineRange.end) {
+    // Single line
+    return `${baseUrl}#L${lineRange.start}`;
+  } else {
+    // Line range
+    return `${baseUrl}#L${lineRange.start}-L${lineRange.end}`;
+  }
 }
 
 /**

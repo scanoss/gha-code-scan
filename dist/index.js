@@ -126947,7 +126947,7 @@ ${suggestion.suggestedFix || '{}'}
                 currentContent = '{\n  "bom": {\n    "include": []\n  }\n}';
             }
             // Add minimal change (extra newline) to ensure file appears in diff
-            const minimalChange = currentContent.endsWith('\n') ? currentContent + '\n' : currentContent + '\n';
+            const minimalChange = currentContent.endsWith('\n') ? `${currentContent}\n` : `${currentContent}\n`;
             // Create minimal change to initialize file in PR diff
             await octokit.rest.repos.createOrUpdateFileContents({
                 owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
@@ -127706,6 +127706,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createSnippetAnnotationDemo = exports.createMixedSnippetAnnotations = exports.createSnippetMatchAnnotations = void 0;
 const core = __importStar(__nccwpck_require__(42186));
+const github_1 = __nccwpck_require__(95438);
 const snippet_display_utils_1 = __nccwpck_require__(34325);
 /**
  * Creates GitHub Actions annotations for snippet matches
@@ -127783,7 +127784,23 @@ function formatSnippetAnnotationMessage(snippet) {
         message += ` - Source: ${snippet.url}`;
     }
     message += ` - OSS Lines: ${snippet.ossLines.start}-${snippet.ossLines.end}`;
+    // Add direct link to the file with line highlighting
+    message += ` - View: ${getFileUrlWithLineHighlight(snippet.filePath, snippet.localLines)}`;
     return message;
+}
+/**
+ * Creates a GitHub URL with line highlighting for the file
+ */
+function getFileUrlWithLineHighlight(filePath, lineRange) {
+    const baseUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+    if (lineRange.start === lineRange.end) {
+        // Single line
+        return `${baseUrl}#L${lineRange.start}`;
+    }
+    else {
+        // Line range
+        return `${baseUrl}#L${lineRange.start}-L${lineRange.end}`;
+    }
 }
 /**
  * Creates a GitHub Actions annotation using the appropriate method
@@ -127907,6 +127924,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createSnippetMatchesComment = exports.formatSnippetMatchesComment = exports.parseSnippetMatches = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const fs = __importStar(__nccwpck_require__(57147));
+const github_1 = __nccwpck_require__(95438);
 /**
  * Parses SCANOSS results.json to extract snippet matches
  */
@@ -128012,7 +128030,8 @@ function formatSnippetMatchesComment(snippets) {
     comment += `Found ${snippets.length} partial code matches in your files:\n\n`;
     for (let i = 0; i < snippets.length; i++) {
         const snippet = snippets[i];
-        comment += `### ${i + 1}. ${snippet.filePath} (${snippet.matchPercentage} match)\n\n`;
+        const fileUrl = getFileUrlWithLineHighlight(snippet.filePath, snippet.localLines);
+        comment += `### ${i + 1}. [${snippet.filePath}](${fileUrl}) (${snippet.matchPercentage} match)\n\n`;
         comment += `**Matched Component:** ${snippet.component}`;
         if (snippet.version) {
             comment += ` v${snippet.version}`;
@@ -128024,7 +128043,7 @@ function formatSnippetMatchesComment(snippets) {
         if (snippet.licenses && snippet.licenses.length > 0) {
             comment += `**License(s):** ${snippet.licenses.join(', ')}\n`;
         }
-        comment += `**Local Lines:** ${snippet.localLines.start}-${snippet.localLines.end}\n`;
+        comment += `**Local Lines:** [${snippet.localLines.start}-${snippet.localLines.end}](${fileUrl})\n`;
         comment += `**OSS Lines:** ${snippet.ossLines.start}-${snippet.ossLines.end}\n\n`;
         // Add code snippet with line numbers
         comment += '**Matched Code:**\n';
@@ -128044,6 +128063,20 @@ function formatSnippetMatchesComment(snippets) {
     return comment;
 }
 exports.formatSnippetMatchesComment = formatSnippetMatchesComment;
+/**
+ * Creates a GitHub URL with line highlighting for the file
+ */
+function getFileUrlWithLineHighlight(filePath, lineRange) {
+    const baseUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+    if (lineRange.start === lineRange.end) {
+        // Single line
+        return `${baseUrl}#L${lineRange.start}`;
+    }
+    else {
+        // Line range
+        return `${baseUrl}#L${lineRange.start}-L${lineRange.end}`;
+    }
+}
 /**
  * Creates snippet matches comment for PR
  */

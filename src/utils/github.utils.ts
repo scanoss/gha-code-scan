@@ -150,7 +150,7 @@ ${suggestion.suggestedFix || '{}'}
       // Check if file exists and get current content
       let currentContent = '';
       let sha: string | undefined;
-      
+
       try {
         const existingFile = await octokit.rest.repos.getContent({
           owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
@@ -170,7 +170,7 @@ ${suggestion.suggestedFix || '{}'}
       }
 
       // Add minimal change (extra newline) to ensure file appears in diff
-      const minimalChange = currentContent.endsWith('\n') ? currentContent + '\n' : currentContent + '\n';
+      const minimalChange = currentContent.endsWith('\n') ? `${currentContent}\n` : `${currentContent}\n`;
 
       // Create minimal change to initialize file in PR diff
       await octokit.rest.repos.createOrUpdateFileContents({
@@ -184,10 +184,10 @@ ${suggestion.suggestedFix || '{}'}
       });
 
       core.info('File initialized in PR diff. Attempting to create commit suggestions...');
-      
+
       // Wait a moment for GitHub to process the file change
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Now try to create PR review with the initialized file
       try {
         const result = await octokit.rest.pulls.createReview({
@@ -198,13 +198,15 @@ ${suggestion.suggestedFix || '{}'}
           comments: reviewComments
         });
 
-        core.info(`Successfully created PR review with commit suggestions after file initialization. Review ID: ${result.data.id}`);
+        core.info(
+          `Successfully created PR review with commit suggestions after file initialization. Review ID: ${result.data.id}`
+        );
         return; // Success - no need for fallback comment
       } catch (retryError) {
         core.warning(`Still couldn't create PR review after file initialization: ${retryError}`);
         // Continue to fallback comment
       }
-      
+
       // Fallback comment if retry still fails
       await createCommentOnPR(`## 📦 Undeclared Components Policy Violation
 
@@ -224,7 +226,6 @@ ${suggestion.suggestedFix || '{}'}
   )
   .join('\n')}
 `);
-
     } catch (fallbackError) {
       core.error(`File initialization failed: ${fallbackError}`);
 
