@@ -33,6 +33,7 @@ import { dependencyTrackService } from './services/dependency-track.service';
 import { dependencyTrackStatusService } from './services/dependency-track-status.service';
 import { scanossService } from './services/scanoss.service';
 import { createSnippetMatchesComment } from './utils/snippet-display.utils';
+import { createSnippetAnnotationDemo, createMixedSnippetAnnotations } from './utils/snippet-annotations.utils';
 
 /**
  * The main function for the action.
@@ -71,6 +72,11 @@ export async function run(): Promise<void> {
       }
       await policy.run();
     }
+
+    // 5: Create snippet match annotations (demo feature)
+    core.info('Creating snippet match annotations...');
+    createSnippetAnnotationDemo(inputs.OUTPUT_FILEPATH);
+    createMixedSnippetAnnotations(inputs.OUTPUT_FILEPATH);
 
     if (isPullRequest()) {
       // create reports
