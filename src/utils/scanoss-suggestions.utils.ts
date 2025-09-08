@@ -215,6 +215,7 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
 
         // Generate suggestion 2: Add to remove array
         const removeInsertion = findRemoveInsertionPoint(lines, componentsToAdd);
+        core.debug(`Remove insertion point: line ${removeInsertion.targetLineNumber}, text length: ${removeInsertion.replacementText.length}`);
         if (removeInsertion.targetLineNumber > 0) {
           // Ensure remove suggestion doesn't conflict with include suggestion line
           let removeTargetLine = removeInsertion.targetLineNumber;
@@ -269,6 +270,9 @@ export function generateScanossJsonSuggestions(undeclaredComponents: UndeclaredC
     }
 
     core.info(`Generated ${suggestions.length} commit suggestions for ${componentsToAdd.length} undeclared components`);
+    suggestions.forEach((suggestion, index) => {
+      core.debug(`Suggestion ${index + 1}: ${suggestion.body.substring(0, 50)}... (line: ${suggestion.line})`);
+    });
     core.debug(`Suggestion details: ${JSON.stringify(suggestions, null, 2)}`);
     return suggestions;
   } catch (error) {
@@ -439,8 +443,53 @@ function findRemoveInsertionPoint(lines: string[], componentsToAdd: UndeclaredCo
           break;
         }
       }
+
+      // Also check for empty include array pattern: "include": []
+      if (line.includes('"include":') && line.includes('[]')) {
+        // Found include array on single line, add remove array after it
+        targetLineNumber = i + 1;
+        const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
+        replacementText = `    "remove": [\n${newComponents}\n    ]`;
+        break;
+      }
+    }
+
+    // If still not found, try to add after the closing brace of bom
+    if (targetLineNumber === -1) {
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        
+        // Look for closing brace that's likely the end of bom
+        if (line === '}' && i > 0) {
+          // Check if this is after include array or bom content
+          let foundBomContext = false;
+          for (let j = i - 1; j >= 0; j--) {
+            if (lines[j].includes('"bom"') || lines[j].includes('"include"')) {
+              foundBomContext = true;
+              break;
+            }
+          }
+          
+          if (foundBomContext) {
+            // Insert remove array before the closing brace
+            targetLineNumber = i;
+            const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
+            replacementText = `    "remove": [\n${newComponents}\n    ],\n  }`;
+            break;
+          }
+        }
+      }
     }
   }
 
+  // If we still haven't found a place, force create at the end of file as last resort
+  if (targetLineNumber === -1) {
+    core.warning('Could not find suitable insertion point for remove array, using fallback');
+    targetLineNumber = lines.length; // Add at end of file
+    const newComponents = componentsToAdd.map(c => `      {\n        "purl": "${c.purl}"\n      }`).join(',\n');
+    replacementText = `,\n    "remove": [\n${newComponents}\n    ]`;
+  }
+
+  core.debug(`findRemoveInsertionPoint result: line ${targetLineNumber}, replacement: ${replacementText.substring(0, 100)}...`);
   return { targetLineNumber, replacementText };
 }
