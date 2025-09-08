@@ -126922,6 +126922,16 @@ ${suggestion.suggestedFix || '{}'}
     catch (error) {
         core.error(`Failed to create PR review with multiple suggestions: ${error}`);
         core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+        // Only initialize file if the error is specifically about the file not being in the diff
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isFileNotInDiff = errorMessage.includes('Pull request review thread path is invalid') ||
+            errorMessage.includes('diff hunk can\'t be blank');
+        if (!isFileNotInDiff) {
+            // Different error - don't try to initialize file, just create fallback comment
+            core.warning('Error is not related to file not being in diff. Skipping initialization.');
+            await createFallbackComment(suggestions);
+            return;
+        }
         // Fallback: Initialize file in diff then retry PR review
         try {
             core.info('File not in diff - initializing file to enable commit suggestions...');
@@ -126998,13 +127008,22 @@ ${suggestion.suggestedFix || '{}'}
         catch (fallbackError) {
             core.error(`File initialization failed: ${fallbackError}`);
             // Final fallback: create regular issue comment
-            try {
-                const fallbackBody = `## 📦 Undeclared Components Policy Violation
+            await createFallbackComment(suggestions);
+        }
+    }
+}
+exports.createReviewWithSuggestions = createReviewWithSuggestions;
+/**
+ * Creates a fallback comment when commit suggestions can't be created
+ */
+async function createFallbackComment(suggestions) {
+    try {
+        const fallbackBody = `## 📦 Undeclared Components Policy Violation
 
 Could not create commit suggestion buttons. Please manually add these undeclared components:
 
 ${suggestions
-                    .map(suggestion => `### ${suggestion.body}
+            .map(suggestion => `### ${suggestion.body}
 
 **Suggested content:**
 
@@ -127013,19 +127032,16 @@ ${suggestion.suggestedFix || '{}'}
 \`\`\`
 
 `)
-                    .join('\n')}
+            .join('\n')}
 
 *Note: Apply these changes manually to your \`${suggestions[0]?.path || 'scanoss.json'}\` file.*`;
-                await createCommentOnPR(fallbackBody);
-                core.info('Created manual fallback comment');
-            }
-            catch (commentError) {
-                core.error(`All approaches failed: ${commentError}`);
-            }
-        }
+        await createCommentOnPR(fallbackBody);
+        core.info('Created manual fallback comment');
+    }
+    catch (commentError) {
+        core.error(`Failed to create fallback comment: ${commentError}`);
     }
 }
-exports.createReviewWithSuggestions = createReviewWithSuggestions;
 /**
  * Gets the first workflow run ID for linking purposes.
  * For workflow_dispatch events, finds the original triggering run.
