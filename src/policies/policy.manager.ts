@@ -56,6 +56,11 @@ export class PolicyManager {
     core.info(`Policy Names: ${policiesNames}`);
     core.debug(`Policy Registry: ${this.policyRegistry}`);
 
+    if (policiesNames?.length == undefined) {
+      core.info(`No policies specified`);
+      return [];
+    }
+
     const pNames = policiesNames || inputs.POLICIES.split(',').map(pn => pn.trim());
 
     core.info(`Policies: ${pNames}`);
