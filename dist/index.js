@@ -125208,7 +125208,7 @@ class PolicyManager {
     getPolicies(policiesNames) {
         core.info(`Policy Names: ${policiesNames}`);
         core.debug(`Policy Registry: ${this.policyRegistry}`);
-        if (!policiesNames?.length) {
+        if (!inputs.POLICIES || !inputs.POLICIES.trim()) {
             core.info(`No policies specified`);
             return [];
         }
