@@ -56,7 +56,7 @@ export class PolicyManager {
     core.info(`Policy Names: ${policiesNames}`);
     core.debug(`Policy Registry: ${this.policyRegistry}`);
 
-    if (policiesNames?.length == undefined) {
+    if (!policiesNames?.length) {
       core.info(`No policies specified`);
       return [];
     }
