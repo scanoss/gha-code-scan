@@ -59,7 +59,7 @@ export class PolicyManager {
       return [];
     }
     const pNames = inputs.POLICIES.split(',').map(pn => pn.trim());
-    if (pNames.length == 0) {
+    if (pNames.length === 0) {
       core.info(`No policies specified`);
       return [];
     }
