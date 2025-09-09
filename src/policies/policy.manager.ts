@@ -50,25 +50,26 @@ export class PolicyManager {
 
   /**
    * Gets instances of the specified policy checks.
-   * @param policiesNames - Array of policy names to instantiate. If not provided, uses POLICIES from app input.
    */
-  getPolicies(policiesNames?: string[]): PolicyCheck[] {
-    core.info(`Policy Names: ${policiesNames}`);
+  getPolicies(): PolicyCheck[] {
     core.debug(`Policy Registry: ${this.policyRegistry}`);
 
     if (!inputs.POLICIES || !inputs.POLICIES.trim()) {
       core.info(`No policies specified`);
       return [];
     }
-
-    const pNames = policiesNames || inputs.POLICIES.split(',').map(pn => pn.trim());
-
+    const pNames = inputs.POLICIES.split(',').map(pn => pn.trim());
+    if (pNames.length == 0) {
+      core.info(`No policies specified`);
+      return [];
+    }
     core.info(`Policies: ${pNames}`);
-
     //throw error if policy does not exist
     pNames.forEach(pName => {
       core.info(`Policy: ${pName}`);
-      if (!this.policyRegistry[pName]) throw new Error(`Policy ${pName} does not exist`);
+      if (pName.length > 0) {
+        if (!this.policyRegistry[pName]) throw new Error(`Policy ${pName} does not exist`);
+      }
     });
 
     return pNames.map(pName => new this.policyRegistry[pName]());
