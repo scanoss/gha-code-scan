@@ -126912,7 +126912,11 @@ async function initializeFileInDiff(filePath) {
                 message: `Initialize ${filePath} for diff tracking`,
                 content: Buffer.from(currentContent + '\n').toString('base64'),
                 branch: headBranch,
-                sha: existingFile.data.sha
+                sha: existingFile.data.sha,
+                committer: {
+                    name: 'Alex-1089',
+                    email: 'alexegan7002@gmail.com'
+                },
             });
             // TODO: Temporarily removed newline removal step for testing
             core.info(`Successfully initialized ${filePath} - should trigger action rerun`);

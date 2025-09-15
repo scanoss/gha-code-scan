@@ -133,7 +133,11 @@ async function initializeFileInDiff(filePath: string): Promise<void> {
         message: `Initialize ${filePath} for diff tracking`,
         content: Buffer.from(currentContent + '\n').toString('base64'),
         branch: headBranch,
-        sha: existingFile.data.sha
+        sha: existingFile.data.sha,
+        committer:  {
+          name: 'Alex-1089',
+          email: 'alexegan7002@gmail.com'
+        },
       });
 
       // TODO: Temporarily removed newline removal step for testing
