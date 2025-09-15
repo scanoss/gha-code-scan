@@ -126914,25 +126914,7 @@ async function initializeFileInDiff(filePath) {
                 branch: headBranch,
                 sha: existingFile.data.sha
             });
-            // Wait a moment then remove newline
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const updatedFile = await octokit.rest.repos.getContent({
-                owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
-                repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
-                path: filePath,
-                ref: headBranch
-            });
-            if ('sha' in updatedFile.data) {
-                await octokit.rest.repos.createOrUpdateFileContents({
-                    owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
-                    repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
-                    path: filePath,
-                    message: `Remove initialization newline from ${filePath}`,
-                    content: Buffer.from(currentContent).toString('base64'),
-                    branch: headBranch,
-                    sha: updatedFile.data.sha
-                });
-            }
+            // TODO: Temporarily removed newline removal step for testing
             core.info(`Successfully initialized ${filePath} - should trigger action rerun`);
         }
     }
