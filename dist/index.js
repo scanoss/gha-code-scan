@@ -126907,12 +126907,12 @@ async function initializeFileInDiff(filePath) {
         // Fetch remote branches and checkout the PR branch
         await exec.exec('git', ['fetch', 'origin']);
         await exec.exec('git', ['checkout', '-B', headBranch, `origin/${headBranch}`]);
-        // Add newline to file
-        await exec.exec('sh', ['-c', `echo "" >> ${filePath}`]);
-        // Stage the file
+        // Remove file from index but keep in working directory
+        await exec.exec('git', ['rm', '--cached', filePath]);
+        // Re-add the file (makes entire file part of diff)
         await exec.exec('git', ['add', filePath]);
         // Commit the change
-        await exec.exec('git', ['commit', '-m', `Initialise ${filePath} in diff`]);
+        await exec.exec('git', ['commit', '-m', 'Force review']);
         // Push to remote
         await exec.exec('git', ['push', 'origin', headBranch]);
         core.info(`Successfully initialized ${filePath} - should trigger action rerun`);
