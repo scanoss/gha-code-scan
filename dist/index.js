@@ -126867,6 +126867,81 @@ async function createCommentOnPR(message) {
 }
 exports.createCommentOnPR = createCommentOnPR;
 /**
+ * Checks if a file is part of the current PR diff
+ */
+async function isFileInPRDiff(filePath) {
+    const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+    try {
+        const { data: files } = await octokit.rest.pulls.listFiles({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            pull_number: github_1.context.issue.number
+        });
+        return files.some(file => file.filename === filePath);
+    }
+    catch (error) {
+        core.warning(`Failed to check if file is in PR diff: ${error}`);
+        return false;
+    }
+}
+/**
+ * Initializes a file with a newline then removes it to make it part of the PR diff
+ */
+async function initializeFileInDiff(filePath) {
+    const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+    const headBranch = github_1.context.payload.pull_request?.head?.ref;
+    if (!headBranch) {
+        throw new Error('Could not determine PR head branch');
+    }
+    try {
+        core.info(`Initializing ${filePath} to be part of PR diff...`);
+        // Get current file content
+        const existingFile = await octokit.rest.repos.getContent({
+            owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
+            repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
+            path: filePath,
+            ref: headBranch
+        });
+        if ('content' in existingFile.data) {
+            const currentContent = Buffer.from(existingFile.data.content, 'base64').toString();
+            // Add newline
+            await octokit.rest.repos.createOrUpdateFileContents({
+                owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
+                repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
+                path: filePath,
+                message: `Initialize ${filePath} for diff tracking`,
+                content: Buffer.from(currentContent + '\n').toString('base64'),
+                branch: headBranch,
+                sha: existingFile.data.sha
+            });
+            // Wait a moment then remove newline
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const updatedFile = await octokit.rest.repos.getContent({
+                owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
+                repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
+                path: filePath,
+                ref: headBranch
+            });
+            if ('sha' in updatedFile.data) {
+                await octokit.rest.repos.createOrUpdateFileContents({
+                    owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
+                    repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
+                    path: filePath,
+                    message: `Remove initialization newline from ${filePath}`,
+                    content: Buffer.from(currentContent).toString('base64'),
+                    branch: headBranch,
+                    sha: updatedFile.data.sha
+                });
+            }
+            core.info(`Successfully initialized ${filePath} - should trigger action rerun`);
+        }
+    }
+    catch (error) {
+        core.error(`Failed to initialize file in diff: ${error}`);
+        throw error;
+    }
+}
+/**
  * Creates a single PR review with multiple commit suggestions.
  * Uses GitHub's native commit suggestion feature with ```suggestion markdown blocks.
  * Creates one review with multiple comments to give users distinct options in the same thread.
@@ -126882,6 +126957,19 @@ async function createReviewWithSuggestions(suggestions) {
     if (!headBranch) {
         core.warning('Could not determine PR head branch');
         return;
+    }
+    // Check if scanoss.json exists and is part of the diff
+    const scanossJsonPath = suggestions[0]?.path || 'scanoss.json';
+    const fs = await Promise.resolve(/* import() */).then(__nccwpck_require__.t.bind(__nccwpck_require__, 57147, 23));
+    if (fs.existsSync(scanossJsonPath)) {
+        const isInDiff = await isFileInPRDiff(scanossJsonPath);
+        if (!isInDiff) {
+            core.info(`${scanossJsonPath} exists but is not part of PR diff. Initializing to trigger rerun...`);
+            await initializeFileInDiff(scanossJsonPath);
+            core.info('File initialized. Action should rerun automatically.');
+            return;
+        }
+        core.info(`${scanossJsonPath} is part of PR diff. Proceeding with commit suggestions.`);
     }
     // Prepare comments array for the single review
     const reviewComments = [];
