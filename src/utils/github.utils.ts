@@ -104,46 +104,24 @@ async function isFileInPRDiff(filePath: string): Promise<boolean> {
  * Initializes a file with a newline then removes it to make it part of the PR diff
  */
 async function initializeFileInDiff(filePath: string): Promise<void> {
-  const octokit = getOctokit(inputs.GITHUB_TOKEN);
-  const headBranch = context.payload.pull_request?.head?.ref;
+  const exec = await import('@actions/exec');
   
-  if (!headBranch) {
-    throw new Error('Could not determine PR head branch');
-  }
-
   try {
-    core.info(`Initializing ${filePath} to be part of PR diff...`);
+    core.info(`Initializing ${filePath} to be part of PR diff using git commands...`);
     
-    // Get current file content
-    const existingFile = await octokit.rest.repos.getContent({
-      owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
-      repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
-      path: filePath,
-      ref: headBranch
-    });
+    // Add newline to file
+    await exec.exec('sh', ['-c', `echo "" >> ${filePath}`]);
+    
+    // Stage the file
+    await exec.exec('git', ['add', filePath]);
+    
+    // Commit the change
+    await exec.exec('git', ['commit', '-m', `Initialise ${filePath} in diff`]);
+    
+    // Push to remote
+    await exec.exec('git', ['push']);
 
-    if ('content' in existingFile.data) {
-      const currentContent = Buffer.from(existingFile.data.content, 'base64').toString();
-      
-      // Add newline
-      await octokit.rest.repos.createOrUpdateFileContents({
-        owner: context.payload.pull_request?.head?.repo?.owner?.login || context.repo.owner,
-        repo: context.payload.pull_request?.head?.repo?.name || context.repo.repo,
-        path: filePath,
-        message: `Initialize ${filePath} for diff tracking`,
-        content: Buffer.from(currentContent + '\n').toString('base64'),
-        branch: headBranch,
-        sha: existingFile.data.sha,
-        committer:  {
-          name: 'Alex-1089',
-          email: 'alexegan7002@gmail.com'
-        },
-      });
-
-      // TODO: Temporarily removed newline removal step for testing
-
-      core.info(`Successfully initialized ${filePath} - should trigger action rerun`);
-    }
+    core.info(`Successfully initialized ${filePath} - should trigger action rerun`);
   } catch (error) {
     core.error(`Failed to initialize file in diff: ${error}`);
     throw error;

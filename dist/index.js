@@ -126888,39 +126888,18 @@ async function isFileInPRDiff(filePath) {
  * Initializes a file with a newline then removes it to make it part of the PR diff
  */
 async function initializeFileInDiff(filePath) {
-    const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
-    const headBranch = github_1.context.payload.pull_request?.head?.ref;
-    if (!headBranch) {
-        throw new Error('Could not determine PR head branch');
-    }
+    const exec = await Promise.resolve(/* import() */).then(__nccwpck_require__.t.bind(__nccwpck_require__, 71514, 23));
     try {
-        core.info(`Initializing ${filePath} to be part of PR diff...`);
-        // Get current file content
-        const existingFile = await octokit.rest.repos.getContent({
-            owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
-            repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
-            path: filePath,
-            ref: headBranch
-        });
-        if ('content' in existingFile.data) {
-            const currentContent = Buffer.from(existingFile.data.content, 'base64').toString();
-            // Add newline
-            await octokit.rest.repos.createOrUpdateFileContents({
-                owner: github_1.context.payload.pull_request?.head?.repo?.owner?.login || github_1.context.repo.owner,
-                repo: github_1.context.payload.pull_request?.head?.repo?.name || github_1.context.repo.repo,
-                path: filePath,
-                message: `Initialize ${filePath} for diff tracking`,
-                content: Buffer.from(currentContent + '\n').toString('base64'),
-                branch: headBranch,
-                sha: existingFile.data.sha,
-                committer: {
-                    name: 'Alex-1089',
-                    email: 'alexegan7002@gmail.com'
-                },
-            });
-            // TODO: Temporarily removed newline removal step for testing
-            core.info(`Successfully initialized ${filePath} - should trigger action rerun`);
-        }
+        core.info(`Initializing ${filePath} to be part of PR diff using git commands...`);
+        // Add newline to file
+        await exec.exec('sh', ['-c', `echo "" >> ${filePath}`]);
+        // Stage the file
+        await exec.exec('git', ['add', filePath]);
+        // Commit the change
+        await exec.exec('git', ['commit', '-m', `Initialise ${filePath} in diff`]);
+        // Push to remote
+        await exec.exec('git', ['push']);
+        core.info(`Successfully initialized ${filePath} - should trigger action rerun`);
     }
     catch (error) {
         core.error(`Failed to initialize file in diff: ${error}`);
