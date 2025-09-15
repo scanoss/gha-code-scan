@@ -106,12 +106,21 @@ async function isFileInPRDiff(filePath: string): Promise<boolean> {
 async function initializeFileInDiff(filePath: string): Promise<void> {
   const exec = await import('@actions/exec');
   
+  const headBranch = context.payload.pull_request?.head?.ref;
+  
+  if (!headBranch) {
+    throw new Error('Could not determine PR head branch');
+  }
+
   try {
     core.info(`Initializing ${filePath} to be part of PR diff using git commands...`);
     
     // Configure git user for this repository
     await exec.exec('git', ['config', 'user.name', 'SCANOSS Action']);
     await exec.exec('git', ['config', 'user.email', 'action@scanoss.com']);
+    
+    // Checkout the PR branch
+    await exec.exec('git', ['checkout', headBranch]);
     
     // Add newline to file
     await exec.exec('sh', ['-c', `echo "" >> ${filePath}`]);
@@ -123,7 +132,7 @@ async function initializeFileInDiff(filePath: string): Promise<void> {
     await exec.exec('git', ['commit', '-m', `Initialise ${filePath} in diff`]);
     
     // Push to remote
-    await exec.exec('git', ['push']);
+    await exec.exec('git', ['push', 'origin', headBranch]);
 
     core.info(`Successfully initialized ${filePath} - should trigger action rerun`);
   } catch (error) {
