@@ -126891,6 +126891,9 @@ async function initializeFileInDiff(filePath) {
     const exec = await Promise.resolve(/* import() */).then(__nccwpck_require__.t.bind(__nccwpck_require__, 71514, 23));
     try {
         core.info(`Initializing ${filePath} to be part of PR diff using git commands...`);
+        // Configure git user for this repository
+        await exec.exec('git', ['config', 'user.name', 'SCANOSS Action']);
+        await exec.exec('git', ['config', 'user.email', 'action@scanoss.com']);
         // Add newline to file
         await exec.exec('sh', ['-c', `echo "" >> ${filePath}`]);
         // Stage the file
