@@ -115,12 +115,20 @@ async function initializeFileInDiff(filePath: string): Promise<void> {
   try {
     core.info(`Initializing ${filePath} to be part of PR diff using git commands...`);
     
+    // Change to the repository directory
+    const repoDir = process.env.GITHUB_WORKSPACE;
+    if (repoDir) {
+      core.info(`Changing to repository directory: ${repoDir}`);
+      process.chdir(repoDir);
+    }
+    
     // Configure git user for this repository
     await exec.exec('git', ['config', 'user.name', 'SCANOSS Action']);
     await exec.exec('git', ['config', 'user.email', 'action@scanoss.com']);
     
-    // Checkout the PR branch
-    await exec.exec('git', ['checkout', headBranch]);
+    // Fetch remote branches and checkout the PR branch
+    await exec.exec('git', ['fetch', 'origin']);
+    await exec.exec('git', ['checkout', '-B', headBranch, `origin/${headBranch}`]);
     
     // Add newline to file
     await exec.exec('sh', ['-c', `echo "" >> ${filePath}`]);
