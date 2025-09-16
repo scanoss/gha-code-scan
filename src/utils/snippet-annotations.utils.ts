@@ -121,11 +121,11 @@ function createSnippetMatchAnnotation(filePath: string, snippetMatch: SnippetMat
   core.warning(message, {
     file: filePath,
     startLine: localLines.start,
-    endLine: localLines.end,
+    endLine: localLines.start, // Use start line for both start and end for better visibility
     title
   });
 
-  core.debug(`Created snippet annotation for ${filePath}:${localLines.start}-${localLines.end}`);
+  core.debug(`Created snippet annotation for ${filePath}:${localLines.start} (full range: ${localLines.start}-${localLines.end})`);
 }
 
 /**
@@ -225,21 +225,42 @@ function getFileUrl(filePath: string): string {
 }
 
 /**
- * Parses line range strings like "4-142" or "all"
+ * Extracts first and last numbers from a string using regex
+ */
+function extractFirstAndLastNumbers(str: string): { first: string; last: string } | null {
+  const match = str.match(/^(\d+).*?(\d+)(?!.*\d)/);
+  if (match) {
+    return {
+      first: match[1],
+      last: match[2]
+    };
+  }
+  return null;
+}
+
+/**
+ * Parses line range strings like "4-142", "7-9,47-81,99-158", or "all"
  */
 function parseLineRange(lineRange: string): LineRange | null {
   if (lineRange === 'all') {
-    return { start: 1, end: Number.MAX_SAFE_INTEGER };
+    return { start: 1, end: 1 };
   }
 
-  const parts = lineRange.split('-');
-  if (parts.length === 2) {
-    const start = parseInt(parts[0], 10);
-    const end = parseInt(parts[1], 10);
+  // Handle complex ranges like "7-9,47-81,99-158" using regex to get first and last numbers
+  const extracted = extractFirstAndLastNumbers(lineRange);
+  if (extracted) {
+    const start = parseInt(extracted.first, 10);
+    const end = parseInt(extracted.last, 10);
     
     if (!isNaN(start) && !isNaN(end)) {
       return { start, end };
     }
+  }
+
+  // Fallback for single number
+  const singleLine = parseInt(lineRange, 10);
+  if (!isNaN(singleLine)) {
+    return { start: singleLine, end: singleLine };
   }
 
   return null;
