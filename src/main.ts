@@ -75,7 +75,7 @@ export async function run(): Promise<void> {
     // 5: Create snippet match annotations
     if (!inputs.SKIP_SNIPPETS) {
       core.info('Creating snippet match annotations...');
-      createSnippetAnnotations(inputs.OUTPUT_FILEPATH);
+      await createSnippetAnnotations(inputs.OUTPUT_FILEPATH);
     }
 
     if (isPullRequest()) {

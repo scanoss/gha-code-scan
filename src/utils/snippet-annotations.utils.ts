@@ -23,7 +23,8 @@
 
 import * as core from '@actions/core';
 import * as fs from 'fs';
-import { context } from '@actions/github';
+import { context, getOctokit } from '@actions/github';
+import * as inputs from '../app.input';
 
 /**
  * Interface representing a snippet match from SCANOSS results
@@ -69,9 +70,9 @@ interface LineRange {
 }
 
 /**
- * Creates GitHub Actions annotations for snippet and file matches
+ * Creates hybrid snippet annotations: summary annotations + commit comments
  */
-export function createSnippetAnnotations(resultsPath: string): void {
+export async function createSnippetAnnotations(resultsPath: string): Promise<void> {
   if (!fs.existsSync(resultsPath)) {
     core.warning(`Results file not found: ${resultsPath}`);
     return;
@@ -81,33 +82,84 @@ export function createSnippetAnnotations(resultsPath: string): void {
     const resultsContent = fs.readFileSync(resultsPath, 'utf8');
     const results = JSON.parse(resultsContent);
 
-    let snippetCount = 0;
-    let fileCount = 0;
+    const snippetMatches: Array<{ filePath: string; match: SnippetMatch }> = [];
+    const fileMatches: Array<{ filePath: string; match: FileMatch }> = [];
 
+    // Collect all matches
     for (const [filePath, matches] of Object.entries(results)) {
       if (!Array.isArray(matches)) continue;
 
       for (const match of matches) {
         if (match.id === 'snippet') {
-          createSnippetMatchAnnotation(filePath, match as SnippetMatch);
-          snippetCount++;
+          snippetMatches.push({ filePath, match: match as SnippetMatch });
         } else if (match.id === 'file') {
-          createFileMatchAnnotation(filePath, match as FileMatch);
-          fileCount++;
+          fileMatches.push({ filePath, match: match as FileMatch });
         }
       }
     }
 
-    core.info(`Created ${snippetCount} snippet annotations and ${fileCount} file match annotations`);
+    // Create summary annotations (not bound to files)
+    if (snippetMatches.length > 0) {
+      createSnippetSummaryAnnotation(snippetMatches);
+    }
+
+    if (fileMatches.length > 0) {
+      createFileMatchSummaryAnnotation(fileMatches);
+    }
+
+    // Create individual commit comments for each match
+    for (const { filePath, match } of snippetMatches) {
+      await createSnippetCommitComment(filePath, match);
+    }
+
+    for (const { filePath, match } of fileMatches) {
+      await createFileCommitComment(filePath, match);
+    }
+
+    core.info(`Created summary annotations and ${snippetMatches.length + fileMatches.length} commit comments`);
   } catch (error) {
     core.error(`Failed to create snippet annotations from ${resultsPath}: ${error}`);
   }
 }
 
 /**
- * Creates an annotation for a snippet match
+ * Creates a summary annotation for snippet matches (not bound to any file)
  */
-function createSnippetMatchAnnotation(filePath: string, snippetMatch: SnippetMatch): void {
+function createSnippetSummaryAnnotation(snippetMatches: Array<{ filePath: string; match: SnippetMatch }>): void {
+  const componentList = snippetMatches
+    .map(({ match }) => `${match.component}${match.version ? ` v${match.version}` : ''}`)
+    .join(', ');
+
+  const message = `Found ${snippetMatches.length} snippet matches: ${componentList}`;
+
+  core.warning(message, {
+    title: 'Code Snippet Matches Summary'
+  });
+
+  core.info(`Created snippet summary annotation for ${snippetMatches.length} matches`);
+}
+
+/**
+ * Creates a summary annotation for file matches (not bound to any file)
+ */
+function createFileMatchSummaryAnnotation(fileMatches: Array<{ filePath: string; match: FileMatch }>): void {
+  const componentList = fileMatches
+    .map(({ match }) => `${match.component}${match.version ? ` v${match.version}` : ''}`)
+    .join(', ');
+
+  const message = `Found ${fileMatches.length} file matches: ${componentList}`;
+
+  core.warning(message, {
+    title: 'Full File Matches Summary'
+  });
+
+  core.info(`Created file match summary annotation for ${fileMatches.length} matches`);
+}
+
+/**
+ * Creates a commit comment for a snippet match
+ */
+async function createSnippetCommitComment(filePath: string, snippetMatch: SnippetMatch): Promise<void> {
   const localLines = parseLineRange(snippetMatch.lines);
   
   if (!localLines) {
@@ -116,31 +168,48 @@ function createSnippetMatchAnnotation(filePath: string, snippetMatch: SnippetMat
   }
 
   const message = formatSnippetAnnotationMessage(filePath, snippetMatch, localLines);
-  const title = 'Code Similarity Found';
+  const commentBody = `🔍 **Code Similarity Found**\n\n${message}`;
 
-  core.warning(message, {
-    file: filePath,
-    startLine: localLines.start,
-    endLine: localLines.start, // Use start line for both start and end for better visibility
-    title
-  });
+  try {
+    const octokit = getOctokit(inputs.GITHUB_TOKEN);
+    
+    await octokit.rest.repos.createCommitComment({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      commit_sha: context.sha,
+      path: filePath,
+      line: localLines.start,
+      body: commentBody
+    });
 
-  core.debug(`Created snippet annotation for ${filePath}:${localLines.start} (full range: ${localLines.start}-${localLines.end})`);
+    core.debug(`Created commit comment for snippet match at ${filePath}:${localLines.start}`);
+  } catch (error) {
+    core.warning(`Failed to create commit comment for ${filePath}: ${error}`);
+  }
 }
 
 /**
- * Creates an annotation for a full file match
+ * Creates a commit comment for a file match
  */
-function createFileMatchAnnotation(filePath: string, fileMatch: FileMatch): void {
+async function createFileCommitComment(filePath: string, fileMatch: FileMatch): Promise<void> {
   const message = formatFileAnnotationMessage(filePath, fileMatch);
-  const title = 'Full File Match Found';
+  const commentBody = `📄 **Full File Match Found**\n\n${message}`;
 
-  core.warning(message, {
-    file: filePath,
-    title
-  });
+  try {
+    const octokit = getOctokit(inputs.GITHUB_TOKEN);
+    
+    await octokit.rest.repos.createCommitComment({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      commit_sha: context.sha,
+      path: filePath,
+      body: commentBody
+    });
 
-  core.debug(`Created file match annotation for ${filePath}`);
+    core.debug(`Created commit comment for file match at ${filePath}`);
+  } catch (error) {
+    core.warning(`Failed to create commit comment for ${filePath}: ${error}`);
+  }
 }
 
 /**

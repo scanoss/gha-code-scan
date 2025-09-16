@@ -123983,7 +123983,7 @@ async function run() {
         // 5: Create snippet match annotations
         if (!inputs.SKIP_SNIPPETS) {
             core.info('Creating snippet match annotations...');
-            (0, snippet_annotations_utils_1.createSnippetAnnotations)(inputs.OUTPUT_FILEPATH);
+            await (0, snippet_annotations_utils_1.createSnippetAnnotations)(inputs.OUTPUT_FILEPATH);
         }
         if ((0, github_utils_1.isPullRequest)()) {
             // create reports
@@ -127121,10 +127121,11 @@ exports.createSnippetAnnotations = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const fs = __importStar(__nccwpck_require__(57147));
 const github_1 = __nccwpck_require__(95438);
+const inputs = __importStar(__nccwpck_require__(483));
 /**
- * Creates GitHub Actions annotations for snippet and file matches
+ * Creates hybrid snippet annotations: summary annotations + commit comments
  */
-function createSnippetAnnotations(resultsPath) {
+async function createSnippetAnnotations(resultsPath) {
     if (!fs.existsSync(resultsPath)) {
         core.warning(`Results file not found: ${resultsPath}`);
         return;
@@ -127132,23 +127133,36 @@ function createSnippetAnnotations(resultsPath) {
     try {
         const resultsContent = fs.readFileSync(resultsPath, 'utf8');
         const results = JSON.parse(resultsContent);
-        let snippetCount = 0;
-        let fileCount = 0;
+        const snippetMatches = [];
+        const fileMatches = [];
+        // Collect all matches
         for (const [filePath, matches] of Object.entries(results)) {
             if (!Array.isArray(matches))
                 continue;
             for (const match of matches) {
                 if (match.id === 'snippet') {
-                    createSnippetMatchAnnotation(filePath, match);
-                    snippetCount++;
+                    snippetMatches.push({ filePath, match: match });
                 }
                 else if (match.id === 'file') {
-                    createFileMatchAnnotation(filePath, match);
-                    fileCount++;
+                    fileMatches.push({ filePath, match: match });
                 }
             }
         }
-        core.info(`Created ${snippetCount} snippet annotations and ${fileCount} file match annotations`);
+        // Create summary annotations (not bound to files)
+        if (snippetMatches.length > 0) {
+            createSnippetSummaryAnnotation(snippetMatches);
+        }
+        if (fileMatches.length > 0) {
+            createFileMatchSummaryAnnotation(fileMatches);
+        }
+        // Create individual commit comments for each match
+        for (const { filePath, match } of snippetMatches) {
+            await createSnippetCommitComment(filePath, match);
+        }
+        for (const { filePath, match } of fileMatches) {
+            await createFileCommitComment(filePath, match);
+        }
+        core.info(`Created summary annotations and ${snippetMatches.length + fileMatches.length} commit comments`);
     }
     catch (error) {
         core.error(`Failed to create snippet annotations from ${resultsPath}: ${error}`);
@@ -127156,35 +127170,78 @@ function createSnippetAnnotations(resultsPath) {
 }
 exports.createSnippetAnnotations = createSnippetAnnotations;
 /**
- * Creates an annotation for a snippet match
+ * Creates a summary annotation for snippet matches (not bound to any file)
  */
-function createSnippetMatchAnnotation(filePath, snippetMatch) {
+function createSnippetSummaryAnnotation(snippetMatches) {
+    const componentList = snippetMatches
+        .map(({ match }) => `${match.component}${match.version ? ` v${match.version}` : ''}`)
+        .join(', ');
+    const message = `Found ${snippetMatches.length} snippet matches: ${componentList}`;
+    core.warning(message, {
+        title: 'Code Snippet Matches Summary'
+    });
+    core.info(`Created snippet summary annotation for ${snippetMatches.length} matches`);
+}
+/**
+ * Creates a summary annotation for file matches (not bound to any file)
+ */
+function createFileMatchSummaryAnnotation(fileMatches) {
+    const componentList = fileMatches
+        .map(({ match }) => `${match.component}${match.version ? ` v${match.version}` : ''}`)
+        .join(', ');
+    const message = `Found ${fileMatches.length} file matches: ${componentList}`;
+    core.warning(message, {
+        title: 'Full File Matches Summary'
+    });
+    core.info(`Created file match summary annotation for ${fileMatches.length} matches`);
+}
+/**
+ * Creates a commit comment for a snippet match
+ */
+async function createSnippetCommitComment(filePath, snippetMatch) {
     const localLines = parseLineRange(snippetMatch.lines);
     if (!localLines) {
         core.warning(`Could not parse line range: ${snippetMatch.lines} for file: ${filePath}`);
         return;
     }
     const message = formatSnippetAnnotationMessage(filePath, snippetMatch, localLines);
-    const title = 'Code Similarity Found';
-    core.warning(message, {
-        file: filePath,
-        startLine: localLines.start,
-        endLine: localLines.start, // Use start line for both start and end for better visibility
-        title
-    });
-    core.debug(`Created snippet annotation for ${filePath}:${localLines.start} (full range: ${localLines.start}-${localLines.end})`);
+    const commentBody = `🔍 **Code Similarity Found**\n\n${message}`;
+    try {
+        const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+        await octokit.rest.repos.createCommitComment({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            commit_sha: github_1.context.sha,
+            path: filePath,
+            line: localLines.start,
+            body: commentBody
+        });
+        core.debug(`Created commit comment for snippet match at ${filePath}:${localLines.start}`);
+    }
+    catch (error) {
+        core.warning(`Failed to create commit comment for ${filePath}: ${error}`);
+    }
 }
 /**
- * Creates an annotation for a full file match
+ * Creates a commit comment for a file match
  */
-function createFileMatchAnnotation(filePath, fileMatch) {
+async function createFileCommitComment(filePath, fileMatch) {
     const message = formatFileAnnotationMessage(filePath, fileMatch);
-    const title = 'Full File Match Found';
-    core.warning(message, {
-        file: filePath,
-        title
-    });
-    core.debug(`Created file match annotation for ${filePath}`);
+    const commentBody = `📄 **Full File Match Found**\n\n${message}`;
+    try {
+        const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+        await octokit.rest.repos.createCommitComment({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            commit_sha: github_1.context.sha,
+            path: filePath,
+            body: commentBody
+        });
+        core.debug(`Created commit comment for file match at ${filePath}`);
+    }
+    catch (error) {
+        core.warning(`Failed to create commit comment for ${filePath}: ${error}`);
+    }
 }
 /**
  * Formats the snippet match information into an annotation message
