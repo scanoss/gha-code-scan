@@ -32,6 +32,7 @@ import { DepTrackPolicyCheck } from './policies/dep-track-policy-check';
 import { dependencyTrackService } from './services/dependency-track.service';
 import { dependencyTrackStatusService } from './services/dependency-track-status.service';
 import { scanossService } from './services/scanoss.service';
+import { createSnippetAnnotations } from './utils/snippet-annotations.utils';
 
 /**
  * The main function for the action.
@@ -69,6 +70,12 @@ export async function run(): Promise<void> {
         policy.setUploadAttempted(uploadResult.success); // Warn if DT upload was disabled or failed
       }
       await policy.run();
+    }
+
+    // 5: Create snippet match annotations
+    if (!inputs.SKIP_SNIPPETS) {
+      core.info('Creating snippet match annotations...');
+      createSnippetAnnotations(inputs.OUTPUT_FILEPATH);
     }
 
     if (isPullRequest()) {

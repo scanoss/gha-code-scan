@@ -123948,6 +123948,7 @@ const dep_track_policy_check_1 = __nccwpck_require__(1669);
 const dependency_track_service_1 = __nccwpck_require__(57356);
 const dependency_track_status_service_1 = __nccwpck_require__(55414);
 const scanoss_service_1 = __nccwpck_require__(73406);
+const snippet_annotations_utils_1 = __nccwpck_require__(71325);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -123978,6 +123979,11 @@ async function run() {
                 policy.setUploadAttempted(uploadResult.success); // Warn if DT upload was disabled or failed
             }
             await policy.run();
+        }
+        // 5: Create snippet match annotations
+        if (!inputs.SKIP_SNIPPETS) {
+            core.info('Creating snippet match annotations...');
+            (0, snippet_annotations_utils_1.createSnippetAnnotations)(inputs.OUTPUT_FILEPATH);
         }
         if ((0, github_utils_1.isPullRequest)()) {
             // create reports
@@ -127056,6 +127062,212 @@ const generateTable = (headers, rows, centeredColumns) => {
   `;
 };
 exports.generateTable = generateTable;
+
+
+/***/ }),
+
+/***/ 71325:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2024, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createSnippetAnnotations = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const fs = __importStar(__nccwpck_require__(57147));
+const github_1 = __nccwpck_require__(95438);
+/**
+ * Creates GitHub Actions annotations for snippet and file matches
+ */
+function createSnippetAnnotations(resultsPath) {
+    if (!fs.existsSync(resultsPath)) {
+        core.warning(`Results file not found: ${resultsPath}`);
+        return;
+    }
+    try {
+        const resultsContent = fs.readFileSync(resultsPath, 'utf8');
+        const results = JSON.parse(resultsContent);
+        let snippetCount = 0;
+        let fileCount = 0;
+        for (const [filePath, matches] of Object.entries(results)) {
+            if (!Array.isArray(matches))
+                continue;
+            for (const match of matches) {
+                if (match.id === 'snippet') {
+                    createSnippetMatchAnnotation(filePath, match);
+                    snippetCount++;
+                }
+                else if (match.id === 'file') {
+                    createFileMatchAnnotation(filePath, match);
+                    fileCount++;
+                }
+            }
+        }
+        core.info(`Created ${snippetCount} snippet annotations and ${fileCount} file match annotations`);
+    }
+    catch (error) {
+        core.error(`Failed to create snippet annotations from ${resultsPath}: ${error}`);
+    }
+}
+exports.createSnippetAnnotations = createSnippetAnnotations;
+/**
+ * Creates an annotation for a snippet match
+ */
+function createSnippetMatchAnnotation(filePath, snippetMatch) {
+    const localLines = parseLineRange(snippetMatch.lines);
+    if (!localLines) {
+        core.warning(`Could not parse line range: ${snippetMatch.lines} for file: ${filePath}`);
+        return;
+    }
+    const message = formatSnippetAnnotationMessage(filePath, snippetMatch, localLines);
+    const title = 'Code Similarity Found';
+    core.warning(message, {
+        file: filePath,
+        startLine: localLines.start,
+        endLine: localLines.end,
+        title
+    });
+    core.debug(`Created snippet annotation for ${filePath}:${localLines.start}-${localLines.end}`);
+}
+/**
+ * Creates an annotation for a full file match
+ */
+function createFileMatchAnnotation(filePath, fileMatch) {
+    const message = formatFileAnnotationMessage(filePath, fileMatch);
+    const title = 'Full File Match Found';
+    core.warning(message, {
+        file: filePath,
+        title
+    });
+    core.debug(`Created file match annotation for ${filePath}`);
+}
+/**
+ * Formats the snippet match information into an annotation message
+ */
+function formatSnippetAnnotationMessage(filePath, snippet, localLines) {
+    let message = `Code snippet matches ${snippet.component}`;
+    if (snippet.version) {
+        message += ` v${snippet.version}`;
+    }
+    message += ` (${snippet.matched} similarity)`;
+    // Add license information
+    if (snippet.licenses && snippet.licenses.length > 0) {
+        const licenseNames = snippet.licenses.map(license => license.name);
+        message += ` - License(s): ${licenseNames.join(', ')}`;
+    }
+    // Add source URL
+    if (snippet.url) {
+        message += ` - Source: ${snippet.url}`;
+    }
+    // Add OSS line range
+    if (snippet.oss_lines) {
+        message += ` - OSS Lines: ${snippet.oss_lines}`;
+    }
+    // Add direct link to the file with line highlighting
+    message += ` - View: ${getFileUrlWithLineHighlight(filePath, localLines)}`;
+    return message;
+}
+/**
+ * Formats the file match information into an annotation message
+ */
+function formatFileAnnotationMessage(filePath, fileMatch) {
+    let message = `Full file matches ${fileMatch.component}`;
+    if (fileMatch.version) {
+        message += ` v${fileMatch.version}`;
+    }
+    // Add license information
+    if (fileMatch.licenses && fileMatch.licenses.length > 0) {
+        const licenseNames = fileMatch.licenses.map(license => license.name);
+        message += ` - License(s): ${licenseNames.join(', ')}`;
+    }
+    // Add source URL
+    if (fileMatch.url) {
+        message += ` - Source: ${fileMatch.url}`;
+    }
+    // Add direct link to the file
+    message += ` - View: ${getFileUrl(filePath)}`;
+    return message;
+}
+/**
+ * Creates a GitHub URL with line highlighting for the file
+ */
+function getFileUrlWithLineHighlight(filePath, lineRange) {
+    const baseUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+    if (lineRange.start === lineRange.end) {
+        return `${baseUrl}#L${lineRange.start}`;
+    }
+    else {
+        return `${baseUrl}#L${lineRange.start}-L${lineRange.end}`;
+    }
+}
+/**
+ * Creates a GitHub URL for the file
+ */
+function getFileUrl(filePath) {
+    return `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+}
+/**
+ * Parses line range strings like "4-142" or "all"
+ */
+function parseLineRange(lineRange) {
+    if (lineRange === 'all') {
+        return { start: 1, end: Number.MAX_SAFE_INTEGER };
+    }
+    const parts = lineRange.split('-');
+    if (parts.length === 2) {
+        const start = parseInt(parts[0], 10);
+        const end = parseInt(parts[1], 10);
+        if (!isNaN(start) && !isNaN(end)) {
+            return { start, end };
+        }
+    }
+    return null;
+}
 
 
 /***/ }),
