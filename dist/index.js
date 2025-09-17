@@ -125291,6 +125291,7 @@ const exec = __importStar(__nccwpck_require__(71514));
 const undeclared_argument_builder_1 = __nccwpck_require__(25721);
 const github_service_1 = __nccwpck_require__(43123);
 const github_1 = __nccwpck_require__(95438);
+const github_utils_1 = __nccwpck_require__(17889);
 const fs = __importStar(__nccwpck_require__(57147));
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
@@ -125349,7 +125350,15 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         details += `\n\n---\n\n`;
         details += `**📝 Quick Fix:**\n`;
         if (fs.existsSync('scanoss.json')) {
-            const scanossJsonUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/edit/${github_1.context.ref.replace('refs/heads/', '')}/scanoss.json`;
+            // Get the correct branch name for edit link
+            let branchName = github_1.context.ref.replace('refs/heads/', '');
+            if ((0, github_utils_1.isPullRequest)()) {
+                const pull = github_1.context.payload.pull_request;
+                if (pull?.head.ref) {
+                    branchName = pull.head.ref;
+                }
+            }
+            const scanossJsonUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/edit/${branchName}/scanoss.json`;
             details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.`;
         }
         else {

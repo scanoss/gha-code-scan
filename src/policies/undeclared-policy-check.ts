@@ -30,6 +30,7 @@ import { UndeclaredArgumentBuilder } from './argument_builders/components/undecl
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 import { context } from '@actions/github';
+import { isPullRequest } from '../utils/github.utils';
 import * as fs from 'fs';
 
 /**
@@ -96,11 +97,21 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     details += `\n\n---\n\n`;
     details += `**📝 Quick Fix:**\n`;
     
+    // Get the correct branch name for links
+    let branchName = context.ref.replace('refs/heads/', '');
+    if (isPullRequest()) {
+      const pull = context.payload.pull_request;
+      if (pull?.head.ref) {
+        branchName = pull.head.ref;
+      }
+    }
+    
     if (fs.existsSync('scanoss.json')) {
-      const scanossJsonUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/edit/${context.ref.replace('refs/heads/', '')}/scanoss.json`;
+      const scanossJsonUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/edit/${branchName}/scanoss.json`;
       details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.`;
     } else {
-      details += `scanoss.json doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.`;
+      const createFileUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/new/${branchName}?filename=scanoss.json`;
+      details += `scanoss.json doesn't exist. [Create scanoss.json file](${createFileUrl}) in your repository root with the JSON snippet provided above to resolve policy violations.`;
     }
 
     const { id } = await this.uploadArtifact(details);
