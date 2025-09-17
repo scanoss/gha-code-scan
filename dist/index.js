@@ -125362,7 +125362,14 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.`;
         }
         else {
-            const createFileUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/new/${branchName}?filename=scanoss.json`;
+            // Extract JSON snippet from stderr output for pre-filling
+            let jsonContent = '';
+            const jsonMatch = stderr.match(/\{[\s\S]*?\}(?=\s*$)/m);
+            if (jsonMatch) {
+                jsonContent = jsonMatch[0];
+            }
+            const encodedJson = encodeURIComponent(jsonContent);
+            const createFileUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/new/${branchName}?filename=scanoss.json&value=${encodedJson}`;
             details += `scanoss.json doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
             details += `Create scanoss.json: ${createFileUrl}`;
         }
