@@ -83,8 +83,8 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
     const resultsContent = fs.readFileSync(resultsPath, 'utf8');
     const results = JSON.parse(resultsContent);
 
-    const snippetMatches: Array<{ filePath: string; match: SnippetMatch }> = [];
-    const fileMatches: Array<{ filePath: string; match: FileMatch }> = [];
+    const snippetMatches: { filePath: string; match: SnippetMatch }[] = [];
+    const fileMatches: { filePath: string; match: FileMatch }[] = [];
 
     // Collect all matches
     for (const [filePath, matches] of Object.entries(results)) {
@@ -125,7 +125,9 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
       await createMainConversationComment(snippetMatches, fileMatches);
     }
 
-    core.info(`Created summary annotations, ${snippetMatches.length + fileMatches.length} commit comments, and main conversation comment`);
+    core.info(
+      `Created summary annotations, ${snippetMatches.length + fileMatches.length} commit comments, and main conversation comment`
+    );
   } catch (error) {
     core.error(`Failed to create snippet annotations from ${resultsPath}: ${error}`);
   }
@@ -134,20 +136,23 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
 /**
  * Creates a summary annotation for snippet matches (not bound to any file)
  */
-function createSnippetSummaryAnnotation(snippetMatches: Array<{ filePath: string; match: SnippetMatch }>): void {
+function createSnippetSummaryAnnotation(snippetMatches: { filePath: string; match: SnippetMatch }[]): void {
   const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
-  
+
   let message = `Found ${snippetMatches.length} snippet matches\n`;
   message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
   message += `**Affected Files:**\n`;
-  
+
   // Group matches by file and limit to avoid annotation length issues
-  const fileGroups = snippetMatches.reduce((groups, { filePath, match }) => {
-    if (!groups[filePath]) groups[filePath] = [];
-    groups[filePath].push(match);
-    return groups;
-  }, {} as Record<string, SnippetMatch[]>);
-  
+  const fileGroups = snippetMatches.reduce(
+    (groups, { filePath, match }) => {
+      if (!groups[filePath]) groups[filePath] = [];
+      groups[filePath].push(match);
+      return groups;
+    },
+    {} as Record<string, SnippetMatch[]>
+  );
+
   const fileEntries = Object.entries(fileGroups).slice(0, 10); // Limit to 10 files
   for (const [filePath, matches] of fileEntries) {
     const firstMatch = matches[0];
@@ -155,7 +160,7 @@ function createSnippetSummaryAnnotation(snippetMatches: Array<{ filePath: string
     const fileUrl = localLines ? getFileUrlWithLineHighlight(filePath, localLines) : getFileUrl(filePath);
     message += `- [${filePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
   }
-  
+
   if (Object.keys(fileGroups).length > 10) {
     message += `- ... and ${Object.keys(fileGroups).length - 10} more files\n`;
   }
@@ -170,13 +175,13 @@ function createSnippetSummaryAnnotation(snippetMatches: Array<{ filePath: string
 /**
  * Creates a summary annotation for file matches (not bound to any file)
  */
-function createFileMatchSummaryAnnotation(fileMatches: Array<{ filePath: string; match: FileMatch }>): void {
+function createFileMatchSummaryAnnotation(fileMatches: { filePath: string; match: FileMatch }[]): void {
   const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
-  
+
   let message = `Found ${fileMatches.length} full file matches\n`;
   message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
   message += `**Affected Files:**\n`;
-  
+
   // Limit to avoid annotation length issues
   const limitedMatches = fileMatches.slice(0, 10);
   for (const { filePath, match } of limitedMatches) {
@@ -184,7 +189,7 @@ function createFileMatchSummaryAnnotation(fileMatches: Array<{ filePath: string;
     const component = `${match.component}${match.version ? ` v${match.version}` : ''}`;
     message += `- [${filePath}](${fileUrl}) → ${component}\n`;
   }
-  
+
   if (fileMatches.length > 10) {
     message += `- ... and ${fileMatches.length - 10} more files\n`;
   }
@@ -200,8 +205,8 @@ function createFileMatchSummaryAnnotation(fileMatches: Array<{ filePath: string;
  * Creates a main conversation comment with summary and commit link
  */
 async function createMainConversationComment(
-  snippetMatches: Array<{ filePath: string; match: SnippetMatch }>,
-  fileMatches: Array<{ filePath: string; match: FileMatch }>
+  snippetMatches: { filePath: string; match: SnippetMatch }[],
+  fileMatches: { filePath: string; match: FileMatch }[]
 ): Promise<void> {
   if (!isPullRequest()) {
     core.info('Skipping main conversation comment - not in PR context');
@@ -209,25 +214,22 @@ async function createMainConversationComment(
   }
 
   const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
-  
+
   let message = `## 🔍 SCANOSS Code Similarity Detected\n\n`;
-  
+
   if (snippetMatches.length > 0) {
     message += `📄 **${snippetMatches.length} snippet matches** found\n`;
   }
-  
+
   if (fileMatches.length > 0) {
     message += `📋 **${fileMatches.length} full file matches** found\n`;
   }
-  
+
   message += `\n🔗 **[View detailed findings on commit ${context.sha.substring(0, 7)}](${commitUrl})**\n\n`;
-  
+
   // Quick overview of most affected files
-  const allFiles = new Set([
-    ...snippetMatches.map(m => m.filePath),
-    ...fileMatches.map(m => m.filePath)
-  ]);
-  
+  const allFiles = new Set([...snippetMatches.map(m => m.filePath), ...fileMatches.map(m => m.filePath)]);
+
   if (allFiles.size <= 5) {
     message += `**Files with similarities:**\n`;
     for (const filePath of Array.from(allFiles).slice(0, 5)) {
@@ -236,12 +238,12 @@ async function createMainConversationComment(
   } else {
     message += `**${allFiles.size} files** contain code similarities\n`;
   }
-  
+
   message += `\n💡 Click the commit link above to see detailed annotations for each match.`;
 
   try {
     const octokit = getOctokit(inputs.GITHUB_TOKEN);
-    
+
     await octokit.rest.issues.createComment({
       issue_number: context.issue.number,
       owner: context.repo.owner,
@@ -260,7 +262,7 @@ async function createMainConversationComment(
  */
 async function createSnippetCommitComment(filePath: string, snippetMatch: SnippetMatch): Promise<void> {
   const localLines = parseLineRange(snippetMatch.lines);
-  
+
   if (!localLines) {
     core.warning(`Could not parse line range: ${snippetMatch.lines} for file: ${filePath}`);
     return;
@@ -271,7 +273,7 @@ async function createSnippetCommitComment(filePath: string, snippetMatch: Snippe
 
   try {
     const octokit = getOctokit(inputs.GITHUB_TOKEN);
-    
+
     const params = {
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -282,10 +284,12 @@ async function createSnippetCommitComment(filePath: string, snippetMatch: Snippe
     };
 
     core.info(`Creating commit comment with params: ${JSON.stringify(params, null, 2)}`);
-    
+
     const response = await octokit.rest.repos.createCommitComment(params);
 
-    core.info(`Successfully created commit comment for snippet match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`);
+    core.info(
+      `Successfully created commit comment for snippet match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`
+    );
   } catch (error) {
     core.error(`Failed to create commit comment for ${filePath}`);
     core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
@@ -305,7 +309,7 @@ async function createFileCommitComment(filePath: string, fileMatch: FileMatch): 
 
   try {
     const octokit = getOctokit(inputs.GITHUB_TOKEN);
-    
+
     const params = {
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -315,10 +319,12 @@ async function createFileCommitComment(filePath: string, fileMatch: FileMatch): 
     };
 
     core.info(`Creating file commit comment with params: ${JSON.stringify(params, null, 2)}`);
-    
+
     const response = await octokit.rest.repos.createCommitComment(params);
 
-    core.info(`Successfully created commit comment for file match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`);
+    core.info(
+      `Successfully created commit comment for file match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`
+    );
   } catch (error) {
     core.error(`Failed to create commit comment for ${filePath}`);
     core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
@@ -437,7 +443,7 @@ function parseLineRange(lineRange: string): LineRange | null {
   if (extracted) {
     const start = parseInt(extracted.first, 10);
     const end = parseInt(extracted.last, 10);
-    
+
     if (!isNaN(start) && !isNaN(end)) {
       return { start, end };
     }

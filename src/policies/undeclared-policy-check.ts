@@ -96,7 +96,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     // Add scanoss.json file link and context based on file existence
     details += `\n\n---\n\n`;
     details += `**📝 Quick Fix:**\n`;
-    
+
     // Get the correct branch name for links
     let branchName = context.ref.replace('refs/heads/', '');
     if (isPullRequest()) {
@@ -105,7 +105,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
         branchName = pull.head.ref;
       }
     }
-    
+
     if (fs.existsSync('scanoss.json')) {
       const scanossJsonUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/edit/${branchName}/scanoss.json`;
       details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.`;
@@ -116,7 +116,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       if (jsonMatch) {
         jsonContent = jsonMatch[0];
       }
-      
+
       const encodedJson = encodeURIComponent(jsonContent);
       const createFileUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/new/${branchName}?filename=scanoss.json&value=${encodedJson}`;
       details += `\n\n📝 Quick Fix:\n`;

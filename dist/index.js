@@ -127286,10 +127286,7 @@ async function createMainConversationComment(snippetMatches, fileMatches) {
     }
     message += `\n🔗 **[View detailed findings on commit ${github_1.context.sha.substring(0, 7)}](${commitUrl})**\n\n`;
     // Quick overview of most affected files
-    const allFiles = new Set([
-        ...snippetMatches.map(m => m.filePath),
-        ...fileMatches.map(m => m.filePath)
-    ]);
+    const allFiles = new Set([...snippetMatches.map(m => m.filePath), ...fileMatches.map(m => m.filePath)]);
     if (allFiles.size <= 5) {
         message += `**Files with similarities:**\n`;
         for (const filePath of Array.from(allFiles).slice(0, 5)) {
