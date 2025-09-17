@@ -110,17 +110,18 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       const scanossJsonUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/edit/${branchName}/scanoss.json`;
       details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.`;
     } else {
-      // Extract JSON snippet from stderr output for pre-filling
+      // Build JSON content from the details output that already contains the structure
       let jsonContent = '';
-      const jsonMatch = stderr.match(/{[\s\S]*?}/m);
+      const jsonMatch = details.match(/{[\s\S]*}/);
       if (jsonMatch) {
         jsonContent = jsonMatch[0];
       }
       
       const encodedJson = encodeURIComponent(jsonContent);
       const createFileUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/new/${branchName}?filename=scanoss.json&value=${encodedJson}`;
+      details += `\n\n📝 Quick Fix:\n`;
       details += `scanoss.json doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
-      details += `Create scanoss.json: ${createFileUrl}`;
+      details += `[Create scanoss.json file](${createFileUrl})`;
     }
 
     const { id } = await this.uploadArtifact(details);
