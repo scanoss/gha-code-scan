@@ -30,6 +30,7 @@ import { UndeclaredArgumentBuilder } from './argument_builders/components/undecl
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 import { context } from '@actions/github';
+import * as fs from 'fs';
 
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
@@ -91,12 +92,16 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       details = stdout;
     }
 
-    // Add scanoss.json file link and context
-    const scanossJsonUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/edit/${context.ref.replace('refs/heads/', '')}/scanoss.json`;
+    // Add scanoss.json file link and context based on file existence
     details += `\n\n---\n\n`;
     details += `**📝 Quick Fix:**\n`;
-    details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.\n\n`;
-    details += `💡 *If scanoss.json doesn't exist, create it in your repository root with the JSON snippet provided above.*`;
+    
+    if (fs.existsSync('scanoss.json')) {
+      const scanossJsonUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/edit/${context.ref.replace('refs/heads/', '')}/scanoss.json`;
+      details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.`;
+    } else {
+      details += `scanoss.json doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.`;
+    }
 
     const { id } = await this.uploadArtifact(details);
     core.debug(`Undeclared Artifact ID: ${id}`);
