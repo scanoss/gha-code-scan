@@ -25,6 +25,7 @@ import * as core from '@actions/core';
 import * as fs from 'fs';
 import { context, getOctokit } from '@actions/github';
 import * as inputs from '../app.input';
+import { isPullRequest } from './github.utils';
 
 /**
  * Interface representing a snippet match from SCANOSS results
@@ -119,7 +120,12 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
       await createFileCommitComment(filePath, match);
     }
 
-    core.info(`Created summary annotations and ${snippetMatches.length + fileMatches.length} commit comments`);
+    // Create main conversation comment if we have any matches
+    if (snippetMatches.length > 0 || fileMatches.length > 0) {
+      await createMainConversationComment(snippetMatches, fileMatches);
+    }
+
+    core.info(`Created summary annotations, ${snippetMatches.length + fileMatches.length} commit comments, and main conversation comment`);
   } catch (error) {
     core.error(`Failed to create snippet annotations from ${resultsPath}: ${error}`);
   }
@@ -129,11 +135,30 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
  * Creates a summary annotation for snippet matches (not bound to any file)
  */
 function createSnippetSummaryAnnotation(snippetMatches: Array<{ filePath: string; match: SnippetMatch }>): void {
-  const componentList = snippetMatches
-    .map(({ match }) => `${match.component}${match.version ? ` v${match.version}` : ''}`)
-    .join(', ');
-
-  const message = `Found ${snippetMatches.length} snippet matches: ${componentList}`;
+  const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+  
+  let message = `Found ${snippetMatches.length} snippet matches\n`;
+  message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
+  message += `**Affected Files:**\n`;
+  
+  // Group matches by file and limit to avoid annotation length issues
+  const fileGroups = snippetMatches.reduce((groups, { filePath, match }) => {
+    if (!groups[filePath]) groups[filePath] = [];
+    groups[filePath].push(match);
+    return groups;
+  }, {} as Record<string, SnippetMatch[]>);
+  
+  const fileEntries = Object.entries(fileGroups).slice(0, 10); // Limit to 10 files
+  for (const [filePath, matches] of fileEntries) {
+    const firstMatch = matches[0];
+    const localLines = parseLineRange(firstMatch.lines);
+    const fileUrl = localLines ? getFileUrlWithLineHighlight(filePath, localLines) : getFileUrl(filePath);
+    message += `- [${filePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
+  }
+  
+  if (Object.keys(fileGroups).length > 10) {
+    message += `- ... and ${Object.keys(fileGroups).length - 10} more files\n`;
+  }
 
   core.warning(message, {
     title: 'Code Snippet Matches Summary'
@@ -146,17 +171,88 @@ function createSnippetSummaryAnnotation(snippetMatches: Array<{ filePath: string
  * Creates a summary annotation for file matches (not bound to any file)
  */
 function createFileMatchSummaryAnnotation(fileMatches: Array<{ filePath: string; match: FileMatch }>): void {
-  const componentList = fileMatches
-    .map(({ match }) => `${match.component}${match.version ? ` v${match.version}` : ''}`)
-    .join(', ');
-
-  const message = `Found ${fileMatches.length} file matches: ${componentList}`;
+  const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+  
+  let message = `Found ${fileMatches.length} full file matches\n`;
+  message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
+  message += `**Affected Files:**\n`;
+  
+  // Limit to avoid annotation length issues
+  const limitedMatches = fileMatches.slice(0, 10);
+  for (const { filePath, match } of limitedMatches) {
+    const fileUrl = getFileUrl(filePath);
+    const component = `${match.component}${match.version ? ` v${match.version}` : ''}`;
+    message += `- [${filePath}](${fileUrl}) → ${component}\n`;
+  }
+  
+  if (fileMatches.length > 10) {
+    message += `- ... and ${fileMatches.length - 10} more files\n`;
+  }
 
   core.warning(message, {
     title: 'Full File Matches Summary'
   });
 
   core.info(`Created file match summary annotation for ${fileMatches.length} matches`);
+}
+
+/**
+ * Creates a main conversation comment with summary and commit link
+ */
+async function createMainConversationComment(
+  snippetMatches: Array<{ filePath: string; match: SnippetMatch }>,
+  fileMatches: Array<{ filePath: string; match: FileMatch }>
+): Promise<void> {
+  if (!isPullRequest()) {
+    core.info('Skipping main conversation comment - not in PR context');
+    return;
+  }
+
+  const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+  
+  let message = `## 🔍 SCANOSS Code Similarity Detected\n\n`;
+  
+  if (snippetMatches.length > 0) {
+    message += `📄 **${snippetMatches.length} snippet matches** found\n`;
+  }
+  
+  if (fileMatches.length > 0) {
+    message += `📋 **${fileMatches.length} full file matches** found\n`;
+  }
+  
+  message += `\n🔗 **[View detailed findings on commit ${context.sha.substring(0, 7)}](${commitUrl})**\n\n`;
+  
+  // Quick overview of most affected files
+  const allFiles = new Set([
+    ...snippetMatches.map(m => m.filePath),
+    ...fileMatches.map(m => m.filePath)
+  ]);
+  
+  if (allFiles.size <= 5) {
+    message += `**Files with similarities:**\n`;
+    for (const filePath of Array.from(allFiles).slice(0, 5)) {
+      message += `- \`${filePath}\`\n`;
+    }
+  } else {
+    message += `**${allFiles.size} files** contain code similarities\n`;
+  }
+  
+  message += `\n💡 Click the commit link above to see detailed annotations for each match.`;
+
+  try {
+    const octokit = getOctokit(inputs.GITHUB_TOKEN);
+    
+    await octokit.rest.issues.createComment({
+      issue_number: context.issue.number,
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      body: message
+    });
+
+    core.info('Successfully created main conversation comment');
+  } catch (error) {
+    core.error(`Failed to create main conversation comment: ${error}`);
+  }
 }
 
 /**
