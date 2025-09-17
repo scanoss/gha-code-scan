@@ -125349,20 +125349,22 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         // Add scanoss.json file link and context based on file existence
         details += `\n\n---\n\n`;
         details += `**📝 Quick Fix:**\n`;
-        if (fs.existsSync('scanoss.json')) {
-            // Get the correct branch name for edit link
-            let branchName = github_1.context.ref.replace('refs/heads/', '');
-            if ((0, github_utils_1.isPullRequest)()) {
-                const pull = github_1.context.payload.pull_request;
-                if (pull?.head.ref) {
-                    branchName = pull.head.ref;
-                }
+        // Get the correct branch name for links
+        let branchName = github_1.context.ref.replace('refs/heads/', '');
+        if ((0, github_utils_1.isPullRequest)()) {
+            const pull = github_1.context.payload.pull_request;
+            if (pull?.head.ref) {
+                branchName = pull.head.ref;
             }
+        }
+        if (fs.existsSync('scanoss.json')) {
             const scanossJsonUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/edit/${branchName}/scanoss.json`;
             details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.`;
         }
         else {
-            details += `scanoss.json doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.`;
+            const createFileUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/new/${branchName}?filename=scanoss.json`;
+            details += `scanoss.json doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
+            details += `Create scanoss.json: ${createFileUrl}`;
         }
         const { id } = await this.uploadArtifact(details);
         core.debug(`Undeclared Artifact ID: ${id}`);
