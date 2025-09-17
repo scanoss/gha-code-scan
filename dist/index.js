@@ -125290,6 +125290,7 @@ const app_input_1 = __nccwpck_require__(483);
 const exec = __importStar(__nccwpck_require__(71514));
 const undeclared_argument_builder_1 = __nccwpck_require__(25721);
 const github_service_1 = __nccwpck_require__(43123);
+const github_1 = __nccwpck_require__(95438);
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
  * The run method compares components found by the scanner against those declared in the SBOM.
@@ -125343,6 +125344,12 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         else {
             details = stdout;
         }
+        // Add scanoss.json file link and context
+        const scanossJsonUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/edit/${github_1.context.ref.replace('refs/heads/', '')}/scanoss.json`;
+        details += `\n\n---\n\n`;
+        details += `**📝 Quick Fix:**\n`;
+        details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.\n\n`;
+        details += `💡 *If scanoss.json doesn't exist, create it in your repository root with the JSON snippet provided above.*`;
         const { id } = await this.uploadArtifact(details);
         core.debug(`Undeclared Artifact ID: ${id}`);
         if (id)
@@ -127238,7 +127245,6 @@ async function createMainConversationComment(snippetMatches, fileMatches) {
         return;
     }
     const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
-    const totalMatches = snippetMatches.length + fileMatches.length;
     let message = `## 🔍 SCANOSS Code Similarity Detected\n\n`;
     if (snippetMatches.length > 0) {
         message += `📄 **${snippetMatches.length} snippet matches** found\n`;
