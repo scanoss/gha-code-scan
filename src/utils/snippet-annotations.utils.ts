@@ -107,6 +107,9 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
       createFileMatchSummaryAnnotation(fileMatches);
     }
 
+    // Log GitHub context for debugging
+    core.info(`GitHub context: owner=${context.repo.owner}, repo=${context.repo.repo}, sha=${context.sha}`);
+
     // Create individual commit comments for each match
     for (const { filePath, match } of snippetMatches) {
       await createSnippetCommitComment(filePath, match);
@@ -173,18 +176,27 @@ async function createSnippetCommitComment(filePath: string, snippetMatch: Snippe
   try {
     const octokit = getOctokit(inputs.GITHUB_TOKEN);
     
-    await octokit.rest.repos.createCommitComment({
+    const params = {
       owner: context.repo.owner,
       repo: context.repo.repo,
       commit_sha: context.sha,
       path: filePath,
-      line: localLines.start,
       body: commentBody
-    });
+      // Temporarily removed line parameter to test file-level comments
+    };
 
-    core.debug(`Created commit comment for snippet match at ${filePath}:${localLines.start}`);
+    core.info(`Creating commit comment with params: ${JSON.stringify(params, null, 2)}`);
+    
+    const response = await octokit.rest.repos.createCommitComment(params);
+
+    core.info(`Successfully created commit comment for snippet match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`);
   } catch (error) {
-    core.warning(`Failed to create commit comment for ${filePath}: ${error}`);
+    core.error(`Failed to create commit comment for ${filePath}`);
+    core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
+    if (error instanceof Error) {
+      core.error(`Error message: ${error.message}`);
+      core.error(`Error stack: ${error.stack}`);
+    }
   }
 }
 
@@ -198,17 +210,26 @@ async function createFileCommitComment(filePath: string, fileMatch: FileMatch): 
   try {
     const octokit = getOctokit(inputs.GITHUB_TOKEN);
     
-    await octokit.rest.repos.createCommitComment({
+    const params = {
       owner: context.repo.owner,
       repo: context.repo.repo,
       commit_sha: context.sha,
       path: filePath,
       body: commentBody
-    });
+    };
 
-    core.debug(`Created commit comment for file match at ${filePath}`);
+    core.info(`Creating file commit comment with params: ${JSON.stringify(params, null, 2)}`);
+    
+    const response = await octokit.rest.repos.createCommitComment(params);
+
+    core.info(`Successfully created commit comment for file match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`);
   } catch (error) {
-    core.warning(`Failed to create commit comment for ${filePath}: ${error}`);
+    core.error(`Failed to create commit comment for ${filePath}`);
+    core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
+    if (error instanceof Error) {
+      core.error(`Error message: ${error.message}`);
+      core.error(`Error stack: ${error.stack}`);
+    }
   }
 }
 
