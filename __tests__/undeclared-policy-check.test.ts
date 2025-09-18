@@ -43,7 +43,8 @@ jest.mock('@actions/github', () => ({
   context: {
     repo: { owner: 'mock-owner', repo: 'mock-repo' },
     serverUrl: 'github',
-    runId: 12345678
+    runId: 12345678,
+    ref: 'refs/heads/'
     // Add other properties as needed
   },
   getOctokit: jest.fn().mockReturnValue({
