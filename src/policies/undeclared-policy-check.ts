@@ -108,14 +108,14 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
 
     if (fs.existsSync('scanoss.json')) {
       const scanossJsonUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/edit/${branchName}/scanoss.json`;
-      
+
       // Try to replace the existing JSON with merged version
       const mergedJson = mergeWithExistingScanossJson(details);
       if (mergedJson) {
         // Replace the original JSON section with merged version
         details = details.replace(/{[\s\S]*}/, mergedJson);
       }
-      
+
       details += `\n\n📝 Quick Fix:\n`;
       details += `[Edit scanoss.json file](${scanossJsonUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
     } else {
@@ -173,7 +173,7 @@ function mergeWithExistingScanossJson(policyDetails: string): string | null {
 
     const newStructure = JSON.parse(jsonMatch[0]);
     const newComponents = newStructure.bom?.include || [];
-    
+
     if (newComponents.length === 0) {
       core.warning('No new components found to add');
       return null;
@@ -203,10 +203,9 @@ function mergeWithExistingScanossJson(policyDetails: string): string | null {
     existingConfig.bom.include.push(...newComponents);
 
     core.info(`Added ${newComponents.length} new components to existing scanoss.json structure`);
-    
+
     // Return formatted JSON
     return JSON.stringify(existingConfig, null, 2);
-    
   } catch (error) {
     core.warning(`Failed to merge with existing scanoss.json: ${error}`);
     return null;

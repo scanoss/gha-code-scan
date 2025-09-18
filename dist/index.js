@@ -123796,7 +123796,7 @@ exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanos
 /** Skip snippet generation during scan */
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 /** Enable match annotations and commit comments */
-exports.MATCH_ANNOTATIONS = core.getInput('matchAnnotations') !== 'false';
+exports.MATCH_ANNOTATIONS = core.getInput('matchAnnotations') === 'false';
 /** Enable file scanning */
 exports.SCAN_FILES = core.getInput('scanFiles') === 'true';
 /** Enable SCANOSS settings file usage */
