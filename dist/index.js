@@ -123717,7 +123717,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.REPO_DIR = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.HALT_ON_ERROR = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
+exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.MATCH_ANNOTATIONS = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.REPO_DIR = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.HALT_ON_ERROR = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const path = __importStar(__nccwpck_require__(71017));
 const url_utils_1 = __nccwpck_require__(13060);
@@ -123795,6 +123795,8 @@ exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.32.0';
 /** Skip snippet generation during scan */
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
+/** Enable match annotations and commit comments */
+exports.MATCH_ANNOTATIONS = core.getInput('matchAnnotations') !== 'false';
 /** Enable file scanning */
 exports.SCAN_FILES = core.getInput('scanFiles') === 'true';
 /** Enable SCANOSS settings file usage */
@@ -123981,9 +123983,12 @@ async function run() {
             await policy.run();
         }
         // 5: Create snippet match annotations
-        if (!inputs.SKIP_SNIPPETS) {
-            core.info('Creating snippet match annotations...');
+        if (inputs.MATCH_ANNOTATIONS) {
+            core.info('Creating match annotations and commit comments...');
             await (0, snippet_annotations_utils_1.createSnippetAnnotations)(inputs.OUTPUT_FILEPATH);
+        }
+        else {
+            core.info('Skipping match annotations - disabled by matchAnnotations parameter');
         }
         if ((0, github_utils_1.isPullRequest)()) {
             // create reports
@@ -125367,7 +125372,14 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         }
         if (fs.existsSync('scanoss.json')) {
             const scanossJsonUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/edit/${branchName}/scanoss.json`;
-            details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.`;
+            // Try to replace the existing JSON with merged version
+            const mergedJson = mergeWithExistingScanossJson(details);
+            if (mergedJson) {
+                // Replace the original JSON section with merged version
+                details = details.replace(/{[\s\S]*}/, mergedJson);
+            }
+            details += `\n\n📝 Quick Fix:\n`;
+            details += `[Edit scanoss.json file](${scanossJsonUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
         }
         else {
             // Build JSON content from the details output that already contains the structure
@@ -125405,6 +125417,50 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
     }
 }
 exports.UndeclaredPolicyCheck = UndeclaredPolicyCheck;
+/**
+ * Merges new undeclared components with existing scanoss.json file
+ */
+function mergeWithExistingScanossJson(policyDetails) {
+    try {
+        // Extract new components from policy details
+        const jsonMatch = policyDetails.match(/{[\s\S]*}/);
+        if (!jsonMatch) {
+            core.warning('Could not extract new components from policy details');
+            return null;
+        }
+        const newStructure = JSON.parse(jsonMatch[0]);
+        const newComponents = newStructure.bom?.include || [];
+        if (newComponents.length === 0) {
+            core.warning('No new components found to add');
+            return null;
+        }
+        // Read existing scanoss.json
+        const existingContent = fs.readFileSync('scanoss.json', 'utf8');
+        const existingConfig = JSON.parse(existingContent);
+        // Ensure bom section exists
+        if (!existingConfig.bom) {
+            existingConfig.bom = {};
+        }
+        // Ensure include array exists
+        if (!existingConfig.bom.include) {
+            existingConfig.bom.include = [];
+        }
+        // Ensure include is an array
+        if (!Array.isArray(existingConfig.bom.include)) {
+            core.warning('Existing bom.include is not an array, creating new array');
+            existingConfig.bom.include = [];
+        }
+        // Add all new components (no duplicate checking needed)
+        existingConfig.bom.include.push(...newComponents);
+        core.info(`Added ${newComponents.length} new components to existing scanoss.json structure`);
+        // Return formatted JSON
+        return JSON.stringify(existingConfig, null, 2);
+    }
+    catch (error) {
+        core.warning(`Failed to merge with existing scanoss.json: ${error}`);
+        return null;
+    }
+}
 
 
 /***/ }),

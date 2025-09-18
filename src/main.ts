@@ -73,9 +73,11 @@ export async function run(): Promise<void> {
     }
 
     // 5: Create snippet match annotations
-    if (!inputs.SKIP_SNIPPETS) {
-      core.info('Creating snippet match annotations...');
+    if (inputs.MATCH_ANNOTATIONS) {
+      core.info('Creating match annotations and commit comments...');
       await createSnippetAnnotations(inputs.OUTPUT_FILEPATH);
+    } else {
+      core.info('Skipping match annotations - disabled by matchAnnotations parameter');
     }
 
     if (isPullRequest()) {

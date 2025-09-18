@@ -112,6 +112,8 @@ export const COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explic
 export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.32.0';
 /** Skip snippet generation during scan */
 export const SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
+/** Enable match annotations and commit comments */
+export const MATCH_ANNOTATIONS = core.getInput('matchAnnotations') !== 'false';
 /** Enable file scanning */
 export const SCAN_FILES = core.getInput('scanFiles') === 'true';
 /** Enable SCANOSS settings file usage */

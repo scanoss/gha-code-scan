@@ -108,7 +108,16 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
 
     if (fs.existsSync('scanoss.json')) {
       const scanossJsonUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/edit/${branchName}/scanoss.json`;
-      details += `[Edit scanoss.json file](${scanossJsonUrl}) to declare these components and resolve policy violations.`;
+      
+      // Try to replace the existing JSON with merged version
+      const mergedJson = mergeWithExistingScanossJson(details);
+      if (mergedJson) {
+        // Replace the original JSON section with merged version
+        details = details.replace(/{[\s\S]*}/, mergedJson);
+      }
+      
+      details += `\n\n📝 Quick Fix:\n`;
+      details += `[Edit scanoss.json file](${scanossJsonUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
     } else {
       // Build JSON content from the details output that already contains the structure
       let jsonContent = '';
@@ -147,5 +156,59 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
    */
   getPolicyName(): string {
     return UndeclaredPolicyCheck.policyName;
+  }
+}
+
+/**
+ * Merges new undeclared components with existing scanoss.json file
+ */
+function mergeWithExistingScanossJson(policyDetails: string): string | null {
+  try {
+    // Extract new components from policy details
+    const jsonMatch = policyDetails.match(/{[\s\S]*}/);
+    if (!jsonMatch) {
+      core.warning('Could not extract new components from policy details');
+      return null;
+    }
+
+    const newStructure = JSON.parse(jsonMatch[0]);
+    const newComponents = newStructure.bom?.include || [];
+    
+    if (newComponents.length === 0) {
+      core.warning('No new components found to add');
+      return null;
+    }
+
+    // Read existing scanoss.json
+    const existingContent = fs.readFileSync('scanoss.json', 'utf8');
+    const existingConfig = JSON.parse(existingContent);
+
+    // Ensure bom section exists
+    if (!existingConfig.bom) {
+      existingConfig.bom = {};
+    }
+
+    // Ensure include array exists
+    if (!existingConfig.bom.include) {
+      existingConfig.bom.include = [];
+    }
+
+    // Ensure include is an array
+    if (!Array.isArray(existingConfig.bom.include)) {
+      core.warning('Existing bom.include is not an array, creating new array');
+      existingConfig.bom.include = [];
+    }
+
+    // Add all new components (no duplicate checking needed)
+    existingConfig.bom.include.push(...newComponents);
+
+    core.info(`Added ${newComponents.length} new components to existing scanoss.json structure`);
+    
+    // Return formatted JSON
+    return JSON.stringify(existingConfig, null, 2);
+    
+  } catch (error) {
+    core.warning(`Failed to merge with existing scanoss.json: ${error}`);
+    return null;
   }
 }
