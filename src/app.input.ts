@@ -113,7 +113,7 @@ export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/s
 /** Skip snippet generation during scan */
 export const SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 /** Enable match annotations and commit comments */
-export const MATCH_ANNOTATIONS = core.getInput('matchAnnotations') === 'false';
+export const MATCH_ANNOTATIONS = core.getInput('matchAnnotations') === 'true';
 /** Enable file scanning */
 export const SCAN_FILES = core.getInput('scanFiles') === 'true';
 /** Enable SCANOSS settings file usage */

@@ -123796,7 +123796,7 @@ exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanos
 /** Skip snippet generation during scan */
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 /** Enable match annotations and commit comments */
-exports.MATCH_ANNOTATIONS = core.getInput('matchAnnotations') === 'false';
+exports.MATCH_ANNOTATIONS = core.getInput('matchAnnotations') === 'true';
 /** Enable file scanning */
 exports.SCAN_FILES = core.getInput('scanFiles') === 'true';
 /** Enable SCANOSS settings file usage */
@@ -126556,10 +126556,11 @@ class ScanService {
         const args = await this.buildArgs();
         const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
         if (exitCode !== 0) {
-            core.warning(`Scan execution completed with exit code ${exitCode}`);
+            core.error(`Scan execution completed with exit code ${exitCode}`);
             if (stderr) {
-                core.debug(`Scan stderr: ${stderr}`);
+                core.error(`Scan stderr: ${stderr}`);
             }
+            throw new Error(`Scan execution failed with stderr: ${stderr}`);
         }
         const scan = await this.parseResult();
         return { scan, stdout, stderr };
