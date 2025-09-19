@@ -126953,40 +126953,66 @@ async function getFirstRunId() {
 }
 exports.getFirstRunId = getFirstRunId;
 /**
- * Loads the first workflow run for the current SHA and workflow.
- * Filters by workflow name to ensure we find runs from the same workflow that contains the SCANOSS action.
+ * Loads the workflow run that contains the SCANOSS action for the current SHA.
+ * This ensures policy checks are only attached to workflows that actually use SCANOSS.
  */
 async function loadFirstRun(owner, repo) {
     const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
     const sha = getSHA();
-    const currentWorkflowName = github_1.context.workflow;
     try {
-        const workflowRun = await octokit.rest.actions.getWorkflowRun({
+        // Get all workflow runs for this repository and then filter by SHA
+        const runs = await octokit.rest.actions.listWorkflowRunsForRepo({
             owner,
             repo,
-            run_id: github_1.context.runId
+            head_sha: sha
         });
-        const runs = await octokit.rest.actions.listWorkflowRuns({
-            owner,
-            repo,
-            head_sha: sha,
-            workflow_id: workflowRun.data.workflow_id
-        });
-        // Filter by the given SHA and current workflow name to avoid race conditions
-        const filteredRuns = runs.data.workflow_runs.filter(run => run.head_sha === sha && run.name === currentWorkflowName);
-        core.debug(`Found ${filteredRuns.length} workflow runs for SHA ${sha} and workflow ${currentWorkflowName}`);
-        if (filteredRuns.length === 0) {
-            core.warning(`No workflow runs found for workflow '${currentWorkflowName}' with SHA ${sha}`);
+        // Filter runs to find those that contain SCANOSS action
+        const scanossRuns = [];
+        for (const run of runs.data.workflow_runs) {
+            if (run.head_sha !== sha)
+                continue;
+            try {
+                // Check if this workflow run contains SCANOSS action by examining its jobs
+                const jobs = await octokit.rest.actions.listJobsForWorkflowRun({
+                    owner,
+                    repo,
+                    run_id: run.id
+                });
+                // Look for jobs that have steps using SCANOSS action specifically
+                const hasScanossAction = jobs.data.jobs.some(job => job.steps?.some(step => {
+                    const uses = step.uses;
+                    const stepName = step.name?.toLowerCase() || '';
+                    // Match SCANOSS action usage patterns
+                    const isScanossAction = uses?.includes('scanoss/code-scan-action') || // Direct SCANOSS action reference
+                        uses?.match(/scanoss\/.*action/) || // Any SCANOSS action variant
+                        (uses === './' && (stepName.includes('scanoss') || // Local action with SCANOSS in step name
+                            stepName.includes('code scan') || // Local action with 'code scan' in step name
+                            stepName.includes('scan') // Local action with 'scan' in step name (broad but reasonable)
+                        ));
+                    return isScanossAction;
+                }));
+                if (hasScanossAction) {
+                    scanossRuns.push(run);
+                    core.debug(`Found SCANOSS workflow run: ${run.id} in workflow: ${run.name}`);
+                }
+            }
+            catch (jobError) {
+                core.debug(`Could not check jobs for run ${run.id}: ${jobError}`);
+                // Continue checking other runs
+            }
+        }
+        if (scanossRuns.length === 0) {
+            core.warning(`No workflow runs found with SCANOSS action for SHA ${sha}`);
             return null;
         }
-        // Sort by creation date to find the first run
-        const sortedRuns = filteredRuns.sort((a, b) => a.created_at && b.created_at ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : 0);
+        // Sort by creation date to find the first SCANOSS run
+        const sortedRuns = scanossRuns.sort((a, b) => a.created_at && b.created_at ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : 0);
         const firstRun = sortedRuns[0];
-        core.debug(`Selected first run: ${firstRun.id} (created: ${firstRun.created_at}) for workflow: ${currentWorkflowName}`);
+        core.info(`Selected SCANOSS workflow run: ${firstRun.id} from workflow: ${firstRun.name}`);
         return firstRun;
     }
     catch (error) {
-        core.error(`Failed to load first run for workflow ${currentWorkflowName}: ${error}`);
+        core.error(`Failed to load SCANOSS workflow run: ${error}`);
         return null;
     }
 }
