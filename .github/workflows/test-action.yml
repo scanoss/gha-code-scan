@@ -27,7 +27,8 @@ jobs:
         uses: ./
         with:
            dependencies.enabled: false
-           policies: copyleft
+           policies: copyleft, und
+           api.key: ${{ secrets.SC_API_KEY }}
 
 
       - name: Print stdout scan command
