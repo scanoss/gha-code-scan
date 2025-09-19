@@ -127243,11 +127243,13 @@ async function createSnippetAnnotations(resultsPath) {
             if (!Array.isArray(matches))
                 continue;
             for (const match of matches) {
-                if (match.id === 'snippet') {
-                    snippetMatches.push({ filePath, match: match });
-                }
-                else if (match.id === 'file') {
-                    fileMatches.push({ filePath, match: match });
+                if (match.status != null && match.status === 'pending') {
+                    if (match.id === 'snippet') {
+                        snippetMatches.push({ filePath, match: match });
+                    }
+                    else if (match.id === 'file') {
+                        fileMatches.push({ filePath, match: match });
+                    }
                 }
             }
         }

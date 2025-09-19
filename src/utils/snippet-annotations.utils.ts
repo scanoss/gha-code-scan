@@ -91,10 +91,12 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
       if (!Array.isArray(matches)) continue;
 
       for (const match of matches) {
-        if (match.id === 'snippet') {
-          snippetMatches.push({ filePath, match: match as SnippetMatch });
-        } else if (match.id === 'file') {
-          fileMatches.push({ filePath, match: match as FileMatch });
+        if (match.status != null && match.status === 'pending'){
+          if (match.id === 'snippet') {
+            snippetMatches.push({ filePath, match: match as SnippetMatch });
+          } else if (match.id === 'file') {
+            fileMatches.push({ filePath, match: match as FileMatch });
+          }
         }
       }
     }
