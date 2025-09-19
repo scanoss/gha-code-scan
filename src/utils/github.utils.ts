@@ -72,15 +72,17 @@ export async function createCommentOnPR(message: string): Promise<void> {
 
 /**
  * Gets the first workflow run ID for linking purposes.
- * For workflow_dispatch events, finds the original triggering run.
+ * For workflow_dispatch events, finds the original triggering run from the same workflow.
  */
 export async function getFirstRunId(): Promise<number> {
   let firstRunId = context.runId;
   if (context.eventName === FIND_FIRST_RUN_EVENT) {
     const firstRun = await loadFirstRun(context.repo.owner, context.repo.repo);
     if (firstRun) {
-      core.info(`First Run ID found: ${firstRun.id}`);
+      core.info(`First Run ID found: ${firstRun.id} for workflow: ${context.workflow}`);
       firstRunId = firstRun.id;
+    } else {
+      core.info(`No first run found for workflow: ${context.workflow}, using current run: ${context.runId}`);
     }
   }
   return firstRunId;
@@ -88,31 +90,52 @@ export async function getFirstRunId(): Promise<number> {
 
 /**
  * Loads the first workflow run for the current SHA and workflow.
+ * Filters by workflow name to ensure we find runs from the same workflow that contains the SCANOSS action.
  */
 async function loadFirstRun(owner: string, repo: string): Promise<WorkflowRun | null> {
   const octokit = getOctokit(inputs.GITHUB_TOKEN);
   const sha = getSHA();
+  const currentWorkflowName = context.workflow;
 
-  const workflowRun = await octokit.rest.actions.getWorkflowRun({
-    owner,
-    repo,
-    run_id: context.runId
-  });
+  try {
+    const workflowRun = await octokit.rest.actions.getWorkflowRun({
+      owner,
+      repo,
+      run_id: context.runId
+    });
 
-  const runs = await octokit.rest.actions.listWorkflowRuns({
-    owner,
-    repo,
-    head_sha: sha,
-    workflow_id: workflowRun.data.workflow_id
-  });
+    const runs = await octokit.rest.actions.listWorkflowRuns({
+      owner,
+      repo,
+      head_sha: sha,
+      workflow_id: workflowRun.data.workflow_id
+    });
 
-  // Filter by the given SHA
-  const filteredRuns = runs.data.workflow_runs.filter(run => run.head_sha === sha);
+    // Filter by the given SHA and current workflow name to avoid race conditions
+    const filteredRuns = runs.data.workflow_runs.filter(
+      run => run.head_sha === sha && run.name === currentWorkflowName
+    );
 
-  // Sort by creation date to find the first run
-  const sortedRuns = filteredRuns.sort((a, b) =>
-    a.created_at && b.created_at ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : 0
-  );
+    core.debug(`Found ${filteredRuns.length} workflow runs for SHA ${sha} and workflow ${currentWorkflowName}`);
 
-  return sortedRuns.length ? sortedRuns[0] : null;
+    if (filteredRuns.length === 0) {
+      core.warning(`No workflow runs found for workflow '${currentWorkflowName}' with SHA ${sha}`);
+      return null;
+    }
+
+    // Sort by creation date to find the first run
+    const sortedRuns = filteredRuns.sort((a, b) =>
+      a.created_at && b.created_at ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : 0
+    );
+
+    const firstRun = sortedRuns[0];
+    core.debug(
+      `Selected first run: ${firstRun.id} (created: ${firstRun.created_at}) for workflow: ${currentWorkflowName}`
+    );
+
+    return firstRun;
+  } catch (error) {
+    core.error(`Failed to load first run for workflow ${currentWorkflowName}: ${error}`);
+    return null;
+  }
 }
