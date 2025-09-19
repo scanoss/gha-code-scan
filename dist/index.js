@@ -124994,6 +124994,7 @@ class PolicyCheck {
     _status;
     _conclusion;
     _firstRunId = -1;
+    detailsUrl = null;
     /**
      * Initializes the policy check with GitHub integration.
      */
@@ -125018,6 +125019,7 @@ class PolicyCheck {
         });
         console.log(result);
         this.checkRunId = result.data.id;
+        this.detailsUrl = result.data.details_url;
         this._raw = result.data;
         this._firstRunId = runId;
         this._status = STATUS.INITIALIZED;
@@ -125045,6 +125047,9 @@ class PolicyCheck {
      * Returns the URL to this check run.
      */
     get url() {
+        if (this.detailsUrl != null) {
+            return this.detailsUrl;
+        }
         return `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${this._firstRunId}/job/${this.raw?.id}`;
     }
     /**

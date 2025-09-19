@@ -71,6 +71,8 @@ export abstract class PolicyCheck {
 
   private _firstRunId = -1;
 
+  private detailsUrl: string | null = null;
+
   /**
    * Initializes the policy check with GitHub integration.
    */
@@ -112,6 +114,7 @@ export abstract class PolicyCheck {
     console.log(result);
 
     this.checkRunId = result.data.id;
+    this.detailsUrl = result.data.details_url;
     this._raw = result.data;
 
     this._firstRunId = runId;
@@ -145,6 +148,9 @@ export abstract class PolicyCheck {
    * Returns the URL to this check run.
    */
   get url(): string {
+    if (this.detailsUrl != null) {
+      return this.detailsUrl;
+    }
     return `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${this._firstRunId}/job/${this.raw?.id}`;
   }
 
