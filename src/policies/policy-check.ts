@@ -105,7 +105,8 @@ export abstract class PolicyCheck {
       owner: context.repo.owner,
       repo: context.repo.repo,
       name: this.checkName,
-      head_sha: getSHA()
+      head_sha: getSHA(),
+      external_id: `workflow-run-${runId}`
     });
 
     this.checkRunId = result.data.id;

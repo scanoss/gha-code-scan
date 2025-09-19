@@ -125012,7 +125012,8 @@ class PolicyCheck {
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
             name: this.checkName,
-            head_sha: (0, github_utils_1.getSHA)()
+            head_sha: (0, github_utils_1.getSHA)(),
+            external_id: `workflow-run-${runId}`
         });
         this.checkRunId = result.data.id;
         this._raw = result.data;
