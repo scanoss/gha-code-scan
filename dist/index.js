@@ -125008,6 +125008,7 @@ class PolicyCheck {
      * Starts a new GitHub check run for this policy.
      */
     async start(runId) {
+        console.log(`Starting ${runId}`);
         const result = await this.octokit.rest.checks.create({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
