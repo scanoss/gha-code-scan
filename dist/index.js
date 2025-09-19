@@ -125047,6 +125047,7 @@ class PolicyCheck {
      * Returns the URL to this check run.
      */
     get url() {
+        console.log(`DetailsUrl: ${this.detailsUrl}`);
         if (this.detailsUrl != null) {
             return this.detailsUrl;
         }
