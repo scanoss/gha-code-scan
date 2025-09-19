@@ -24,8 +24,14 @@
 import { context, getOctokit } from '@actions/github';
 import * as core from '@actions/core';
 import * as inputs from '../app.input';
+import type { Endpoints } from '@octokit/types';
 
 const prEvents = ['pull_request', 'pull_request_review', 'pull_request_review_comment'];
+const FIND_FIRST_RUN_EVENT = 'workflow_dispatch';
+
+// Use the types from @octokit/types
+type WorkflowRunsResponse = Endpoints['GET /repos/{owner}/{repo}/actions/runs']['response'];
+type WorkflowRun = WorkflowRunsResponse['data']['workflow_runs'][number];
 
 /**
  * Determines if the current GitHub workflow run was triggered by a pull request event.
@@ -65,10 +71,48 @@ export async function createCommentOnPR(message: string): Promise<void> {
 }
 
 /**
- * Gets the current workflow run ID for linking purposes.
- * Always uses the current run to avoid race conditions with concurrent workflows.
+ * Gets the first workflow run ID for linking purposes.
+ * For workflow_dispatch events, finds the original triggering run.
  */
 export async function getFirstRunId(): Promise<number> {
-  core.debug(`Using current run ID: ${context.runId} for workflow: ${context.workflow}`);
-  return context.runId;
+  let firstRunId = context.runId;
+  if (context.eventName === FIND_FIRST_RUN_EVENT) {
+    const firstRun = await loadFirstRun(context.repo.owner, context.repo.repo);
+    if (firstRun) {
+      core.info(`First Run ID found: ${firstRun.id}`);
+      firstRunId = firstRun.id;
+    }
+  }
+  return firstRunId;
+}
+
+/**
+ * Loads the first workflow run for the current SHA and workflow.
+ */
+async function loadFirstRun(owner: string, repo: string): Promise<WorkflowRun | null> {
+  const octokit = getOctokit(inputs.GITHUB_TOKEN);
+  const sha = getSHA();
+
+  const workflowRun = await octokit.rest.actions.getWorkflowRun({
+    owner,
+    repo,
+    run_id: context.runId
+  });
+
+  const runs = await octokit.rest.actions.listWorkflowRuns({
+    owner,
+    repo,
+    head_sha: sha,
+    workflow_id: workflowRun.data.workflow_id
+  });
+
+  // Filter by the given SHA
+  const filteredRuns = runs.data.workflow_runs.filter(run => run.head_sha === sha);
+
+  // Sort by creation date to find the first run
+  const sortedRuns = filteredRuns.sort((a, b) =>
+    a.created_at && b.created_at ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : 0
+  );
+
+  return sortedRuns.length ? sortedRuns[0] : null;
 }

@@ -108,11 +108,8 @@ export abstract class PolicyCheck {
       owner: context.repo.owner,
       repo: context.repo.repo,
       name: this.checkName,
-      head_sha: getSHA(),
-      external_id: runId.toString(),
+      head_sha: getSHA()
     });
-    console.log(result);
-
     this.checkRunId = result.data.id;
     this.detailsUrl = result.data.details_url;
     this._raw = result.data;
@@ -148,7 +145,6 @@ export abstract class PolicyCheck {
    * Returns the URL to this check run.
    */
   get url(): string {
-    console.log(`DetailsUrl: ${this.detailsUrl}`);
     if (this.detailsUrl != null) {
       return this.detailsUrl;
     }

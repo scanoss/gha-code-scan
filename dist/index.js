@@ -125014,10 +125014,8 @@ class PolicyCheck {
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
             name: this.checkName,
-            head_sha: (0, github_utils_1.getSHA)(),
-            external_id: runId.toString(),
+            head_sha: (0, github_utils_1.getSHA)()
         });
-        console.log(result);
         this.checkRunId = result.data.id;
         this.detailsUrl = result.data.details_url;
         this._raw = result.data;
@@ -125047,7 +125045,6 @@ class PolicyCheck {
      * Returns the URL to this check run.
      */
     get url() {
-        console.log(`DetailsUrl: ${this.detailsUrl}`);
         if (this.detailsUrl != null) {
             return this.detailsUrl;
         }
@@ -126906,6 +126903,7 @@ const github_1 = __nccwpck_require__(95438);
 const core = __importStar(__nccwpck_require__(42186));
 const inputs = __importStar(__nccwpck_require__(483));
 const prEvents = ['pull_request', 'pull_request_review', 'pull_request_review_comment'];
+const FIND_FIRST_RUN_EVENT = 'workflow_dispatch';
 /**
  * Determines if the current GitHub workflow run was triggered by a pull request event.
  */
@@ -126942,14 +126940,44 @@ async function createCommentOnPR(message) {
 }
 exports.createCommentOnPR = createCommentOnPR;
 /**
- * Gets the current workflow run ID for linking purposes.
- * Always uses the current run to avoid race conditions with concurrent workflows.
+ * Gets the first workflow run ID for linking purposes.
+ * For workflow_dispatch events, finds the original triggering run.
  */
 async function getFirstRunId() {
-    core.debug(`Using current run ID: ${github_1.context.runId} for workflow: ${github_1.context.workflow}`);
-    return github_1.context.runId;
+    let firstRunId = github_1.context.runId;
+    if (github_1.context.eventName === FIND_FIRST_RUN_EVENT) {
+        const firstRun = await loadFirstRun(github_1.context.repo.owner, github_1.context.repo.repo);
+        if (firstRun) {
+            core.info(`First Run ID found: ${firstRun.id}`);
+            firstRunId = firstRun.id;
+        }
+    }
+    return firstRunId;
 }
 exports.getFirstRunId = getFirstRunId;
+/**
+ * Loads the first workflow run for the current SHA and workflow.
+ */
+async function loadFirstRun(owner, repo) {
+    const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+    const sha = getSHA();
+    const workflowRun = await octokit.rest.actions.getWorkflowRun({
+        owner,
+        repo,
+        run_id: github_1.context.runId
+    });
+    const runs = await octokit.rest.actions.listWorkflowRuns({
+        owner,
+        repo,
+        head_sha: sha,
+        workflow_id: workflowRun.data.workflow_id
+    });
+    // Filter by the given SHA
+    const filteredRuns = runs.data.workflow_runs.filter(run => run.head_sha === sha);
+    // Sort by creation date to find the first run
+    const sortedRuns = filteredRuns.sort((a, b) => a.created_at && b.created_at ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : 0);
+    return sortedRuns.length ? sortedRuns[0] : null;
+}
 
 
 /***/ }),
