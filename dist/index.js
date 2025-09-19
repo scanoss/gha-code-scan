@@ -125016,6 +125016,7 @@ class PolicyCheck {
             head_sha: (0, github_utils_1.getSHA)(),
             external_id: runId.toString(),
         });
+        console.log(result);
         this.checkRunId = result.data.id;
         this._raw = result.data;
         this._firstRunId = runId;

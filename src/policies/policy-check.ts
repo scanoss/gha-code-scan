@@ -109,6 +109,7 @@ export abstract class PolicyCheck {
       head_sha: getSHA(),
       external_id: runId.toString(),
     });
+    console.log(result);
 
     this.checkRunId = result.data.id;
     this._raw = result.data;
