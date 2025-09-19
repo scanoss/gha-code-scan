@@ -34,12 +34,6 @@ jest.mock('../src/app.input', () => ({
 
 const mockOctokit = {
   rest: {
-    actions: {
-      getWorkflowRun: jest.fn(),
-      listWorkflowRuns: jest.fn(),
-      listWorkflowRunsForRepo: jest.fn(),
-      listJobsForWorkflowRun: jest.fn()
-    },
     issues: {
       createComment: jest.fn()
     }
@@ -184,194 +178,32 @@ describe('GitHub Utils', () => {
   });
 
   describe('getFirstRunId', () => {
-    it('should return current runId for non-workflow_dispatch events', async () => {
-      (context.eventName as any) = 'push';
+    it('should always return current runId', async () => {
       (context.runId as any) = 98765;
+      (context.workflow as any) = 'Test Workflow';
+
+      const debugSpy = jest.spyOn(core, 'debug').mockImplementation();
 
       const result = await getFirstRunId();
 
       expect(result).toBe(98765);
-      expect(mockOctokit.rest.actions.getWorkflowRun).not.toHaveBeenCalled();
+      expect(debugSpy).toHaveBeenCalledWith('Using current run ID: 98765 for workflow: Test Workflow');
+
+      debugSpy.mockRestore();
     });
 
-    it('should find first run with SCANOSS action for workflow_dispatch events', async () => {
-      (context.eventName as any) = 'workflow_dispatch';
+    it('should handle different run IDs', async () => {
       (context.runId as any) = 12345;
-      (context.repo as any) = { owner: 'test-owner', repo: 'test-repo' };
-      (context.sha as any) = 'test-sha-123';
+      (context.workflow as any) = 'Another Workflow';
 
-      // Mock workflow runs list for repo
-      mockOctokit.rest.actions.listWorkflowRunsForRepo.mockResolvedValue({
-        data: {
-          workflow_runs: [
-            {
-              id: 11111,
-              created_at: '2023-01-03T10:00:00Z',
-              event: 'push',
-              head_sha: 'test-sha-123',
-              name: 'Lint Workflow'
-            },
-            {
-              id: 22222,
-              created_at: '2023-01-02T10:00:00Z',
-              event: 'push',
-              head_sha: 'test-sha-123',
-              name: 'Test Workflow'
-            },
-            {
-              id: 33333,
-              created_at: '2023-01-01T10:00:00Z',
-              event: 'push',
-              head_sha: 'test-sha-123',
-              name: 'SCANOSS Workflow'
-            } // Oldest
-          ]
-        }
-      });
-
-      // Mock jobs for each workflow run
-      mockOctokit.rest.actions.listJobsForWorkflowRun
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            data: {
-              jobs: [
-                {
-                  steps: [{ name: 'Lint Code', uses: 'super-linter/super-linter@v4' }]
-                }
-              ]
-            }
-          })
-        )
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            data: {
-              jobs: [
-                {
-                  steps: [{ name: 'Test Action', uses: 'actions/checkout@v4' }]
-                }
-              ]
-            }
-          })
-        )
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            data: {
-              jobs: [
-                {
-                  steps: [{ name: 'Run SCANOSS Code Scan', uses: './' }]
-                }
-              ]
-            }
-          })
-        );
-
-      const infoSpy = jest.spyOn(core, 'info').mockImplementation();
+      const debugSpy = jest.spyOn(core, 'debug').mockImplementation();
 
       const result = await getFirstRunId();
 
-      expect(result).toBe(33333); // Should return the oldest SCANOSS run
-      expect(infoSpy).toHaveBeenCalledWith('Selected SCANOSS workflow run: 33333 from workflow: SCANOSS Workflow');
+      expect(result).toBe(12345);
+      expect(debugSpy).toHaveBeenCalledWith('Using current run ID: 12345 for workflow: Another Workflow');
 
-      infoSpy.mockRestore();
-    });
-
-    it('should return current runId if no SCANOSS runs are found', async () => {
-      (context.eventName as any) = 'workflow_dispatch';
-      (context.runId as any) = 12345;
-
-      // Mock workflow runs with no SCANOSS actions
-      mockOctokit.rest.actions.listWorkflowRunsForRepo.mockResolvedValue({
-        data: {
-          workflow_runs: [
-            {
-              id: 11111,
-              created_at: '2023-01-01T10:00:00Z',
-              event: 'push',
-              head_sha: 'test-sha-123',
-              name: 'Lint Workflow'
-            }
-          ]
-        }
-      });
-
-      // Mock jobs for workflow run with no SCANOSS action
-      mockOctokit.rest.actions.listJobsForWorkflowRun.mockResolvedValue({
-        data: {
-          jobs: [
-            {
-              steps: [{ name: 'Lint Code', uses: 'super-linter/super-linter@v4' }]
-            }
-          ]
-        }
-      });
-
-      const infoSpy = jest.spyOn(core, 'info').mockImplementation();
-
-      const result = await getFirstRunId();
-
-      expect(result).toBe(12345); // Should return current runId as fallback
-      expect(infoSpy).toHaveBeenCalledWith('No first run found for workflow: undefined, using current run: 12345');
-
-      infoSpy.mockRestore();
-    });
-
-    it('should handle API errors gracefully and return current runId', async () => {
-      (context.eventName as any) = 'workflow_dispatch';
-      (context.runId as any) = 12345;
-
-      mockOctokit.rest.actions.listWorkflowRunsForRepo.mockRejectedValue(new Error('API Error'));
-
-      const infoSpy = jest.spyOn(core, 'info').mockImplementation();
-
-      const result = await getFirstRunId();
-
-      expect(result).toBe(12345); // Should return current runId as fallback when API fails
-      expect(infoSpy).toHaveBeenCalledWith('No first run found for workflow: undefined, using current run: 12345');
-
-      infoSpy.mockRestore();
-    });
-
-    it('should not match workflows with only SCANOSS mentioned in step names', async () => {
-      (context.eventName as any) = 'workflow_dispatch';
-      (context.runId as any) = 12345;
-
-      // Mock workflow runs with SCANOSS in step name but not actually using the action
-      mockOctokit.rest.actions.listWorkflowRunsForRepo.mockResolvedValue({
-        data: {
-          workflow_runs: [
-            {
-              id: 11111,
-              created_at: '2023-01-01T10:00:00Z',
-              event: 'push',
-              head_sha: 'test-sha-123',
-              name: 'Workflow mentioning SCANOSS'
-            }
-          ]
-        }
-      });
-
-      // Mock jobs for workflow run that mentions SCANOSS but doesn't use the action
-      mockOctokit.rest.actions.listJobsForWorkflowRun.mockResolvedValue({
-        data: {
-          jobs: [
-            {
-              steps: [
-                { name: 'Check SCANOSS documentation', uses: 'actions/checkout@v4' },
-                { name: 'Upload to SCANOSS-compatible server', uses: 'actions/upload@v3' }
-              ]
-            }
-          ]
-        }
-      });
-
-      const infoSpy = jest.spyOn(core, 'info').mockImplementation();
-
-      const result = await getFirstRunId();
-
-      expect(result).toBe(12345); // Should return current runId as fallback
-      expect(infoSpy).toHaveBeenCalledWith('No first run found for workflow: undefined, using current run: 12345');
-
-      infoSpy.mockRestore();
+      debugSpy.mockRestore();
     });
   });
 });
