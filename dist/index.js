@@ -127197,10 +127197,10 @@ function getFileUrl(filePath) {
     return `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
 }
 /**
- * Extracts and formats code lines from a file for preview in comments
+ * Extracts and formats code lines from a file for preview in comments with scrollable display
  * @param filePath - The file path relative to repository root
  * @param lineRange - The range of lines to extract
- * @returns Formatted code block or null if file cannot be read
+ * @returns Formatted scrollable code block or null if file cannot be read
  */
 function extractCodePreview(filePath, lineRange) {
     try {
@@ -127221,13 +127221,21 @@ function extractCodePreview(filePath, lineRange) {
         // Determine file extension for syntax highlighting
         const fileExtension = path.extname(filePath).slice(1);
         const language = fileExtension || 'text';
+        // Create a limited preview (max 10 lines) with option to show more
+        const maxPreviewLines = 10;
+        const shouldTruncate = extractedLines.length > maxPreviewLines;
+        const previewLines = shouldTruncate ? extractedLines.slice(0, maxPreviewLines) : extractedLines;
         // Format as code block with line numbers
-        let codeBlock = `\`\`\`${language}\n`;
-        extractedLines.forEach((line, index) => {
+        let codeBlock = `<details>\n<summary>📄 Code Preview (Lines ${lineRange.start}-${lineRange.end})</summary>\n\n\`\`\`${language}\n`;
+        previewLines.forEach((line, index) => {
             const lineNumber = startIndex + index + 1;
             codeBlock += `${lineNumber}: ${line}\n`;
         });
-        codeBlock += '```';
+        if (shouldTruncate) {
+            const remainingLines = extractedLines.length - maxPreviewLines;
+            codeBlock += `... (${remainingLines} more lines)\n`;
+        }
+        codeBlock += '```\n</details>';
         return codeBlock;
     }
     catch (error) {
@@ -127262,7 +127270,7 @@ function formatSnippetAnnotationMessage(filePath, snippet, localLines) {
     // Add code preview
     const codePreview = extractCodePreview(filePath, localLines);
     if (codePreview) {
-        message += `\n**Code Preview:**\n${codePreview}`;
+        message += `\n${codePreview}`;
     }
     return message;
 }
