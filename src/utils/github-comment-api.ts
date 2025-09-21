@@ -41,10 +41,10 @@ function getFileUrl(filePath: string): string {
 }
 
 /**
- * Extracts and formats code lines from a file for preview in comments with scrollable display
+ * Extracts and formats code lines from a file for preview in comments
  * @param filePath - The file path relative to repository root
  * @param lineRange - The range of lines to extract
- * @returns Formatted scrollable code block or null if file cannot be read
+ * @returns Formatted code block or null if file cannot be read
  */
 function extractCodePreview(filePath: string, lineRange: LineRange): string | null {
   try {
@@ -72,25 +72,13 @@ function extractCodePreview(filePath: string, lineRange: LineRange): string | nu
     const fileExtension = path.extname(filePath).slice(1);
     const language = fileExtension || 'text';
 
-    // Create a limited preview (max 10 lines) with option to show more
-    const maxPreviewLines = 10;
-    const shouldTruncate = extractedLines.length > maxPreviewLines;
-    const previewLines = shouldTruncate ? extractedLines.slice(0, maxPreviewLines) : extractedLines;
-
-    // Format as code block with line numbers
-    let codeBlock = `<details>\n<summary>📄 Code Preview (Lines ${lineRange.start}-${lineRange.end})</summary>\n\n\`\`\`${language}\n`;
-
-    previewLines.forEach((line, index) => {
+    // Format as code block with line numbers - GitHub will make it scrollable automatically
+    let codeBlock = `\`\`\`${language}\n`;
+    extractedLines.forEach((line, index) => {
       const lineNumber = startIndex + index + 1;
       codeBlock += `${lineNumber}: ${line}\n`;
     });
-
-    if (shouldTruncate) {
-      const remainingLines = extractedLines.length - maxPreviewLines;
-      codeBlock += `... (${remainingLines} more lines)\n`;
-    }
-
-    codeBlock += '```\n</details>';
+    codeBlock += '```';
 
     return codeBlock;
   } catch (error) {
@@ -130,7 +118,7 @@ function formatSnippetAnnotationMessage(filePath: string, snippet: SnippetMatch,
   // Add code preview
   const codePreview = extractCodePreview(filePath, localLines);
   if (codePreview) {
-    message += `\n${codePreview}`;
+    message += `\n**Code Preview:**\n${codePreview}`;
   }
 
   return message;
