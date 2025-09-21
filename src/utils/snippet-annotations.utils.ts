@@ -285,13 +285,11 @@ async function createSnippetCommitComment(filePath: string, snippetMatch: Snippe
       // Temporarily removed line parameter to test file-level comments
     };
 
-    core.info(`Creating commit comment with params: ${JSON.stringify(params, null, 2)}`);
+    core.info(`Creating commit comment for snippet match at ${filePath}`);
 
-    const response = await octokit.rest.repos.createCommitComment(params);
+    await octokit.rest.repos.createCommitComment(params);
 
-    core.info(
-      `Successfully created commit comment for snippet match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`
-    );
+    core.info(`Successfully created commit comment for snippet match at ${filePath}`);
   } catch (error) {
     core.error(`Failed to create commit comment for ${filePath}`);
     core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
@@ -320,13 +318,11 @@ async function createFileCommitComment(filePath: string, fileMatch: FileMatch): 
       body: commentBody
     };
 
-    core.info(`Creating file commit comment with params: ${JSON.stringify(params, null, 2)}`);
+    core.info(`Creating file commit comment for ${filePath}`);
 
-    const response = await octokit.rest.repos.createCommitComment(params);
+    await octokit.rest.repos.createCommitComment(params);
 
-    core.info(
-      `Successfully created commit comment for file match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`
-    );
+    core.info(`Successfully created commit comment for file match at ${filePath}`);
   } catch (error) {
     core.error(`Failed to create commit comment for ${filePath}`);
     core.error(`Error details: ${JSON.stringify(error, null, 2)}`);

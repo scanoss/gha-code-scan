@@ -103,7 +103,6 @@ export abstract class PolicyCheck {
    * Starts a new GitHub check run for this policy.
    */
   async start(runId: number): Promise<CheckRun> {
-    console.log(`Starting ${runId}`);
     const result = await this.octokit.rest.checks.create({
       owner: context.repo.owner,
       repo: context.repo.repo,

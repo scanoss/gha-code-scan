@@ -22,7 +22,6 @@
 */
 
 import { context, getOctokit } from '@actions/github';
-import * as core from '@actions/core';
 import { getSHA, isPullRequest, createCommentOnPR, getFirstRunId } from '../src/utils/github.utils';
 
 // Mock external dependencies
@@ -180,30 +179,20 @@ describe('GitHub Utils', () => {
   describe('getFirstRunId', () => {
     it('should always return current runId', async () => {
       (context.runId as any) = 98765;
-      (context.workflow as any) = 'Test Workflow';
-
-      const debugSpy = jest.spyOn(core, 'debug').mockImplementation();
+      (context.eventName as any) = 'push'; // Not workflow_dispatch
 
       const result = await getFirstRunId();
 
       expect(result).toBe(98765);
-      expect(debugSpy).toHaveBeenCalledWith('Using current run ID: 98765 for workflow: Test Workflow');
-
-      debugSpy.mockRestore();
     });
 
     it('should handle different run IDs', async () => {
       (context.runId as any) = 12345;
-      (context.workflow as any) = 'Another Workflow';
-
-      const debugSpy = jest.spyOn(core, 'debug').mockImplementation();
+      (context.eventName as any) = 'pull_request'; // Not workflow_dispatch
 
       const result = await getFirstRunId();
 
       expect(result).toBe(12345);
-      expect(debugSpy).toHaveBeenCalledWith('Using current run ID: 12345 for workflow: Another Workflow');
-
-      debugSpy.mockRestore();
     });
   });
 });

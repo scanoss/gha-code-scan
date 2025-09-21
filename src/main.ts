@@ -40,6 +40,10 @@ import { createSnippetAnnotations } from './utils/snippet-annotations.utils';
  */
 export async function run(): Promise<void> {
   try {
+    // Mask sensitive inputs to prevent accidental leakage in logs
+    if (inputs.API_KEY) core.setSecret(inputs.API_KEY);
+    if (inputs.GITHUB_TOKEN) core.setSecret(inputs.GITHUB_TOKEN);
+
     core.debug(`SCANOSS Scan Action started...`);
 
     // create policies

@@ -237,12 +237,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       };
 
       const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
-
-      // Display stdout (policy results) unless it's empty
-      if (stdout && stdout.trim()) {
-        core.info(stdout);
-      }
-
+      
       // Only display stderr if it's a real error, not informational messages
       if (stderr && !this.isInformationalMessage(stderr)) {
         core.error(stderr); // Display real errors to user

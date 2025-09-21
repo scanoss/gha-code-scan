@@ -123957,6 +123957,11 @@ const snippet_annotations_utils_1 = __nccwpck_require__(71325);
  */
 async function run() {
     try {
+        // Mask sensitive inputs to prevent accidental leakage in logs
+        if (inputs.API_KEY)
+            core.setSecret(inputs.API_KEY);
+        if (inputs.GITHUB_TOKEN)
+            core.setSecret(inputs.GITHUB_TOKEN);
         core.debug(`SCANOSS Scan Action started...`);
         // create policies
         core.debug(`Creating policies`);
@@ -124806,10 +124811,6 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                 silent: true // Capture output silently, then selectively display
             };
             const { stdout, stderr, exitCode } = await exec.getExecOutput(app_input_1.EXECUTABLE, args, options);
-            // Display stdout (policy results) unless it's empty
-            if (stdout && stdout.trim()) {
-                core.info(stdout);
-            }
             // Only display stderr if it's a real error, not informational messages
             if (stderr && !this.isInformationalMessage(stderr)) {
                 core.error(stderr); // Display real errors to user
@@ -125009,7 +125010,6 @@ class PolicyCheck {
      * Starts a new GitHub check run for this policy.
      */
     async start(runId) {
-        console.log(`Starting ${runId}`);
         const result = await this.octokit.rest.checks.create({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
@@ -127397,9 +127397,9 @@ async function createSnippetCommitComment(filePath, snippetMatch) {
             body: commentBody
             // Temporarily removed line parameter to test file-level comments
         };
-        core.info(`Creating commit comment with params: ${JSON.stringify(params, null, 2)}`);
+        core.info(`Creating commit comment for snippet match at ${filePath}`);
         const response = await octokit.rest.repos.createCommitComment(params);
-        core.info(`Successfully created commit comment for snippet match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`);
+        core.info(`Successfully created commit comment for snippet match at ${filePath}`);
     }
     catch (error) {
         core.error(`Failed to create commit comment for ${filePath}`);
@@ -127425,9 +127425,9 @@ async function createFileCommitComment(filePath, fileMatch) {
             path: filePath,
             body: commentBody
         };
-        core.info(`Creating file commit comment with params: ${JSON.stringify(params, null, 2)}`);
+        core.info(`Creating file commit comment for ${filePath}`);
         const response = await octokit.rest.repos.createCommitComment(params);
-        core.info(`Successfully created commit comment for file match at ${filePath}. Response: ${JSON.stringify(response.data, null, 2)}`);
+        core.info(`Successfully created commit comment for file match at ${filePath}`);
     }
     catch (error) {
         core.error(`Failed to create commit comment for ${filePath}`);
