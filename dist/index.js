@@ -127218,23 +127218,18 @@ function extractCodePreview(filePath, lineRange) {
             return null;
         }
         const extractedLines = lines.slice(startIndex, endIndex + 1);
-        // Determine file extension for syntax highlighting
-        const fileExtension = path.extname(filePath).slice(1);
-        const language = fileExtension || 'text';
-        // Format as scrollable HTML code block with CSS
-        let codeBlock = `<div style="max-height: 300px; overflow-y: auto; border: 1px solid #d1d5da; border-radius: 6px; background-color: #f6f8fa; padding: 16px; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 12px; line-height: 1.45;">\n<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"><code class="language-${language}">`;
+        // Format as scrollable box showing ~10 lines with overflow scroll
+        const lineHeight = 20; // pixels per line
+        const maxVisibleLines = 10;
+        const maxHeight = lineHeight * maxVisibleLines;
+        let codeBlock = `<div style="height: ${maxHeight}px; overflow-y: scroll; border: 1px solid #d0d7de; border-radius: 6px; background-color: #f6f8fa; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 12px; line-height: ${lineHeight}px; padding: 8px;"><pre style="margin: 0;">`;
         extractedLines.forEach((line, index) => {
             const lineNumber = startIndex + index + 1;
-            // Escape HTML characters
-            const escapedLine = line
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
+            // Escape HTML special characters
+            const escapedLine = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             codeBlock += `${lineNumber}: ${escapedLine}\n`;
         });
-        codeBlock += '</code></pre>\n</div>';
+        codeBlock += '</pre></div>';
         return codeBlock;
     }
     catch (error) {
