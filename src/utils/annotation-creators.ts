@@ -26,7 +26,6 @@ import { context } from '@actions/github';
 import { SnippetMatch, LineRange, SnippetMatchWithPath, FileMatchWithPath } from '../types/annotations';
 import { parseLineRange } from './line-parsers';
 
-
 /**
  * Creates a GitHub URL for the file
  * @param filePath - The file path relative to repository root
