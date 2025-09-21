@@ -126901,19 +126901,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createFileMatchSummaryAnnotation = exports.createSnippetSummaryAnnotation = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const github_1 = __nccwpck_require__(95438);
-const github_utils_1 = __nccwpck_require__(17889);
 const line_parsers_1 = __nccwpck_require__(70622);
-/**
- * Resolves the appropriate repo and SHA for PR contexts
- * @returns Object containing owner, repo, and SHA information
- */
-function resolveRepoAndSha() {
-    return {
-        owner: github_1.context.repo.owner,
-        repo: github_1.context.repo.repo,
-        sha: (0, github_utils_1.getSHA)()
-    };
-}
 /**
  * Creates a GitHub URL for the file
  * @param filePath - The file path relative to repository root
@@ -126974,8 +126962,7 @@ exports.createSnippetSummaryAnnotation = createSnippetSummaryAnnotation;
  * @param fileMatches - Array of file matches with file paths
  */
 function createFileMatchSummaryAnnotation(fileMatches) {
-    const { owner, repo, sha } = resolveRepoAndSha();
-    const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
+    const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
     let message = `Found ${fileMatches.length} full file matches\n`;
     message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
     message += `**Affected Files:**\n`;
@@ -127331,7 +127318,11 @@ async function createFileCommitComment(filePath, fileMatch) {
             body: commentBody
         };
         core.info(`Creating file commit comment for ${filePath}`);
-        await octokit.rest.repos.createCommitComment(params);
+        // Use request deduplication to prevent duplicate comments for the same file
+        const deduplicationKey = `file-comment:${github_1.context.sha}:${filePath}:${fileMatch.component}`;
+        await api_cache_1.requestDeduplicator.deduplicate(deduplicationKey, async () => {
+            return await octokit.rest.repos.createCommitComment(params);
+        });
         core.info(`Successfully created commit comment for file match at ${filePath}`);
     }
     catch (error) {

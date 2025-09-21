@@ -23,21 +23,9 @@
 
 import * as core from '@actions/core';
 import { context } from '@actions/github';
-import { getSHA } from './github.utils';
 import { SnippetMatch, LineRange, SnippetMatchWithPath, FileMatchWithPath } from '../types/annotations';
 import { parseLineRange } from './line-parsers';
 
-/**
- * Resolves the appropriate repo and SHA for PR contexts
- * @returns Object containing owner, repo, and SHA information
- */
-function resolveRepoAndSha(): { owner: string; repo: string; sha: string } {
-  return {
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    sha: getSHA()
-  };
-}
 
 /**
  * Creates a GitHub URL for the file
@@ -109,8 +97,7 @@ export function createSnippetSummaryAnnotation(snippetMatches: SnippetMatchWithP
  * @param fileMatches - Array of file matches with file paths
  */
 export function createFileMatchSummaryAnnotation(fileMatches: FileMatchWithPath[]): void {
-  const { owner, repo, sha } = resolveRepoAndSha();
-  const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
+  const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
 
   let message = `Found ${fileMatches.length} full file matches\n`;
   message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;

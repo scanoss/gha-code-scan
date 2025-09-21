@@ -182,7 +182,11 @@ export async function createFileCommitComment(filePath: string, fileMatch: FileM
 
     core.info(`Creating file commit comment for ${filePath}`);
 
-    await octokit.rest.repos.createCommitComment(params);
+    // Use request deduplication to prevent duplicate comments for the same file
+    const deduplicationKey = `file-comment:${context.sha}:${filePath}:${fileMatch.component}`;
+    await requestDeduplicator.deduplicate(deduplicationKey, async () => {
+      return await octokit.rest.repos.createCommitComment(params);
+    });
 
     core.info(`Successfully created commit comment for file match at ${filePath}`);
   } catch (error) {
