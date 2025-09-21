@@ -127325,18 +127325,9 @@ async function createSnippetCommitComment(filePath, snippetMatch) {
             repo: github_1.context.repo.repo,
             commit_sha: github_1.context.sha,
             path: filePath,
+            line: localLines.start,
             body: commentBody
         };
-        // Add line parameters for inline preview functionality
-        if (localLines.start === localLines.end) {
-            // Single line comment
-            params.line = localLines.start;
-        }
-        else {
-            // Multi-line comment
-            params.start_line = localLines.start;
-            params.line = localLines.end;
-        }
         core.info(`Creating commit comment for snippet match at ${filePath}`);
         // Use request deduplication to prevent duplicate comments for the same file
         const deduplicationKey = `snippet-comment:${github_1.context.sha}:${filePath}:${snippetMatch.component}`;

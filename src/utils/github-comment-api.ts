@@ -187,23 +187,14 @@ export async function createSnippetCommitComment(filePath: string, snippetMatch:
   try {
     const octokit = getOctokit(inputs.GITHUB_TOKEN);
 
-    const params: any = {
+    const params = {
       owner: context.repo.owner,
       repo: context.repo.repo,
       commit_sha: context.sha,
       path: filePath,
+      line: localLines.start,
       body: commentBody
     };
-
-    // Add line parameters for inline preview functionality
-    if (localLines.start === localLines.end) {
-      // Single line comment
-      params.line = localLines.start;
-    } else {
-      // Multi-line comment
-      params.start_line = localLines.start;
-      params.line = localLines.end;
-    }
 
     core.info(`Creating commit comment for snippet match at ${filePath}`);
 
