@@ -72,13 +72,22 @@ function extractCodePreview(filePath: string, lineRange: LineRange): string | nu
     const fileExtension = path.extname(filePath).slice(1);
     const language = fileExtension || 'text';
 
-    // Format as code block with line numbers - GitHub will make it scrollable automatically
-    let codeBlock = `\`\`\`${language}\n`;
+    // Format as scrollable HTML code block with CSS
+    let codeBlock = `<div style="max-height: 300px; overflow-y: auto; border: 1px solid #d1d5da; border-radius: 6px; background-color: #f6f8fa; padding: 16px; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 12px; line-height: 1.45;">\n<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"><code class="language-${language}">`;
+
     extractedLines.forEach((line, index) => {
       const lineNumber = startIndex + index + 1;
-      codeBlock += `${lineNumber}: ${line}\n`;
+      // Escape HTML characters
+      const escapedLine = line
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      codeBlock += `${lineNumber}: ${escapedLine}\n`;
     });
-    codeBlock += '```';
+
+    codeBlock += '</code></pre>\n</div>';
 
     return codeBlock;
   } catch (error) {
