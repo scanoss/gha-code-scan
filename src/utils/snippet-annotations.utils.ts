@@ -25,7 +25,7 @@ import * as core from '@actions/core';
 import * as fs from 'fs';
 import { context, getOctokit } from '@actions/github';
 import * as inputs from '../app.input';
-import { isPullRequest } from './github.utils';
+import { isPullRequest, getSHA } from './github.utils';
 
 /**
  * Interface representing a snippet match from SCANOSS results
@@ -71,6 +71,17 @@ interface LineRange {
 }
 
 /**
+ * Resolves the appropriate repo and SHA for PR contexts
+ */
+function resolveRepoAndSha(): { owner: string; repo: string; sha: string } {
+  return {
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    sha: getSHA()
+  };
+}
+
+/**
  * Creates hybrid snippet annotations: summary annotations + commit comments
  */
 export async function createSnippetAnnotations(resultsPath: string): Promise<void> {
@@ -91,7 +102,7 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
       if (!Array.isArray(matches)) continue;
 
       for (const match of matches) {
-        if (match.status != null && match.status === 'pending') {
+        if (match.status === 'pending') {
           if (match.id === 'snippet') {
             snippetMatches.push({ filePath, match: match as SnippetMatch });
           } else if (match.id === 'file') {
@@ -113,13 +124,20 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
     // Log GitHub context for debugging
     core.info(`GitHub context: owner=${context.repo.owner}, repo=${context.repo.repo}, sha=${context.sha}`);
 
-    // Create individual commit comments for each match
-    for (const { filePath, match } of snippetMatches) {
-      await createSnippetCommitComment(filePath, match);
-    }
+    // Create individual commit comments for each match (in parallel)
+    const snippetPromises = snippetMatches.map(({ filePath, match }) =>
+      createSnippetCommitComment(filePath, match)
+    );
+    const filePromises = fileMatches.map(({ filePath, match }) =>
+      createFileCommitComment(filePath, match)
+    );
 
-    for (const { filePath, match } of fileMatches) {
-      await createFileCommitComment(filePath, match);
+    const promiseResults = await Promise.allSettled([...snippetPromises, ...filePromises]);
+    const failedCount = promiseResults.filter((result: PromiseSettledResult<void>) => result.status === 'rejected').length;
+    const successCount = promiseResults.length - failedCount;
+
+    if (failedCount > 0) {
+      core.warning(`${failedCount} commit comments failed to create, ${successCount} succeeded`);
     }
 
     // Create main conversation comment if we have any matches
@@ -128,7 +146,7 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
     }
 
     core.info(
-      `Created summary annotations, ${snippetMatches.length + fileMatches.length} commit comments, and main conversation comment`
+      `Created summary annotations, attempted ${snippetMatches.length + fileMatches.length} commit comments, and main conversation comment`
     );
   } catch (error) {
     core.error(`Failed to create snippet annotations from ${resultsPath}: ${error}`);
@@ -167,7 +185,7 @@ function createSnippetSummaryAnnotation(snippetMatches: { filePath: string; matc
     message += `- ... and ${Object.keys(fileGroups).length - 10} more files\n`;
   }
 
-  core.warning(message, {
+  core.notice(message, {
     title: 'Code Snippet Matches Summary'
   });
 
@@ -178,7 +196,8 @@ function createSnippetSummaryAnnotation(snippetMatches: { filePath: string; matc
  * Creates a summary annotation for file matches (not bound to any file)
  */
 function createFileMatchSummaryAnnotation(fileMatches: { filePath: string; match: FileMatch }[]): void {
-  const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+  const { owner, repo, sha } = resolveRepoAndSha();
+  const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
 
   let message = `Found ${fileMatches.length} full file matches\n`;
   message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
@@ -196,7 +215,7 @@ function createFileMatchSummaryAnnotation(fileMatches: { filePath: string; match
     message += `- ... and ${fileMatches.length - 10} more files\n`;
   }
 
-  core.warning(message, {
+  core.notice(message, {
     title: 'Full File Matches Summary'
   });
 
@@ -253,7 +272,8 @@ async function createMainConversationComment(
       body: message
     });
 
-    core.info('Successfully created main conversation comment');
+    const prInfo = isPullRequest() ? ` (PR #${context.issue.number})` : '';
+    core.info(`Successfully created main conversation comment${prInfo}`);
   } catch (error) {
     core.error(`Failed to create main conversation comment: ${error}`);
   }
@@ -417,8 +437,17 @@ function getFileUrl(filePath: string): string {
 /**
  * Extracts first and last numbers from a string using regex
  */
+/**
+ * Sanitizes line range string by removing non-numeric, non-comma, non-dash characters
+ */
+function sanitizeLineRange(str: string): string {
+  return str.replace(/[^0-9,-]/g, '');
+}
+
 function extractFirstAndLastNumbers(str: string): { first: string; last: string } | null {
-  const match = str.match(/^(\d+).*?(\d+)(?!.*\d)/);
+  // Sanitize input to handle formats like "L7-L9, L47-L81"
+  const sanitized = sanitizeLineRange(str);
+  const match = sanitized.match(/^(\d+).*?(\d+)(?!.*\d)/);
   if (match) {
     return {
       first: match[1],
@@ -447,8 +476,9 @@ function parseLineRange(lineRange: string): LineRange | null {
     }
   }
 
-  // Fallback for single number
-  const singleLine = parseInt(lineRange, 10);
+  // Fallback for single number (sanitize first)
+  const sanitized = sanitizeLineRange(lineRange);
+  const singleLine = parseInt(sanitized, 10);
   if (!isNaN(singleLine)) {
     return { start: singleLine, end: singleLine };
   }

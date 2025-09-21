@@ -127226,6 +127226,16 @@ const github_1 = __nccwpck_require__(95438);
 const inputs = __importStar(__nccwpck_require__(483));
 const github_utils_1 = __nccwpck_require__(17889);
 /**
+ * Resolves the appropriate repo and SHA for PR contexts
+ */
+function resolveRepoAndSha() {
+    return {
+        owner: github_1.context.repo.owner,
+        repo: github_1.context.repo.repo,
+        sha: (0, github_utils_1.getSHA)()
+    };
+}
+/**
  * Creates hybrid snippet annotations: summary annotations + commit comments
  */
 async function createSnippetAnnotations(resultsPath) {
@@ -127243,7 +127253,7 @@ async function createSnippetAnnotations(resultsPath) {
             if (!Array.isArray(matches))
                 continue;
             for (const match of matches) {
-                if (match.status != null && match.status === 'pending') {
+                if (match.status === 'pending') {
                     if (match.id === 'snippet') {
                         snippetMatches.push({ filePath, match: match });
                     }
@@ -127262,18 +127272,20 @@ async function createSnippetAnnotations(resultsPath) {
         }
         // Log GitHub context for debugging
         core.info(`GitHub context: owner=${github_1.context.repo.owner}, repo=${github_1.context.repo.repo}, sha=${github_1.context.sha}`);
-        // Create individual commit comments for each match
-        for (const { filePath, match } of snippetMatches) {
-            await createSnippetCommitComment(filePath, match);
-        }
-        for (const { filePath, match } of fileMatches) {
-            await createFileCommitComment(filePath, match);
+        // Create individual commit comments for each match (in parallel)
+        const snippetPromises = snippetMatches.map(({ filePath, match }) => createSnippetCommitComment(filePath, match));
+        const filePromises = fileMatches.map(({ filePath, match }) => createFileCommitComment(filePath, match));
+        const promiseResults = await Promise.allSettled([...snippetPromises, ...filePromises]);
+        const failedCount = promiseResults.filter((result) => result.status === 'rejected').length;
+        const successCount = promiseResults.length - failedCount;
+        if (failedCount > 0) {
+            core.warning(`${failedCount} commit comments failed to create, ${successCount} succeeded`);
         }
         // Create main conversation comment if we have any matches
         if (snippetMatches.length > 0 || fileMatches.length > 0) {
             await createMainConversationComment(snippetMatches, fileMatches);
         }
-        core.info(`Created summary annotations, ${snippetMatches.length + fileMatches.length} commit comments, and main conversation comment`);
+        core.info(`Created summary annotations, attempted ${snippetMatches.length + fileMatches.length} commit comments, and main conversation comment`);
     }
     catch (error) {
         core.error(`Failed to create snippet annotations from ${resultsPath}: ${error}`);
@@ -127305,7 +127317,7 @@ function createSnippetSummaryAnnotation(snippetMatches) {
     if (Object.keys(fileGroups).length > 10) {
         message += `- ... and ${Object.keys(fileGroups).length - 10} more files\n`;
     }
-    core.warning(message, {
+    core.notice(message, {
         title: 'Code Snippet Matches Summary'
     });
     core.info(`Created snippet summary annotation for ${snippetMatches.length} matches`);
@@ -127314,7 +127326,8 @@ function createSnippetSummaryAnnotation(snippetMatches) {
  * Creates a summary annotation for file matches (not bound to any file)
  */
 function createFileMatchSummaryAnnotation(fileMatches) {
-    const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
+    const { owner, repo, sha } = resolveRepoAndSha();
+    const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
     let message = `Found ${fileMatches.length} full file matches\n`;
     message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
     message += `**Affected Files:**\n`;
@@ -127328,7 +127341,7 @@ function createFileMatchSummaryAnnotation(fileMatches) {
     if (fileMatches.length > 10) {
         message += `- ... and ${fileMatches.length - 10} more files\n`;
     }
-    core.warning(message, {
+    core.notice(message, {
         title: 'Full File Matches Summary'
     });
     core.info(`Created file match summary annotation for ${fileMatches.length} matches`);
@@ -127370,7 +127383,8 @@ async function createMainConversationComment(snippetMatches, fileMatches) {
             repo: github_1.context.repo.repo,
             body: message
         });
-        core.info('Successfully created main conversation comment');
+        const prInfo = (0, github_utils_1.isPullRequest)() ? ` (PR #${github_1.context.issue.number})` : '';
+        core.info(`Successfully created main conversation comment${prInfo}`);
     }
     catch (error) {
         core.error(`Failed to create main conversation comment: ${error}`);
@@ -127506,8 +127520,16 @@ function getFileUrl(filePath) {
 /**
  * Extracts first and last numbers from a string using regex
  */
+/**
+ * Sanitizes line range string by removing non-numeric, non-comma, non-dash characters
+ */
+function sanitizeLineRange(str) {
+    return str.replace(/[^0-9,-]/g, '');
+}
 function extractFirstAndLastNumbers(str) {
-    const match = str.match(/^(\d+).*?(\d+)(?!.*\d)/);
+    // Sanitize input to handle formats like "L7-L9, L47-L81"
+    const sanitized = sanitizeLineRange(str);
+    const match = sanitized.match(/^(\d+).*?(\d+)(?!.*\d)/);
     if (match) {
         return {
             first: match[1],
@@ -127532,8 +127554,9 @@ function parseLineRange(lineRange) {
             return { start, end };
         }
     }
-    // Fallback for single number
-    const singleLine = parseInt(lineRange, 10);
+    // Fallback for single number (sanitize first)
+    const sanitized = sanitizeLineRange(lineRange);
+    const singleLine = parseInt(sanitized, 10);
     if (!isNaN(singleLine)) {
         return { start: singleLine, end: singleLine };
     }
