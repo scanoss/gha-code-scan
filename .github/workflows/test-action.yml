@@ -28,6 +28,7 @@ jobs:
         with:
            dependencies.enabled: false
            policies: copyleft, und
+           policies.halt_on_failure: 'false'
            api.key: ${{ secrets.SC_API_KEY }}
 
 
