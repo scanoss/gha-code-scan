@@ -125631,7 +125631,7 @@ class DependencyTrackStatusService {
         try {
             const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
             // eslint-disable-next-line @typescript-eslint/await-thenable
-            const sha = await (0, github_utils_1.getSHA)(); // TODO review with Groh
+            const sha = await (0, github_utils_1.getSHA)();
             let conclusion;
             let title;
             let summary;
@@ -126847,6 +126847,554 @@ exports.scanossService = new ScanOssService();
 
 /***/ }),
 
+/***/ 81655:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2024, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+*/
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createFileMatchSummaryAnnotation = exports.createSnippetSummaryAnnotation = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const github_1 = __nccwpck_require__(95438);
+const github_utils_1 = __nccwpck_require__(17889);
+const line_parsers_1 = __nccwpck_require__(70622);
+/**
+ * Resolves the appropriate repo and SHA for PR contexts
+ * @returns Object containing owner, repo, and SHA information
+ */
+function resolveRepoAndSha() {
+    return {
+        owner: github_1.context.repo.owner,
+        repo: github_1.context.repo.repo,
+        sha: (0, github_utils_1.getSHA)()
+    };
+}
+/**
+ * Creates a GitHub URL for the file
+ * @param filePath - The file path relative to repository root
+ * @returns GitHub URL for the file
+ */
+function getFileUrl(filePath) {
+    return `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+}
+/**
+ * Creates a GitHub URL for the file with line highlighting
+ * @param filePath - The file path relative to repository root
+ * @param lineRange - The line range to highlight
+ * @returns GitHub URL for the file with line anchors
+ */
+function getFileUrlWithLineHighlight(filePath, lineRange) {
+    const baseUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+    if (lineRange.start === lineRange.end) {
+        return `${baseUrl}#L${lineRange.start}`;
+    }
+    else {
+        return `${baseUrl}#L${lineRange.start}-L${lineRange.end}`;
+    }
+}
+/**
+ * Creates a summary annotation for snippet matches (not bound to any file)
+ * @param snippetMatches - Array of snippet matches with file paths
+ */
+function createSnippetSummaryAnnotation(snippetMatches) {
+    const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
+    let message = `Found ${snippetMatches.length} snippet matches\n`;
+    message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
+    message += `**Affected Files:**\n`;
+    // Group matches by file and limit to avoid annotation length issues
+    const fileGroups = snippetMatches.reduce((groups, { filePath, match }) => {
+        if (!groups[filePath])
+            groups[filePath] = [];
+        groups[filePath].push(match);
+        return groups;
+    }, {});
+    const fileEntries = Object.entries(fileGroups).slice(0, 10); // Limit to 10 files
+    for (const [filePath, matches] of fileEntries) {
+        const firstMatch = matches[0];
+        const localLines = (0, line_parsers_1.parseLineRange)(firstMatch.lines);
+        const fileUrl = localLines ? getFileUrlWithLineHighlight(filePath, localLines) : getFileUrl(filePath);
+        message += `- [${filePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
+    }
+    if (Object.keys(fileGroups).length > 10) {
+        message += `- ... and ${Object.keys(fileGroups).length - 10} more files\n`;
+    }
+    core.notice(message, {
+        title: 'Code Snippet Matches Summary'
+    });
+    core.info(`Created snippet summary annotation for ${snippetMatches.length} matches`);
+}
+exports.createSnippetSummaryAnnotation = createSnippetSummaryAnnotation;
+/**
+ * Creates a summary annotation for file matches (not bound to any file)
+ * @param fileMatches - Array of file matches with file paths
+ */
+function createFileMatchSummaryAnnotation(fileMatches) {
+    const { owner, repo, sha } = resolveRepoAndSha();
+    const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
+    let message = `Found ${fileMatches.length} full file matches\n`;
+    message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
+    message += `**Affected Files:**\n`;
+    // Limit to avoid annotation length issues
+    const limitedMatches = fileMatches.slice(0, 10);
+    for (const { filePath, match } of limitedMatches) {
+        const fileUrl = getFileUrl(filePath);
+        const component = `${match.component}${match.version ? ` v${match.version}` : ''}`;
+        message += `- [${filePath}](${fileUrl}) → ${component}\n`;
+    }
+    if (fileMatches.length > 10) {
+        message += `- ... and ${fileMatches.length - 10} more files\n`;
+    }
+    core.notice(message, {
+        title: 'Full File Matches Summary'
+    });
+    core.info(`Created file match summary annotation for ${fileMatches.length} matches`);
+}
+exports.createFileMatchSummaryAnnotation = createFileMatchSummaryAnnotation;
+
+
+/***/ }),
+
+/***/ 59049:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2024, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+*/
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.requestDeduplicator = exports.apiCache = void 0;
+/**
+ * Simple in-memory cache for API responses to avoid duplicate requests
+ *
+ * This cache is designed for single GitHub Actions runs and automatically
+ * expires entries after a reasonable time to avoid stale data.
+ */
+class ApiCache {
+    cache = new Map();
+    defaultTtl = 300000; // 5 minutes in milliseconds
+    /**
+     * Gets a cached value if it exists and hasn't expired
+     * @param key - The cache key
+     * @param ttl - Time to live in milliseconds (optional, defaults to 5 minutes)
+     * @returns The cached value or null if not found/expired
+     */
+    get(key, ttl = this.defaultTtl) {
+        const entry = this.cache.get(key);
+        if (!entry) {
+            return null;
+        }
+        const isExpired = Date.now() - entry.timestamp > ttl;
+        if (isExpired) {
+            this.cache.delete(key);
+            return null;
+        }
+        return entry.data;
+    }
+    /**
+     * Sets a value in the cache
+     * @param key - The cache key
+     * @param value - The value to cache
+     */
+    set(key, value) {
+        this.cache.set(key, {
+            data: value,
+            timestamp: Date.now()
+        });
+    }
+    /**
+     * Clears all cached entries
+     */
+    clear() {
+        this.cache.clear();
+    }
+    /**
+     * Gets the current cache size
+     * @returns Number of cached entries
+     */
+    size() {
+        return this.cache.size;
+    }
+    /**
+     * Generates a cache key from multiple parameters
+     * @param params - Parameters to include in the key
+     * @returns A consistent cache key string
+     */
+    static generateKey(...params) {
+        return params
+            .filter(p => p !== undefined)
+            .map(p => String(p))
+            .join(':');
+    }
+}
+/**
+ * Global cache instance for API responses
+ */
+exports.apiCache = new ApiCache();
+/**
+ * Request deduplication utility to prevent multiple identical API calls
+ */
+class RequestDeduplicator {
+    pending = new Map();
+    /**
+     * Executes a function only once per key, returning the same promise for duplicate calls
+     * @param key - Unique key for the request
+     * @param fn - Function to execute
+     * @returns Promise that resolves to the function result
+     */
+    async deduplicate(key, fn) {
+        // Check if request is already pending
+        if (this.pending.has(key)) {
+            return this.pending.get(key);
+        }
+        // Execute the function and cache the promise
+        const promise = fn().finally(() => {
+            // Remove from pending when complete
+            this.pending.delete(key);
+        });
+        this.pending.set(key, promise);
+        return promise;
+    }
+    /**
+     * Gets the number of pending requests
+     * @returns Number of pending requests
+     */
+    pendingCount() {
+        return this.pending.size;
+    }
+    /**
+     * Clears all pending requests (use with caution)
+     */
+    clear() {
+        this.pending.clear();
+    }
+}
+/**
+ * Global request deduplicator instance
+ */
+exports.requestDeduplicator = new RequestDeduplicator();
+
+
+/***/ }),
+
+/***/ 7388:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2024, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+*/
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createMainConversationComment = exports.createFileCommitComment = exports.createSnippetCommitComment = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const github_1 = __nccwpck_require__(95438);
+const inputs = __importStar(__nccwpck_require__(483));
+const github_utils_1 = __nccwpck_require__(17889);
+const line_parsers_1 = __nccwpck_require__(70622);
+const api_cache_1 = __nccwpck_require__(59049);
+/**
+ * Creates a GitHub URL for the file
+ * @param filePath - The file path relative to repository root
+ * @returns GitHub URL for the file
+ */
+function getFileUrl(filePath) {
+    return `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+}
+/**
+ * Formats the snippet match information into an annotation message
+ * @param filePath - The file path
+ * @param snippet - The snippet match data
+ * @param localLines - The parsed line range
+ * @returns Formatted annotation message
+ */
+function formatSnippetAnnotationMessage(filePath, snippet, localLines) {
+    const fileUrl = getFileUrl(filePath);
+    const component = `${snippet.component}${snippet.version ? ` v${snippet.version}` : ''}`;
+    let message = `**Similarity detected in [${filePath}](${fileUrl})**\n\n`;
+    message += `- **Component**: ${component}\n`;
+    message += `- **Lines**: ${localLines.start}`;
+    if (localLines.start !== localLines.end) {
+        message += `-${localLines.end}`;
+    }
+    message += ` (${snippet.matched}% match)\n`;
+    if (snippet.licenses && snippet.licenses.length > 0) {
+        const license = snippet.licenses[0];
+        message += `- **License**: ${license.name}\n`;
+    }
+    if (snippet.url) {
+        message += `- **Source**: [${snippet.url}](${snippet.url})\n`;
+    }
+    return message;
+}
+/**
+ * Formats the file match information into an annotation message
+ * @param filePath - The file path
+ * @param fileMatch - The file match data
+ * @returns Formatted annotation message
+ */
+function formatFileAnnotationMessage(filePath, fileMatch) {
+    const fileUrl = getFileUrl(filePath);
+    const component = `${fileMatch.component}${fileMatch.version ? ` v${fileMatch.version}` : ''}`;
+    let message = `**Full file match detected in [${filePath}](${fileUrl})**\n\n`;
+    message += `- **Component**: ${component}\n`;
+    if (fileMatch.licenses && fileMatch.licenses.length > 0) {
+        const license = fileMatch.licenses[0];
+        message += `- **License**: ${license.name}\n`;
+    }
+    if (fileMatch.url) {
+        message += `- **Source**: [${fileMatch.url}](${fileMatch.url})\n`;
+    }
+    return message;
+}
+/**
+ * Creates a commit comment for a snippet match with detailed similarity information
+ *
+ * This function processes SCANOSS snippet match results and creates GitHub commit comments
+ * that provide developers with actionable information about code similarities found in their commits.
+ *
+ * @param filePath - The file path relative to repository root where the match was found
+ * @param snippetMatch - The snippet match data from SCANOSS containing similarity details
+ *
+ * @example
+ * ```typescript
+ * await createSnippetCommitComment('src/utils/parser.ts', {
+ *   file: 'parser.ts',
+ *   component: 'example-lib',
+ *   version: '1.2.3',
+ *   matched: '85',
+ *   lines: '15-25',
+ *   oss_lines: '10-20',
+ *   licenses: [{ name: 'MIT' }]
+ * });
+ * ```
+ *
+ * @throws {Error} When GitHub API call fails or line range parsing fails
+ */
+async function createSnippetCommitComment(filePath, snippetMatch) {
+    const localLines = (0, line_parsers_1.parseLineRange)(snippetMatch.lines);
+    if (!localLines) {
+        core.warning(`Could not parse line range: ${snippetMatch.lines} for file: ${filePath}`);
+        return;
+    }
+    const message = formatSnippetAnnotationMessage(filePath, snippetMatch, localLines);
+    const commentBody = `🔍 **Code Similarity Found**\n\n${message}`;
+    try {
+        const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+        const params = {
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            commit_sha: github_1.context.sha,
+            path: filePath,
+            body: commentBody
+            // Temporarily removed line parameter to test file-level comments
+        };
+        core.info(`Creating commit comment for snippet match at ${filePath}`);
+        // Use request deduplication to prevent duplicate comments for the same file
+        const deduplicationKey = `snippet-comment:${github_1.context.sha}:${filePath}:${snippetMatch.component}`;
+        await api_cache_1.requestDeduplicator.deduplicate(deduplicationKey, async () => {
+            return await octokit.rest.repos.createCommitComment(params);
+        });
+        core.info(`Successfully created commit comment for snippet match at ${filePath}`);
+    }
+    catch (error) {
+        core.error(`Failed to create commit comment for ${filePath}`);
+        core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
+        if (error instanceof Error) {
+            core.error(`Error message: ${error.message}`);
+            core.error(`Error stack: ${error.stack}`);
+        }
+    }
+}
+exports.createSnippetCommitComment = createSnippetCommitComment;
+/**
+ * Creates a commit comment for a file match
+ * @param filePath - The file path
+ * @param fileMatch - The file match data
+ */
+async function createFileCommitComment(filePath, fileMatch) {
+    const message = formatFileAnnotationMessage(filePath, fileMatch);
+    const commentBody = `📄 **Full File Match Found**\n\n${message}`;
+    try {
+        const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+        const params = {
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            commit_sha: github_1.context.sha,
+            path: filePath,
+            body: commentBody
+        };
+        core.info(`Creating file commit comment for ${filePath}`);
+        await octokit.rest.repos.createCommitComment(params);
+        core.info(`Successfully created commit comment for file match at ${filePath}`);
+    }
+    catch (error) {
+        core.error(`Failed to create commit comment for ${filePath}`);
+        core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
+        if (error instanceof Error) {
+            core.error(`Error message: ${error.message}`);
+            core.error(`Error stack: ${error.stack}`);
+        }
+    }
+}
+exports.createFileCommitComment = createFileCommitComment;
+/**
+ * Creates a main conversation comment with summary and commit link
+ * @param snippetMatches - Array of snippet matches with file paths
+ * @param fileMatches - Array of file matches with file paths
+ */
+async function createMainConversationComment(snippetMatches, fileMatches) {
+    if (!(0, github_utils_1.isPullRequest)()) {
+        core.info('Skipping main conversation comment - not in PR context');
+        return;
+    }
+    const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
+    let message = `## 🔍 SCANOSS Code Similarity Detected\n\n`;
+    if (snippetMatches.length > 0) {
+        message += `📄 **${snippetMatches.length} snippet matches** found\n`;
+    }
+    if (fileMatches.length > 0) {
+        message += `📋 **${fileMatches.length} full file matches** found\n`;
+    }
+    message += `\n🔗 **[View detailed findings on commit ${github_1.context.sha.substring(0, 7)}](${commitUrl})**\n\n`;
+    // Quick overview of most affected files
+    const allFiles = new Set([...snippetMatches.map(m => m.filePath), ...fileMatches.map(m => m.filePath)]);
+    if (allFiles.size <= 5) {
+        message += `**Files with similarities:**\n`;
+        for (const filePath of Array.from(allFiles).slice(0, 5)) {
+            message += `- \`${filePath}\`\n`;
+        }
+    }
+    else {
+        message += `**${allFiles.size} files** contain code similarities\n`;
+    }
+    message += `\n💡 Click the commit link above to see detailed annotations for each match.`;
+    try {
+        const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
+        await octokit.rest.issues.createComment({
+            issue_number: github_1.context.issue.number,
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            body: message
+        });
+        const prInfo = (0, github_utils_1.isPullRequest)() ? ` (PR #${github_1.context.issue.number})` : '';
+        core.info(`Successfully created main conversation comment${prInfo}`);
+    }
+    catch (error) {
+        core.error(`Failed to create main conversation comment: ${error}`);
+    }
+}
+exports.createMainConversationComment = createMainConversationComment;
+
+
+/***/ }),
+
 /***/ 17889:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -127108,6 +127656,111 @@ exports.licenseUtil = new LicenseUtil();
 
 /***/ }),
 
+/***/ 70622:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2024, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+*/
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.parseLineRange = void 0;
+/**
+ * Sanitizes line range string by removing non-numeric, non-comma, non-dash characters
+ * @param str - The string to sanitize
+ * @returns Sanitized string containing only digits, commas, and dashes
+ */
+function sanitizeLineRange(str) {
+    return str.replace(/[^0-9,-]/g, '');
+}
+/**
+ * Extracts first and last numbers from a string using regex
+ * @param str - The string to extract numbers from
+ * @returns Object with first and last numbers as strings, or null if not found
+ */
+function extractFirstAndLastNumbers(str) {
+    // Sanitize input to handle formats like "L7-L9, L47-L81"
+    const sanitized = sanitizeLineRange(str);
+    const match = sanitized.match(/^(\d+).*?(\d+)(?!.*\d)/);
+    if (match) {
+        return {
+            first: match[1],
+            last: match[2]
+        };
+    }
+    return null;
+}
+/**
+ * Parses various line range string formats into a standardized LineRange object
+ *
+ * This function handles multiple line range formats commonly used in code analysis tools:
+ * - Simple ranges: "4-142"
+ * - Complex ranges: "7-9,47-81,99-158" (uses first and last numbers)
+ * - Single lines: "25"
+ * - Special values: "all" (defaults to line 1)
+ * - Prefixed formats: "L7-L9" (strips non-numeric characters)
+ *
+ * The function is designed to be robust and handle malformed input gracefully by
+ * sanitizing the input and falling back to reasonable defaults.
+ *
+ * @param lineRange - The line range string to parse (various formats supported)
+ * @returns Parsed line range object with start and end properties, or null if parsing fails
+ *
+ * @example
+ * ```typescript
+ * parseLineRange("15-25")         // { start: 15, end: 25 }
+ * parseLineRange("L7-L9,L47-L81") // { start: 7, end: 81 }
+ * parseLineRange("42")            // { start: 42, end: 42 }
+ * parseLineRange("all")           // { start: 1, end: 1 }
+ * parseLineRange("invalid")       // null
+ * ```
+ */
+function parseLineRange(lineRange) {
+    if (lineRange === 'all') {
+        return { start: 1, end: 1 };
+    }
+    // Handle complex ranges like "7-9,47-81,99-158" using regex to get first and last numbers
+    const extracted = extractFirstAndLastNumbers(lineRange);
+    if (extracted) {
+        const start = parseInt(extracted.first, 10);
+        const end = parseInt(extracted.last, 10);
+        if (!isNaN(start) && !isNaN(end)) {
+            return { start, end };
+        }
+    }
+    // Fallback for single number (sanitize first)
+    const sanitized = sanitizeLineRange(lineRange);
+    const singleLine = parseInt(sanitized, 10);
+    if (!isNaN(singleLine)) {
+        return { start: singleLine, end: singleLine };
+    }
+    return null;
+}
+exports.parseLineRange = parseLineRange;
+
+
+/***/ }),
+
 /***/ 96011:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -127223,18 +127876,8 @@ exports.createSnippetAnnotations = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const fs = __importStar(__nccwpck_require__(57147));
 const github_1 = __nccwpck_require__(95438);
-const inputs = __importStar(__nccwpck_require__(483));
-const github_utils_1 = __nccwpck_require__(17889);
-/**
- * Resolves the appropriate repo and SHA for PR contexts
- */
-function resolveRepoAndSha() {
-    return {
-        owner: github_1.context.repo.owner,
-        repo: github_1.context.repo.repo,
-        sha: (0, github_utils_1.getSHA)()
-    };
-}
+const annotation_creators_1 = __nccwpck_require__(81655);
+const github_comment_api_1 = __nccwpck_require__(7388);
 /**
  * Creates hybrid snippet annotations: summary annotations + commit comments
  */
@@ -127265,16 +127908,16 @@ async function createSnippetAnnotations(resultsPath) {
         }
         // Create summary annotations (not bound to files)
         if (snippetMatches.length > 0) {
-            createSnippetSummaryAnnotation(snippetMatches);
+            (0, annotation_creators_1.createSnippetSummaryAnnotation)(snippetMatches);
         }
         if (fileMatches.length > 0) {
-            createFileMatchSummaryAnnotation(fileMatches);
+            (0, annotation_creators_1.createFileMatchSummaryAnnotation)(fileMatches);
         }
         // Log GitHub context for debugging
         core.info(`GitHub context: owner=${github_1.context.repo.owner}, repo=${github_1.context.repo.repo}, sha=${github_1.context.sha}`);
         // Create individual commit comments for each match (in parallel)
-        const snippetPromises = snippetMatches.map(async ({ filePath, match }) => createSnippetCommitComment(filePath, match));
-        const filePromises = fileMatches.map(async ({ filePath, match }) => createFileCommitComment(filePath, match));
+        const snippetPromises = snippetMatches.map(async ({ filePath, match }) => (0, github_comment_api_1.createSnippetCommitComment)(filePath, match));
+        const filePromises = fileMatches.map(async ({ filePath, match }) => (0, github_comment_api_1.createFileCommitComment)(filePath, match));
         const promiseResults = await Promise.allSettled([...snippetPromises, ...filePromises]);
         const failedCount = promiseResults.filter((result) => result.status === 'rejected').length;
         const successCount = promiseResults.length - failedCount;
@@ -127283,7 +127926,7 @@ async function createSnippetAnnotations(resultsPath) {
         }
         // Create main conversation comment if we have any matches
         if (snippetMatches.length > 0 || fileMatches.length > 0) {
-            await createMainConversationComment(snippetMatches, fileMatches);
+            await (0, github_comment_api_1.createMainConversationComment)(snippetMatches, fileMatches);
         }
         core.info(`Created summary annotations, attempted ${snippetMatches.length + fileMatches.length} commit comments, and main conversation comment`);
     }
@@ -127292,276 +127935,6 @@ async function createSnippetAnnotations(resultsPath) {
     }
 }
 exports.createSnippetAnnotations = createSnippetAnnotations;
-/**
- * Creates a summary annotation for snippet matches (not bound to any file)
- */
-function createSnippetSummaryAnnotation(snippetMatches) {
-    const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
-    let message = `Found ${snippetMatches.length} snippet matches\n`;
-    message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
-    message += `**Affected Files:**\n`;
-    // Group matches by file and limit to avoid annotation length issues
-    const fileGroups = snippetMatches.reduce((groups, { filePath, match }) => {
-        if (!groups[filePath])
-            groups[filePath] = [];
-        groups[filePath].push(match);
-        return groups;
-    }, {});
-    const fileEntries = Object.entries(fileGroups).slice(0, 10); // Limit to 10 files
-    for (const [filePath, matches] of fileEntries) {
-        const firstMatch = matches[0];
-        const localLines = parseLineRange(firstMatch.lines);
-        const fileUrl = localLines ? getFileUrlWithLineHighlight(filePath, localLines) : getFileUrl(filePath);
-        message += `- [${filePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
-    }
-    if (Object.keys(fileGroups).length > 10) {
-        message += `- ... and ${Object.keys(fileGroups).length - 10} more files\n`;
-    }
-    core.notice(message, {
-        title: 'Code Snippet Matches Summary'
-    });
-    core.info(`Created snippet summary annotation for ${snippetMatches.length} matches`);
-}
-/**
- * Creates a summary annotation for file matches (not bound to any file)
- */
-function createFileMatchSummaryAnnotation(fileMatches) {
-    const { owner, repo, sha } = resolveRepoAndSha();
-    const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
-    let message = `Found ${fileMatches.length} full file matches\n`;
-    message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
-    message += `**Affected Files:**\n`;
-    // Limit to avoid annotation length issues
-    const limitedMatches = fileMatches.slice(0, 10);
-    for (const { filePath, match } of limitedMatches) {
-        const fileUrl = getFileUrl(filePath);
-        const component = `${match.component}${match.version ? ` v${match.version}` : ''}`;
-        message += `- [${filePath}](${fileUrl}) → ${component}\n`;
-    }
-    if (fileMatches.length > 10) {
-        message += `- ... and ${fileMatches.length - 10} more files\n`;
-    }
-    core.notice(message, {
-        title: 'Full File Matches Summary'
-    });
-    core.info(`Created file match summary annotation for ${fileMatches.length} matches`);
-}
-/**
- * Creates a main conversation comment with summary and commit link
- */
-async function createMainConversationComment(snippetMatches, fileMatches) {
-    if (!(0, github_utils_1.isPullRequest)()) {
-        core.info('Skipping main conversation comment - not in PR context');
-        return;
-    }
-    const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
-    let message = `## 🔍 SCANOSS Code Similarity Detected\n\n`;
-    if (snippetMatches.length > 0) {
-        message += `📄 **${snippetMatches.length} snippet matches** found\n`;
-    }
-    if (fileMatches.length > 0) {
-        message += `📋 **${fileMatches.length} full file matches** found\n`;
-    }
-    message += `\n🔗 **[View detailed findings on commit ${github_1.context.sha.substring(0, 7)}](${commitUrl})**\n\n`;
-    // Quick overview of most affected files
-    const allFiles = new Set([...snippetMatches.map(m => m.filePath), ...fileMatches.map(m => m.filePath)]);
-    if (allFiles.size <= 5) {
-        message += `**Files with similarities:**\n`;
-        for (const filePath of Array.from(allFiles).slice(0, 5)) {
-            message += `- \`${filePath}\`\n`;
-        }
-    }
-    else {
-        message += `**${allFiles.size} files** contain code similarities\n`;
-    }
-    message += `\n💡 Click the commit link above to see detailed annotations for each match.`;
-    try {
-        const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
-        await octokit.rest.issues.createComment({
-            issue_number: github_1.context.issue.number,
-            owner: github_1.context.repo.owner,
-            repo: github_1.context.repo.repo,
-            body: message
-        });
-        const prInfo = (0, github_utils_1.isPullRequest)() ? ` (PR #${github_1.context.issue.number})` : '';
-        core.info(`Successfully created main conversation comment${prInfo}`);
-    }
-    catch (error) {
-        core.error(`Failed to create main conversation comment: ${error}`);
-    }
-}
-/**
- * Creates a commit comment for a snippet match
- */
-async function createSnippetCommitComment(filePath, snippetMatch) {
-    const localLines = parseLineRange(snippetMatch.lines);
-    if (!localLines) {
-        core.warning(`Could not parse line range: ${snippetMatch.lines} for file: ${filePath}`);
-        return;
-    }
-    const message = formatSnippetAnnotationMessage(filePath, snippetMatch, localLines);
-    const commentBody = `🔍 **Code Similarity Found**\n\n${message}`;
-    try {
-        const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
-        const params = {
-            owner: github_1.context.repo.owner,
-            repo: github_1.context.repo.repo,
-            commit_sha: github_1.context.sha,
-            path: filePath,
-            body: commentBody
-            // Temporarily removed line parameter to test file-level comments
-        };
-        core.info(`Creating commit comment for snippet match at ${filePath}`);
-        await octokit.rest.repos.createCommitComment(params);
-        core.info(`Successfully created commit comment for snippet match at ${filePath}`);
-    }
-    catch (error) {
-        core.error(`Failed to create commit comment for ${filePath}`);
-        core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
-        if (error instanceof Error) {
-            core.error(`Error message: ${error.message}`);
-            core.error(`Error stack: ${error.stack}`);
-        }
-    }
-}
-/**
- * Creates a commit comment for a file match
- */
-async function createFileCommitComment(filePath, fileMatch) {
-    const message = formatFileAnnotationMessage(filePath, fileMatch);
-    const commentBody = `📄 **Full File Match Found**\n\n${message}`;
-    try {
-        const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
-        const params = {
-            owner: github_1.context.repo.owner,
-            repo: github_1.context.repo.repo,
-            commit_sha: github_1.context.sha,
-            path: filePath,
-            body: commentBody
-        };
-        core.info(`Creating file commit comment for ${filePath}`);
-        await octokit.rest.repos.createCommitComment(params);
-        core.info(`Successfully created commit comment for file match at ${filePath}`);
-    }
-    catch (error) {
-        core.error(`Failed to create commit comment for ${filePath}`);
-        core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
-        if (error instanceof Error) {
-            core.error(`Error message: ${error.message}`);
-            core.error(`Error stack: ${error.stack}`);
-        }
-    }
-}
-/**
- * Formats the snippet match information into an annotation message
- */
-function formatSnippetAnnotationMessage(filePath, snippet, localLines) {
-    let message = `Code snippet matches ${snippet.component}`;
-    if (snippet.version) {
-        message += ` v${snippet.version}`;
-    }
-    message += ` (${snippet.matched} similarity)`;
-    // Add license information
-    if (snippet.licenses && snippet.licenses.length > 0) {
-        const licenseNames = snippet.licenses.map(license => license.name);
-        message += ` - License(s): ${licenseNames.join(', ')}`;
-    }
-    // Add source URL
-    if (snippet.url) {
-        message += ` - Source: ${snippet.url}`;
-    }
-    // Add OSS line range
-    if (snippet.oss_lines) {
-        message += ` - OSS Lines: ${snippet.oss_lines}`;
-    }
-    // Add direct link to the file with line highlighting
-    message += ` - View: ${getFileUrlWithLineHighlight(filePath, localLines)}`;
-    return message;
-}
-/**
- * Formats the file match information into an annotation message
- */
-function formatFileAnnotationMessage(filePath, fileMatch) {
-    let message = `Full file matches ${fileMatch.component}`;
-    if (fileMatch.version) {
-        message += ` v${fileMatch.version}`;
-    }
-    // Add license information
-    if (fileMatch.licenses && fileMatch.licenses.length > 0) {
-        const licenseNames = fileMatch.licenses.map(license => license.name);
-        message += ` - License(s): ${licenseNames.join(', ')}`;
-    }
-    // Add source URL
-    if (fileMatch.url) {
-        message += ` - Source: ${fileMatch.url}`;
-    }
-    // Add direct link to the file
-    message += ` - View: ${getFileUrl(filePath)}`;
-    return message;
-}
-/**
- * Creates a GitHub URL with line highlighting for the file
- */
-function getFileUrlWithLineHighlight(filePath, lineRange) {
-    const baseUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
-    if (lineRange.start === lineRange.end) {
-        return `${baseUrl}#L${lineRange.start}`;
-    }
-    else {
-        return `${baseUrl}#L${lineRange.start}-L${lineRange.end}`;
-    }
-}
-/**
- * Creates a GitHub URL for the file
- */
-function getFileUrl(filePath) {
-    return `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
-}
-/**
- * Extracts first and last numbers from a string using regex
- */
-/**
- * Sanitizes line range string by removing non-numeric, non-comma, non-dash characters
- */
-function sanitizeLineRange(str) {
-    return str.replace(/[^0-9,-]/g, '');
-}
-function extractFirstAndLastNumbers(str) {
-    // Sanitize input to handle formats like "L7-L9, L47-L81"
-    const sanitized = sanitizeLineRange(str);
-    const match = sanitized.match(/^(\d+).*?(\d+)(?!.*\d)/);
-    if (match) {
-        return {
-            first: match[1],
-            last: match[2]
-        };
-    }
-    return null;
-}
-/**
- * Parses line range strings like "4-142", "7-9,47-81,99-158", or "all"
- */
-function parseLineRange(lineRange) {
-    if (lineRange === 'all') {
-        return { start: 1, end: 1 };
-    }
-    // Handle complex ranges like "7-9,47-81,99-158" using regex to get first and last numbers
-    const extracted = extractFirstAndLastNumbers(lineRange);
-    if (extracted) {
-        const start = parseInt(extracted.first, 10);
-        const end = parseInt(extracted.last, 10);
-        if (!isNaN(start) && !isNaN(end)) {
-            return { start, end };
-        }
-    }
-    // Fallback for single number (sanitize first)
-    const sanitized = sanitizeLineRange(lineRange);
-    const singleLine = parseInt(sanitized, 10);
-    if (!isNaN(singleLine)) {
-        return { start: singleLine, end: singleLine };
-    }
-    return null;
-}
 
 
 /***/ }),

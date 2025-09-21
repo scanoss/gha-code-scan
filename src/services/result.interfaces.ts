@@ -24,7 +24,6 @@
 export type ScannerResults = Record<string, ScannerComponent[] | DependencyComponent[]>;
 
 export enum ComponentID {
-  // TODO Are these required?
   NONE = 'none',
   FILE = 'file',
   SNIPPET = 'snippet',
