@@ -22,8 +22,6 @@
 */
 
 import * as core from '@actions/core';
-import * as fs from 'fs';
-import * as path from 'path';
 import { context, getOctokit } from '@actions/github';
 import * as inputs from '../app.input';
 import { isPullRequest } from './github.utils';
@@ -40,52 +38,6 @@ function getFileUrl(filePath: string): string {
   return `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${context.sha}/${filePath}`;
 }
 
-/**
- * Extracts and formats code lines from a file for preview in comments
- * @param filePath - The file path relative to repository root
- * @param lineRange - The range of lines to extract
- * @returns Formatted code block or null if file cannot be read
- */
-function extractCodePreview(filePath: string, lineRange: LineRange): string | null {
-  try {
-    const fullPath = path.join(inputs.REPO_DIR, filePath);
-
-    if (!fs.existsSync(fullPath)) {
-      core.warning(`File not found for preview: ${filePath}`);
-      return null;
-    }
-
-    const fileContent = fs.readFileSync(fullPath, 'utf8');
-    const lines = fileContent.split('\n');
-
-    // Extract the specific lines (convert to 0-based indexing)
-    const startIndex = Math.max(0, lineRange.start - 1);
-    const endIndex = Math.min(lines.length - 1, lineRange.end - 1);
-
-    if (startIndex > endIndex || startIndex >= lines.length) {
-      return null;
-    }
-
-    const extractedLines = lines.slice(startIndex, endIndex + 1);
-
-    // Determine file extension for syntax highlighting
-    const fileExtension = path.extname(filePath).slice(1);
-    const language = fileExtension || 'text';
-
-    // Simple markdown code block - let GitHub handle the display
-    let codeBlock = `\`\`\`${language}\n`;
-    extractedLines.forEach((line, index) => {
-      const lineNumber = startIndex + index + 1;
-      codeBlock += `${lineNumber}: ${line}\n`;
-    });
-    codeBlock += '```';
-
-    return codeBlock;
-  } catch (error) {
-    core.warning(`Failed to extract code preview from ${filePath}: ${error}`);
-    return null;
-  }
-}
 
 /**
  * Formats the snippet match information into an annotation message
@@ -115,11 +67,6 @@ function formatSnippetAnnotationMessage(filePath: string, snippet: SnippetMatch,
     message += `- **Source**: [${snippet.url}](${snippet.url})\n`;
   }
 
-  // Add code preview
-  const codePreview = extractCodePreview(filePath, localLines);
-  if (codePreview) {
-    message += `\n**Code Preview:**\n${codePreview}`;
-  }
 
   return message;
 }
