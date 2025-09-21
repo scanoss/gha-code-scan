@@ -127398,7 +127398,7 @@ async function createSnippetCommitComment(filePath, snippetMatch) {
             // Temporarily removed line parameter to test file-level comments
         };
         core.info(`Creating commit comment for snippet match at ${filePath}`);
-        const response = await octokit.rest.repos.createCommitComment(params);
+        await octokit.rest.repos.createCommitComment(params);
         core.info(`Successfully created commit comment for snippet match at ${filePath}`);
     }
     catch (error) {
@@ -127426,7 +127426,7 @@ async function createFileCommitComment(filePath, fileMatch) {
             body: commentBody
         };
         core.info(`Creating file commit comment for ${filePath}`);
-        const response = await octokit.rest.repos.createCommitComment(params);
+        await octokit.rest.repos.createCommitComment(params);
         core.info(`Successfully created commit comment for file match at ${filePath}`);
     }
     catch (error) {
