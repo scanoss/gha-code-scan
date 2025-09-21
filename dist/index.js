@@ -127273,8 +127273,8 @@ async function createSnippetAnnotations(resultsPath) {
         // Log GitHub context for debugging
         core.info(`GitHub context: owner=${github_1.context.repo.owner}, repo=${github_1.context.repo.repo}, sha=${github_1.context.sha}`);
         // Create individual commit comments for each match (in parallel)
-        const snippetPromises = snippetMatches.map(({ filePath, match }) => createSnippetCommitComment(filePath, match));
-        const filePromises = fileMatches.map(({ filePath, match }) => createFileCommitComment(filePath, match));
+        const snippetPromises = snippetMatches.map(async ({ filePath, match }) => createSnippetCommitComment(filePath, match));
+        const filePromises = fileMatches.map(async ({ filePath, match }) => createFileCommitComment(filePath, match));
         const promiseResults = await Promise.allSettled([...snippetPromises, ...filePromises]);
         const failedCount = promiseResults.filter((result) => result.status === 'rejected').length;
         const successCount = promiseResults.length - failedCount;

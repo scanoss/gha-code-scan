@@ -125,15 +125,15 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
     core.info(`GitHub context: owner=${context.repo.owner}, repo=${context.repo.repo}, sha=${context.sha}`);
 
     // Create individual commit comments for each match (in parallel)
-    const snippetPromises = snippetMatches.map(({ filePath, match }) =>
+    const snippetPromises = snippetMatches.map(async ({ filePath, match }) =>
       createSnippetCommitComment(filePath, match)
     );
-    const filePromises = fileMatches.map(({ filePath, match }) =>
-      createFileCommitComment(filePath, match)
-    );
+    const filePromises = fileMatches.map(async ({ filePath, match }) => createFileCommitComment(filePath, match));
 
     const promiseResults = await Promise.allSettled([...snippetPromises, ...filePromises]);
-    const failedCount = promiseResults.filter((result: PromiseSettledResult<void>) => result.status === 'rejected').length;
+    const failedCount = promiseResults.filter(
+      (result: PromiseSettledResult<void>) => result.status === 'rejected'
+    ).length;
     const successCount = promiseResults.length - failedCount;
 
     if (failedCount > 0) {
