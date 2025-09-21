@@ -26,8 +26,11 @@ import * as fs from 'fs';
 import { context } from '@actions/github';
 import { SnippetMatchWithPath, FileMatchWithPath, SnippetMatch, FileMatch } from '../types/annotations';
 import { createSnippetSummaryAnnotation, createFileMatchSummaryAnnotation } from './annotation-creators';
-import { createSnippetCommitComment, createFileCommitComment, createMainConversationComment } from './github-comment-api';
-
+import {
+  createSnippetCommitComment,
+  createFileCommitComment,
+  createMainConversationComment
+} from './github-comment-api';
 
 /**
  * Creates hybrid snippet annotations: summary annotations + commit comments
@@ -100,4 +103,3 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
     core.error(`Failed to create snippet annotations from ${resultsPath}: ${error}`);
   }
 }
-

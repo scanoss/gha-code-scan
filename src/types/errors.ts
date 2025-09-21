@@ -112,13 +112,7 @@ export class ApiError extends AppError {
   readonly status?: number;
   readonly url?: string;
 
-  constructor(
-    message: string,
-    code: ErrorCode,
-    status?: number,
-    url?: string,
-    context?: Record<string, unknown>
-  ) {
+  constructor(message: string, code: ErrorCode, status?: number, url?: string, context?: Record<string, unknown>) {
     super(message, code, { ...context, status, url });
     this.status = status;
     this.url = url;
@@ -147,8 +141,7 @@ export const ErrorFactory = {
   /**
    * Creates a configuration error
    */
-  configError: (message: string, context?: Record<string, unknown>) =>
-    new ConfigError(message, context),
+  configError: (message: string, context?: Record<string, unknown>) => new ConfigError(message, context),
 
   /**
    * Creates a GitHub API error
