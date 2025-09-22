@@ -52,32 +52,32 @@ function getFileUrlWithLineHighlight(filePath: string, lineRange: LineRange): st
 }
 
 function formatSnippetAnnotationMessage(filePath: string, snippet: SnippetMatch, localLines: LineRange): string {
-  let message = `Code snippet matches ${snippet.component}`;
+  let message = `**Component:** ${snippet.component}`;
 
   if (snippet.version) {
     message += ` v${snippet.version}`;
   }
 
-  message += ` (${snippet.matched} similarity)`;
+  message += `\n**Match:** ${snippet.matched}% similarity`;
 
   // Add license information
   if (snippet.licenses && snippet.licenses.length > 0) {
     const licenseNames = snippet.licenses.map(license => license.name);
-    message += ` - License(s): ${licenseNames.join(', ')}`;
-  }
-
-  // Add source URL
-  if (snippet.url) {
-    message += ` - Source: ${snippet.url}`;
+    message += `\n**License(s):** ${licenseNames.join(', ')}`;
   }
 
   // Add OSS line range
   if (snippet.oss_lines) {
-    message += ` - OSS Lines: ${snippet.oss_lines}`;
+    message += `\n**OSS Lines:** ${snippet.oss_lines}`;
+  }
+
+  // Add source URL
+  if (snippet.url) {
+    message += `\n**Source:** [${snippet.url}](${snippet.url})`;
   }
 
   // Add direct link to the file with line highlighting
-  message += ` - View: ${getFileUrlWithLineHighlight(filePath, localLines)}`;
+  message += `\n**View in Repository:** [${filePath}:${localLines.start}-${localLines.end}](${getFileUrlWithLineHighlight(filePath, localLines)})`;
 
   return message;
 }
