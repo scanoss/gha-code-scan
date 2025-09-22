@@ -127207,26 +127207,26 @@ function getFileUrlWithLineHighlight(filePath, lineRange) {
     }
 }
 function formatSnippetAnnotationMessage(filePath, snippet, localLines) {
-    let message = `**Component:** ${snippet.component}`;
+    let message = `Code snippet matches ${snippet.component}`;
     if (snippet.version) {
         message += ` v${snippet.version}`;
     }
-    message += `\n**Match:** ${snippet.matched}% similarity`;
+    message += ` (${snippet.matched}% similarity)`;
     // Add license information
     if (snippet.licenses && snippet.licenses.length > 0) {
         const licenseNames = snippet.licenses.map(license => license.name);
-        message += `\n**License(s):** ${licenseNames.join(', ')}`;
-    }
-    // Add OSS line range
-    if (snippet.oss_lines) {
-        message += `\n**OSS Lines:** ${snippet.oss_lines}`;
+        message += `\nLicense(s): ${licenseNames.join(', ')}`;
     }
     // Add source URL
     if (snippet.url) {
-        message += `\n**Source:** [${snippet.url}](${snippet.url})`;
+        message += `\nSource: ${snippet.url}`;
     }
-    // Add direct link to the file with line highlighting
-    message += `\n**View in Repository:** [${filePath}:${localLines.start}-${localLines.end}](${getFileUrlWithLineHighlight(filePath, localLines)})`;
+    // Add OSS line range
+    if (snippet.oss_lines) {
+        message += `\nOSS Lines: ${snippet.oss_lines}`;
+    }
+    // Add view link
+    message += `\nView: ${getFileUrlWithLineHighlight(filePath, localLines)}`;
     return message;
 }
 /**
