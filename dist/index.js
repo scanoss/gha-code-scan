@@ -127195,29 +127195,38 @@ function getFileUrl(filePath) {
     return `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
 }
 /**
- * Formats the snippet match information into an annotation message
- * @param filePath - The file path
- * @param snippet - The snippet match data
- * @param localLines - The parsed line range
- * @returns Formatted annotation message
+ * Creates a GitHub URL with line highlighting for the file
  */
+function getFileUrlWithLineHighlight(filePath, lineRange) {
+    const baseUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+    if (lineRange.start === lineRange.end) {
+        return `${baseUrl}#L${lineRange.start}`;
+    }
+    else {
+        return `${baseUrl}#L${lineRange.start}-L${lineRange.end}`;
+    }
+}
 function formatSnippetAnnotationMessage(filePath, snippet, localLines) {
-    const fileUrl = getFileUrl(filePath);
-    const component = `${snippet.component}${snippet.version ? ` v${snippet.version}` : ''}`;
-    let message = `**Similarity detected in [${filePath}](${fileUrl})**\n\n`;
-    message += `- **Component**: ${component}\n`;
-    message += `- **Lines**: ${localLines.start}`;
-    if (localLines.start !== localLines.end) {
-        message += `-${localLines.end}`;
+    let message = `Code snippet matches ${snippet.component}`;
+    if (snippet.version) {
+        message += ` v${snippet.version}`;
     }
-    message += ` (${snippet.matched}% match)\n`;
+    message += ` (${snippet.matched} similarity)`;
+    // Add license information
     if (snippet.licenses && snippet.licenses.length > 0) {
-        const license = snippet.licenses[0];
-        message += `- **License**: ${license.name}\n`;
+        const licenseNames = snippet.licenses.map(license => license.name);
+        message += ` - License(s): ${licenseNames.join(', ')}`;
     }
+    // Add source URL
     if (snippet.url) {
-        message += `- **Source**: [${snippet.url}](${snippet.url})\n`;
+        message += ` - Source: ${snippet.url}`;
     }
+    // Add OSS line range
+    if (snippet.oss_lines) {
+        message += ` - OSS Lines: ${snippet.oss_lines}`;
+    }
+    // Add direct link to the file with line highlighting
+    message += ` - View: ${getFileUrlWithLineHighlight(filePath, localLines)}`;
     return message;
 }
 /**
