@@ -127214,8 +127214,8 @@ function formatSnippetAnnotationMessage(filePath, snippet, localLines) {
     message += ` (${snippet.matched}% similarity)`;
     // Add license information
     if (snippet.licenses && snippet.licenses.length > 0) {
-        const licenseNames = snippet.licenses.map(license => license.name);
-        message += `\nLicense(s): ${licenseNames.join(', ')}`;
+        const license = snippet.licenses[0];
+        message += `\nLicense: ${license.name}`;
     }
     // Add source URL
     if (snippet.url) {
@@ -127226,7 +127226,8 @@ function formatSnippetAnnotationMessage(filePath, snippet, localLines) {
         message += `\nOSS Lines: ${snippet.oss_lines}`;
     }
     // Add view link
-    message += `\nView: ${getFileUrlWithLineHighlight(filePath, localLines)}`;
+    const viewUrl = snippet.lines === 'all' ? getFileUrl(filePath) : getFileUrlWithLineHighlight(filePath, localLines);
+    message += `\nView: ${viewUrl}`;
     return message;
 }
 /**
@@ -127301,10 +127302,14 @@ async function createSnippetCommitComment(filePath, snippetMatch) {
     }
     catch (error) {
         core.error(`Failed to create commit comment for ${filePath}`);
-        core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
         if (error instanceof Error) {
-            core.error(`Error message: ${error.message}`);
-            core.error(`Error stack: ${error.stack}`);
+            core.error(`Error: ${error.message}`);
+            // Extra diagnostics (status, url) if present
+            const status = error?.status;
+            const url = error?.request?.url;
+            if (status || url)
+                core.error(`Context: status=${status ?? 'n/a'} url=${url ?? 'n/a'}`);
+            core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
         }
     }
 }
@@ -127328,7 +127333,7 @@ async function createFileCommitComment(filePath, fileMatch) {
         };
         core.info(`Creating file commit comment for ${filePath}`);
         // Use request deduplication to prevent duplicate comments for the same file
-        const deduplicationKey = `file-comment:${github_1.context.sha}:${filePath}:${fileMatch.component}`;
+        const deduplicationKey = `file-comment:${github_1.context.sha}:${filePath}:${fileMatch.component}:file`;
         await api_cache_1.requestDeduplicator.deduplicate(deduplicationKey, async () => {
             return await octokit.rest.repos.createCommitComment(params);
         });
@@ -127336,10 +127341,14 @@ async function createFileCommitComment(filePath, fileMatch) {
     }
     catch (error) {
         core.error(`Failed to create commit comment for ${filePath}`);
-        core.error(`Error details: ${JSON.stringify(error, null, 2)}`);
         if (error instanceof Error) {
-            core.error(`Error message: ${error.message}`);
-            core.error(`Error stack: ${error.stack}`);
+            core.error(`Error: ${error.message}`);
+            // Extra diagnostics (status, url) if present
+            const status = error?.status;
+            const url = error?.request?.url;
+            if (status || url)
+                core.error(`Context: status=${status ?? 'n/a'} url=${url ?? 'n/a'}`);
+            core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
         }
     }
 }
