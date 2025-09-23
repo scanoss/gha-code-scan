@@ -125377,12 +125377,13 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             }
         }
         if (fs.existsSync('scanoss.json')) {
-            const scanossJsonUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/edit/${branchName}/scanoss.json`;
+            const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
+            const scanossJsonUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/scanoss.json`;
             // Try to replace the existing JSON with merged version
             const mergedJson = mergeWithExistingScanossJson(details);
             if (mergedJson) {
-                // Replace the original JSON section with merged version
-                details = details.replace(/{[\s\S]*}/, mergedJson);
+                // Replace the first JSON block with merged version, fenced for readability
+                details = details.replace(/{[\s\S]*?}/, `\`\`\`json\n${mergedJson}\n\`\`\``);
             }
             details += `\n\n📝 Quick Fix:\n`;
             details += `[Edit scanoss.json file](${scanossJsonUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
@@ -125390,12 +125391,13 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         else {
             // Build JSON content from the details output that already contains the structure
             let jsonContent = '';
-            const jsonMatch = details.match(/{[\s\S]*}/);
+            const jsonMatch = details.match(/{[\s\S]*?}/);
             if (jsonMatch) {
                 jsonContent = jsonMatch[0];
             }
             const encodedJson = encodeURIComponent(jsonContent);
-            const createFileUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/new/${branchName}?filename=scanoss.json&value=${encodedJson}`;
+            const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
+            const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=scanoss.json&value=${encodedJson}`;
             details += `\n\n📝 Quick Fix:\n`;
             details += `scanoss.json doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
             details += `[Create scanoss.json file](${createFileUrl})`;
@@ -125429,7 +125431,7 @@ exports.UndeclaredPolicyCheck = UndeclaredPolicyCheck;
 function mergeWithExistingScanossJson(policyDetails) {
     try {
         // Extract new components from policy details
-        const jsonMatch = policyDetails.match(/{[\s\S]*}/);
+        const jsonMatch = policyDetails.match(/{[\s\S]*?}/);
         if (!jsonMatch) {
             core.warning('Could not extract new components from policy details');
             return null;
@@ -126900,7 +126902,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createFileMatchSummaryAnnotation = exports.createSnippetSummaryAnnotation = void 0;
 const core = __importStar(__nccwpck_require__(42186));
-const github_1 = __nccwpck_require__(95438);
+const github_utils_1 = __nccwpck_require__(17889);
 const line_parsers_1 = __nccwpck_require__(70622);
 /**
  * Creates a GitHub URL for the file
@@ -126908,7 +126910,8 @@ const line_parsers_1 = __nccwpck_require__(70622);
  * @returns GitHub URL for the file
  */
 function getFileUrl(filePath) {
-    return `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+    const { owner, repo, sha } = (0, github_utils_1.resolveRepoAndSha)();
+    return `https://github.com/${owner}/${repo}/blob/${sha}/${filePath}`;
 }
 /**
  * Creates a GitHub URL for the file with line highlighting
@@ -126917,7 +126920,8 @@ function getFileUrl(filePath) {
  * @returns GitHub URL for the file with line anchors
  */
 function getFileUrlWithLineHighlight(filePath, lineRange) {
-    const baseUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+    const { owner, repo, sha } = (0, github_utils_1.resolveRepoAndSha)();
+    const baseUrl = `https://github.com/${owner}/${repo}/blob/${sha}/${filePath}`;
     if (lineRange.start === lineRange.end) {
         return `${baseUrl}#L${lineRange.start}`;
     }
@@ -126930,7 +126934,8 @@ function getFileUrlWithLineHighlight(filePath, lineRange) {
  * @param snippetMatches - Array of snippet matches with file paths
  */
 function createSnippetSummaryAnnotation(snippetMatches) {
-    const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
+    const { owner, repo, sha } = (0, github_utils_1.resolveRepoAndSha)();
+    const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
     let message = `Found ${snippetMatches.length} snippet matches\n`;
     message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
     message += `**Affected Files:**\n`;
@@ -126962,7 +126967,8 @@ exports.createSnippetSummaryAnnotation = createSnippetSummaryAnnotation;
  * @param fileMatches - Array of file matches with file paths
  */
 function createFileMatchSummaryAnnotation(fileMatches) {
-    const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
+    const { owner, repo, sha } = (0, github_utils_1.resolveRepoAndSha)();
+    const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
     let message = `Found ${fileMatches.length} full file matches\n`;
     message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
     message += `**Affected Files:**\n`;
@@ -127192,13 +127198,15 @@ const api_cache_1 = __nccwpck_require__(59049);
  * @returns GitHub URL for the file
  */
 function getFileUrl(filePath) {
-    return `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+    const { owner, repo, sha } = (0, github_utils_1.resolveRepoAndSha)();
+    return `https://github.com/${owner}/${repo}/blob/${sha}/${filePath}`;
 }
 /**
  * Creates a GitHub URL with line highlighting for the file
  */
 function getFileUrlWithLineHighlight(filePath, lineRange) {
-    const baseUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/blob/${github_1.context.sha}/${filePath}`;
+    const { owner, repo, sha } = (0, github_utils_1.resolveRepoAndSha)();
+    const baseUrl = `https://github.com/${owner}/${repo}/blob/${sha}/${filePath}`;
     if (lineRange.start === lineRange.end) {
         return `${baseUrl}#L${lineRange.start}`;
     }
@@ -127272,13 +127280,13 @@ function formatFileAnnotationMessage(filePath, fileMatch) {
  * });
  * ```
  *
- * @throws {Error} When GitHub API call fails or line range parsing fails
+ * @returns Promise<boolean> - true on success, false on failure or skip
  */
 async function createSnippetCommitComment(filePath, snippetMatch) {
     const localLines = (0, line_parsers_1.parseLineRange)(snippetMatch.lines);
     if (!localLines) {
         core.warning(`Could not parse line range: ${snippetMatch.lines} for file: ${filePath}`);
-        return;
+        return false;
     }
     const message = formatSnippetAnnotationMessage(filePath, snippetMatch, localLines);
     const commentBody = `🔍 **Code Similarity Found**\n\n${message}`;
@@ -127299,6 +127307,7 @@ async function createSnippetCommitComment(filePath, snippetMatch) {
             return await octokit.rest.repos.createCommitComment(params);
         });
         core.info(`Successfully created commit comment for snippet match at ${filePath}`);
+        return true;
     }
     catch (error) {
         core.error(`Failed to create commit comment for ${filePath}`);
@@ -127311,6 +127320,7 @@ async function createSnippetCommitComment(filePath, snippetMatch) {
                 core.error(`Context: status=${status ?? 'n/a'} url=${url ?? 'n/a'}`);
             core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
         }
+        return false;
     }
 }
 exports.createSnippetCommitComment = createSnippetCommitComment;
@@ -127318,6 +127328,7 @@ exports.createSnippetCommitComment = createSnippetCommitComment;
  * Creates a commit comment for a file match
  * @param filePath - The file path
  * @param fileMatch - The file match data
+ * @returns Promise<boolean> - true on success, false on failure
  */
 async function createFileCommitComment(filePath, fileMatch) {
     const message = formatFileAnnotationMessage(filePath, fileMatch);
@@ -127333,11 +127344,12 @@ async function createFileCommitComment(filePath, fileMatch) {
         };
         core.info(`Creating file commit comment for ${filePath}`);
         // Use request deduplication to prevent duplicate comments for the same file
-        const deduplicationKey = `file-comment:${github_1.context.sha}:${filePath}:${fileMatch.component}:file`;
+        const deduplicationKey = `file-comment:${github_1.context.sha}:${filePath}:${fileMatch.component}${fileMatch.version ? `:v${fileMatch.version}` : ''}`;
         await api_cache_1.requestDeduplicator.deduplicate(deduplicationKey, async () => {
             return await octokit.rest.repos.createCommitComment(params);
         });
         core.info(`Successfully created commit comment for file match at ${filePath}`);
+        return true;
     }
     catch (error) {
         core.error(`Failed to create commit comment for ${filePath}`);
@@ -127350,6 +127362,7 @@ async function createFileCommitComment(filePath, fileMatch) {
                 core.error(`Context: status=${status ?? 'n/a'} url=${url ?? 'n/a'}`);
             core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
         }
+        return false;
     }
 }
 exports.createFileCommitComment = createFileCommitComment;
@@ -127363,7 +127376,8 @@ async function createMainConversationComment(snippetMatches, fileMatches) {
         core.info('Skipping main conversation comment - not in PR context');
         return;
     }
-    const commitUrl = `https://github.com/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commit/${github_1.context.sha}`;
+    const { owner, repo, sha } = (0, github_utils_1.resolveRepoAndSha)();
+    const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
     let message = `## 🔍 SCANOSS Code Similarity Detected\n\n`;
     if (snippetMatches.length > 0) {
         message += `📄 **${snippetMatches.length} snippet matches** found\n`;
@@ -127392,8 +127406,7 @@ async function createMainConversationComment(snippetMatches, fileMatches) {
             repo: github_1.context.repo.repo,
             body: message
         });
-        const prInfo = (0, github_utils_1.isPullRequest)() ? ` (PR #${github_1.context.issue.number})` : '';
-        core.info(`Successfully created main conversation comment${prInfo}`);
+        core.info(`Successfully created main conversation comment (PR #${github_1.context.issue.number})`);
     }
     catch (error) {
         core.error(`Failed to create main conversation comment: ${error}`);
@@ -127455,7 +127468,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getFirstRunId = exports.createCommentOnPR = exports.getSHA = exports.isPullRequest = void 0;
+exports.getFirstRunId = exports.createCommentOnPR = exports.resolveRepoAndSha = exports.getSHA = exports.isPullRequest = void 0;
 const github_1 = __nccwpck_require__(95438);
 const core = __importStar(__nccwpck_require__(42186));
 const inputs = __importStar(__nccwpck_require__(483));
@@ -127482,6 +127495,30 @@ function getSHA() {
     return sha;
 }
 exports.getSHA = getSHA;
+/**
+ * Resolves the correct repository owner, repo name, and SHA for fork-safe URL generation.
+ * For pull requests from forks, this ensures URLs point to the correct repository and commit.
+ */
+function resolveRepoAndSha() {
+    if (isPullRequest()) {
+        const pull = github_1.context.payload.pull_request;
+        if (pull?.head) {
+            // For PRs, use the head repository and SHA to ensure we point to the correct branch/fork
+            return {
+                owner: pull.head.repo?.owner.login || github_1.context.repo.owner,
+                repo: pull.head.repo?.name || github_1.context.repo.repo,
+                sha: pull.head.sha || github_1.context.sha
+            };
+        }
+    }
+    // Default to context values for non-PR scenarios
+    return {
+        owner: github_1.context.repo.owner,
+        repo: github_1.context.repo.repo,
+        sha: github_1.context.sha
+    };
+}
+exports.resolveRepoAndSha = resolveRepoAndSha;
 /**
  * Creates a comment on the current pull request with the provided message.
  */
@@ -127927,9 +127964,9 @@ async function createSnippetAnnotations(resultsPath) {
         // Create individual commit comments for each match (in parallel)
         const snippetPromises = snippetMatches.map(async ({ filePath, match }) => (0, github_comment_api_1.createSnippetCommitComment)(filePath, match));
         const filePromises = fileMatches.map(async ({ filePath, match }) => (0, github_comment_api_1.createFileCommitComment)(filePath, match));
-        const promiseResults = await Promise.allSettled([...snippetPromises, ...filePromises]);
-        const failedCount = promiseResults.filter((result) => result.status === 'rejected').length;
-        const successCount = promiseResults.length - failedCount;
+        const commentResults = await Promise.all([...snippetPromises, ...filePromises]);
+        const successCount = commentResults.filter(Boolean).length;
+        const failedCount = commentResults.length - successCount;
         if (failedCount > 0) {
             core.warning(`${failedCount} commit comments failed to create, ${successCount} succeeded`);
         }

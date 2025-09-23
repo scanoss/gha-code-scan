@@ -81,11 +81,9 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
     );
     const filePromises = fileMatches.map(async ({ filePath, match }) => createFileCommitComment(filePath, match));
 
-    const promiseResults = await Promise.allSettled([...snippetPromises, ...filePromises]);
-    const failedCount = promiseResults.filter(
-      (result: PromiseSettledResult<void>) => result.status === 'rejected'
-    ).length;
-    const successCount = promiseResults.length - failedCount;
+    const commentResults = await Promise.all([...snippetPromises, ...filePromises]);
+    const successCount = commentResults.filter(Boolean).length;
+    const failedCount = commentResults.length - successCount;
 
     if (failedCount > 0) {
       core.warning(`${failedCount} commit comments failed to create, ${successCount} succeeded`);

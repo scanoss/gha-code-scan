@@ -24,7 +24,7 @@
 import * as core from '@actions/core';
 import { context, getOctokit } from '@actions/github';
 import * as inputs from '../app.input';
-import { isPullRequest } from './github.utils';
+import { isPullRequest, resolveRepoAndSha } from './github.utils';
 import { SnippetMatch, FileMatch, LineRange, SnippetMatchWithPath, FileMatchWithPath } from '../types/annotations';
 import { parseLineRange } from './line-parsers';
 import { requestDeduplicator } from './api-cache';
@@ -35,14 +35,16 @@ import { requestDeduplicator } from './api-cache';
  * @returns GitHub URL for the file
  */
 function getFileUrl(filePath: string): string {
-  return `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${context.sha}/${filePath}`;
+  const { owner, repo, sha } = resolveRepoAndSha();
+  return `https://github.com/${owner}/${repo}/blob/${sha}/${filePath}`;
 }
 
 /**
  * Creates a GitHub URL with line highlighting for the file
  */
 function getFileUrlWithLineHighlight(filePath: string, lineRange: LineRange): string {
-  const baseUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${context.sha}/${filePath}`;
+  const { owner, repo, sha } = resolveRepoAndSha();
+  const baseUrl = `https://github.com/${owner}/${repo}/blob/${sha}/${filePath}`;
 
   if (lineRange.start === lineRange.end) {
     return `${baseUrl}#L${lineRange.start}`;
@@ -130,14 +132,14 @@ function formatFileAnnotationMessage(filePath: string, fileMatch: FileMatch): st
  * });
  * ```
  *
- * @throws {Error} When GitHub API call fails or line range parsing fails
+ * @returns Promise<boolean> - true on success, false on failure or skip
  */
-export async function createSnippetCommitComment(filePath: string, snippetMatch: SnippetMatch): Promise<void> {
+export async function createSnippetCommitComment(filePath: string, snippetMatch: SnippetMatch): Promise<boolean> {
   const localLines = parseLineRange(snippetMatch.lines);
 
   if (!localLines) {
     core.warning(`Could not parse line range: ${snippetMatch.lines} for file: ${filePath}`);
-    return;
+    return false;
   }
 
   const message = formatSnippetAnnotationMessage(filePath, snippetMatch, localLines);
@@ -164,6 +166,7 @@ export async function createSnippetCommitComment(filePath: string, snippetMatch:
     });
 
     core.info(`Successfully created commit comment for snippet match at ${filePath}`);
+    return true;
   } catch (error) {
     core.error(`Failed to create commit comment for ${filePath}`);
     if (error instanceof Error) {
@@ -174,6 +177,7 @@ export async function createSnippetCommitComment(filePath: string, snippetMatch:
       if (status || url) core.error(`Context: status=${status ?? 'n/a'} url=${url ?? 'n/a'}`);
       core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
     }
+    return false;
   }
 }
 
@@ -181,8 +185,9 @@ export async function createSnippetCommitComment(filePath: string, snippetMatch:
  * Creates a commit comment for a file match
  * @param filePath - The file path
  * @param fileMatch - The file match data
+ * @returns Promise<boolean> - true on success, false on failure
  */
-export async function createFileCommitComment(filePath: string, fileMatch: FileMatch): Promise<void> {
+export async function createFileCommitComment(filePath: string, fileMatch: FileMatch): Promise<boolean> {
   const message = formatFileAnnotationMessage(filePath, fileMatch);
   const commentBody = `📄 **Full File Match Found**\n\n${message}`;
 
@@ -200,12 +205,13 @@ export async function createFileCommitComment(filePath: string, fileMatch: FileM
     core.info(`Creating file commit comment for ${filePath}`);
 
     // Use request deduplication to prevent duplicate comments for the same file
-    const deduplicationKey = `file-comment:${context.sha}:${filePath}:${fileMatch.component}:file`;
+    const deduplicationKey = `file-comment:${context.sha}:${filePath}:${fileMatch.component}${fileMatch.version ? `:v${fileMatch.version}` : ''}`;
     await requestDeduplicator.deduplicate(deduplicationKey, async () => {
       return await octokit.rest.repos.createCommitComment(params);
     });
 
     core.info(`Successfully created commit comment for file match at ${filePath}`);
+    return true;
   } catch (error) {
     core.error(`Failed to create commit comment for ${filePath}`);
     if (error instanceof Error) {
@@ -216,6 +222,7 @@ export async function createFileCommitComment(filePath: string, fileMatch: FileM
       if (status || url) core.error(`Context: status=${status ?? 'n/a'} url=${url ?? 'n/a'}`);
       core.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
     }
+    return false;
   }
 }
 
@@ -233,7 +240,8 @@ export async function createMainConversationComment(
     return;
   }
 
-  const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+  const { owner, repo, sha } = resolveRepoAndSha();
+  const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
 
   let message = `## 🔍 SCANOSS Code Similarity Detected\n\n`;
 
@@ -271,8 +279,7 @@ export async function createMainConversationComment(
       body: message
     });
 
-    const prInfo = isPullRequest() ? ` (PR #${context.issue.number})` : '';
-    core.info(`Successfully created main conversation comment${prInfo}`);
+    core.info(`Successfully created main conversation comment (PR #${context.issue.number})`);
   } catch (error) {
     core.error(`Failed to create main conversation comment: ${error}`);
   }

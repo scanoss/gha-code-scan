@@ -22,7 +22,7 @@
 */
 
 import * as core from '@actions/core';
-import { context } from '@actions/github';
+import { resolveRepoAndSha } from './github.utils';
 import { SnippetMatch, LineRange, SnippetMatchWithPath, FileMatchWithPath } from '../types/annotations';
 import { parseLineRange } from './line-parsers';
 
@@ -32,7 +32,8 @@ import { parseLineRange } from './line-parsers';
  * @returns GitHub URL for the file
  */
 function getFileUrl(filePath: string): string {
-  return `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${context.sha}/${filePath}`;
+  const { owner, repo, sha } = resolveRepoAndSha();
+  return `https://github.com/${owner}/${repo}/blob/${sha}/${filePath}`;
 }
 
 /**
@@ -42,7 +43,8 @@ function getFileUrl(filePath: string): string {
  * @returns GitHub URL for the file with line anchors
  */
 function getFileUrlWithLineHighlight(filePath: string, lineRange: LineRange): string {
-  const baseUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${context.sha}/${filePath}`;
+  const { owner, repo, sha } = resolveRepoAndSha();
+  const baseUrl = `https://github.com/${owner}/${repo}/blob/${sha}/${filePath}`;
 
   if (lineRange.start === lineRange.end) {
     return `${baseUrl}#L${lineRange.start}`;
@@ -56,7 +58,8 @@ function getFileUrlWithLineHighlight(filePath: string, lineRange: LineRange): st
  * @param snippetMatches - Array of snippet matches with file paths
  */
 export function createSnippetSummaryAnnotation(snippetMatches: SnippetMatchWithPath[]): void {
-  const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+  const { owner, repo, sha } = resolveRepoAndSha();
+  const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
 
   let message = `Found ${snippetMatches.length} snippet matches\n`;
   message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;
@@ -96,7 +99,8 @@ export function createSnippetSummaryAnnotation(snippetMatches: SnippetMatchWithP
  * @param fileMatches - Array of file matches with file paths
  */
 export function createFileMatchSummaryAnnotation(fileMatches: FileMatchWithPath[]): void {
-  const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+  const { owner, repo, sha } = resolveRepoAndSha();
+  const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
 
   let message = `Found ${fileMatches.length} full file matches\n`;
   message += `📍 [View detailed comments on commit](${commitUrl})\n\n`;

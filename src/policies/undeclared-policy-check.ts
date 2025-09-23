@@ -30,7 +30,7 @@ import { UndeclaredArgumentBuilder } from './argument_builders/components/undecl
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 import { context } from '@actions/github';
-import { isPullRequest } from '../utils/github.utils';
+import { isPullRequest, resolveRepoAndSha } from '../utils/github.utils';
 import * as fs from 'fs';
 
 /**
@@ -107,13 +107,14 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     }
 
     if (fs.existsSync('scanoss.json')) {
-      const scanossJsonUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/edit/${branchName}/scanoss.json`;
+      const { owner, repo } = resolveRepoAndSha();
+      const scanossJsonUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/scanoss.json`;
 
       // Try to replace the existing JSON with merged version
       const mergedJson = mergeWithExistingScanossJson(details);
       if (mergedJson) {
-        // Replace the original JSON section with merged version
-        details = details.replace(/{[\s\S]*}/, mergedJson);
+        // Replace the first JSON block with merged version, fenced for readability
+        details = details.replace(/{[\s\S]*?}/, `\`\`\`json\n${mergedJson}\n\`\`\``);
       }
 
       details += `\n\n📝 Quick Fix:\n`;
@@ -121,13 +122,14 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     } else {
       // Build JSON content from the details output that already contains the structure
       let jsonContent = '';
-      const jsonMatch = details.match(/{[\s\S]*}/);
+      const jsonMatch = details.match(/{[\s\S]*?}/);
       if (jsonMatch) {
         jsonContent = jsonMatch[0];
       }
 
       const encodedJson = encodeURIComponent(jsonContent);
-      const createFileUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/new/${branchName}?filename=scanoss.json&value=${encodedJson}`;
+      const { owner, repo } = resolveRepoAndSha();
+      const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=scanoss.json&value=${encodedJson}`;
       details += `\n\n📝 Quick Fix:\n`;
       details += `scanoss.json doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
       details += `[Create scanoss.json file](${createFileUrl})`;
@@ -165,7 +167,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
 function mergeWithExistingScanossJson(policyDetails: string): string | null {
   try {
     // Extract new components from policy details
-    const jsonMatch = policyDetails.match(/{[\s\S]*}/);
+    const jsonMatch = policyDetails.match(/{[\s\S]*?}/);
     if (!jsonMatch) {
       core.warning('Could not extract new components from policy details');
       return null;
