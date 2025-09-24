@@ -144,7 +144,7 @@ export abstract class PolicyCheck {
    * Returns the URL to this check run.
    */
   get url(): string {
-    if (this.detailsUrl != null) {
+    if (this.detailsUrl) {
       return this.detailsUrl;
     }
     return `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${this._firstRunId}/job/${this.raw?.id}`;

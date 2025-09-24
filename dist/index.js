@@ -126350,7 +126350,7 @@ class PolicyCheck {
      * Returns the URL to this check run.
      */
     get url() {
-        if (this.detailsUrl != null) {
+        if (this.detailsUrl) {
             return this.detailsUrl;
         }
         return `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs/${this._firstRunId}/job/${this.raw?.id}`;
