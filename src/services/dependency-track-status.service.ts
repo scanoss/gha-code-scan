@@ -58,7 +58,7 @@ export class DependencyTrackStatusService {
     try {
       const octokit = getOctokit(inputs.GITHUB_TOKEN);
       // eslint-disable-next-line @typescript-eslint/await-thenable
-      const sha = await getSHA();
+      const sha = await getSHA(); // TODO Review
 
       let conclusion: 'success' | 'failure' | 'neutral';
       let title: string;

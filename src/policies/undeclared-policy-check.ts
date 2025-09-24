@@ -24,7 +24,7 @@
 import { PolicyCheck } from './policy-check';
 import { CHECK_NAME } from '../app.config';
 import * as core from '@actions/core';
-import { EXECUTABLE, SCANOSS_SETTINGS } from '../app.input';
+import { EXECUTABLE, SCANOSS_SETTINGS, SETTINGS_FILE_PATH } from '../app.input';
 import * as exec from '@actions/exec';
 import { UndeclaredArgumentBuilder } from './argument_builders/components/undeclared-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
@@ -106,9 +106,9 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       }
     }
 
-    if (fs.existsSync('scanoss.json')) {
+    if (fs.existsSync(SETTINGS_FILE_PATH)) {
       const { owner, repo } = resolveRepoAndSha();
-      const scanossJsonUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/scanoss.json`;
+      const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${SETTINGS_FILE_PATH}`;
 
       // Try to replace the existing JSON with merged version
       const mergedJson = mergeWithExistingScanossJson(details);
@@ -118,7 +118,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       }
 
       details += `\n\n📝 Quick Fix:\n`;
-      details += `[Edit scanoss.json file](${scanossJsonUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
+      details += `[Edit ${SETTINGS_FILE_PATH} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
     } else {
       // Build JSON content from the details output that already contains the structure
       let jsonContent = '';
@@ -129,10 +129,10 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
 
       const encodedJson = encodeURIComponent(jsonContent);
       const { owner, repo } = resolveRepoAndSha();
-      const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=scanoss.json&value=${encodedJson}`;
+      const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${SETTINGS_FILE_PATH}&value=${encodedJson}`;
       details += `\n\n📝 Quick Fix:\n`;
-      details += `scanoss.json doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
-      details += `[Create scanoss.json file](${createFileUrl})`;
+      details += `${SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
+      details += `[Create ${SETTINGS_FILE_PATH} file](${createFileUrl})`;
     }
 
     const { id } = await this.uploadArtifact(details);
@@ -181,8 +181,8 @@ function mergeWithExistingScanossJson(policyDetails: string): string | null {
       return null;
     }
 
-    // Read existing scanoss.json
-    const existingContent = fs.readFileSync('scanoss.json', 'utf8');
+    // Read existing settings file
+    const existingContent = fs.readFileSync(SETTINGS_FILE_PATH, 'utf8');
     const existingConfig = JSON.parse(existingContent);
 
     // Ensure bom section exists
@@ -204,12 +204,12 @@ function mergeWithExistingScanossJson(policyDetails: string): string | null {
     // Add all new components (no duplicate checking needed)
     existingConfig.bom.include.push(...newComponents);
 
-    core.info(`Added ${newComponents.length} new components to existing scanoss.json structure`);
+    core.info(`Added ${newComponents.length} new components to existing ${SETTINGS_FILE_PATH} structure`);
 
     // Return formatted JSON
     return JSON.stringify(existingConfig, null, 2);
   } catch (error) {
-    core.warning(`Failed to merge with existing scanoss.json: ${error}`);
+    core.warning(`Failed to merge with existing ${SETTINGS_FILE_PATH}: ${error}`);
     return null;
   }
 }
