@@ -195,10 +195,11 @@ export class ScanService {
     const args = await this.buildArgs();
     const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
     if (exitCode !== 0) {
-      core.warning(`Scan execution completed with exit code ${exitCode}`);
+      core.error(`Scan execution completed with exit code ${exitCode}`);
       if (stderr) {
-        core.debug(`Scan stderr: ${stderr}`);
+        core.error(`Scan stderr: ${stderr}`);
       }
+      throw new Error(`Scan execution failed with stderr: ${stderr}`);
     }
 
     const scan = await this.parseResult();

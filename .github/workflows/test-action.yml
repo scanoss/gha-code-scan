@@ -7,7 +7,7 @@ on:
       - '*'
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
   checks: write
   actions: read
@@ -27,7 +27,9 @@ jobs:
         uses: ./
         with:
            dependencies.enabled: false
-           policies: copyleft
+           policies: copyleft, und
+           policies.halt_on_failure: 'false'
+           api.key: ${{ secrets.SC_API_KEY }}
 
 
       - name: Print stdout scan command

@@ -24,11 +24,14 @@
 import { PolicyCheck } from './policy-check';
 import { CHECK_NAME } from '../app.config';
 import * as core from '@actions/core';
-import { EXECUTABLE, SCANOSS_SETTINGS } from '../app.input';
+import { EXECUTABLE, SCANOSS_SETTINGS, SETTINGS_FILE_PATH } from '../app.input';
 import * as exec from '@actions/exec';
 import { UndeclaredArgumentBuilder } from './argument_builders/components/undeclared-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
+import { context } from '@actions/github';
+import { isPullRequest, resolveRepoAndSha } from '../utils/github.utils';
+import * as fs from 'fs';
 
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
@@ -90,6 +93,48 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       details = stdout;
     }
 
+    // Add scanoss.json file link and context based on file existence
+    details += `\n\n---\n\n`;
+    details += `**📝 Quick Fix:**\n`;
+
+    // Get the correct branch name for links
+    let branchName = context.ref.replace('refs/heads/', '');
+    if (isPullRequest()) {
+      const pull = context.payload.pull_request;
+      if (pull?.head.ref) {
+        branchName = pull.head.ref;
+      }
+    }
+
+    if (fs.existsSync(SETTINGS_FILE_PATH)) {
+      const { owner, repo } = resolveRepoAndSha();
+      const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${SETTINGS_FILE_PATH}`;
+
+      // Try to replace the existing JSON with merged version
+      const mergedJson = mergeWithExistingScanossJson(details);
+      if (mergedJson) {
+        // Replace the first JSON block with merged version, fenced for readability
+        details = details.replace(/{[\s\S]*?}/, `\`\`\`json\n${mergedJson}\n\`\`\``);
+      }
+
+      details += `\n\n📝 Quick Fix:\n`;
+      details += `[Edit ${SETTINGS_FILE_PATH} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
+    } else {
+      // Build JSON content from the details output that already contains the structure
+      let jsonContent = '';
+      const jsonMatch = details.match(/{[\s\S]*?}/);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[0];
+      }
+
+      const encodedJson = encodeURIComponent(jsonContent);
+      const { owner, repo } = resolveRepoAndSha();
+      const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${SETTINGS_FILE_PATH}&value=${encodedJson}`;
+      details += `\n\n📝 Quick Fix:\n`;
+      details += `${SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
+      details += `[Create ${SETTINGS_FILE_PATH} file](${createFileUrl})`;
+    }
+
     const { id } = await this.uploadArtifact(details);
     core.debug(`Undeclared Artifact ID: ${id}`);
     if (id) details = await this.concatPolicyArtifactURLToPolicyCheck(details, id);
@@ -113,5 +158,58 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
    */
   getPolicyName(): string {
     return UndeclaredPolicyCheck.policyName;
+  }
+}
+
+/**
+ * Merges new undeclared components with existing scanoss.json file
+ */
+function mergeWithExistingScanossJson(policyDetails: string): string | null {
+  try {
+    // Extract new components from policy details
+    const jsonMatch = policyDetails.match(/{[\s\S]*?}/);
+    if (!jsonMatch) {
+      core.warning('Could not extract new components from policy details');
+      return null;
+    }
+
+    const newStructure = JSON.parse(jsonMatch[0]);
+    const newComponents = newStructure.bom?.include || [];
+
+    if (newComponents.length === 0) {
+      core.warning('No new components found to add');
+      return null;
+    }
+
+    // Read existing settings file
+    const existingContent = fs.readFileSync(SETTINGS_FILE_PATH, 'utf8');
+    const existingConfig = JSON.parse(existingContent);
+
+    // Ensure bom section exists
+    if (!existingConfig.bom) {
+      existingConfig.bom = {};
+    }
+
+    // Ensure include array exists
+    if (!existingConfig.bom.include) {
+      existingConfig.bom.include = [];
+    }
+
+    // Ensure include is an array
+    if (!Array.isArray(existingConfig.bom.include)) {
+      core.warning('Existing bom.include is not an array, creating new array');
+      existingConfig.bom.include = [];
+    }
+
+    // Add all new components (no duplicate checking needed)
+    existingConfig.bom.include.push(...newComponents);
+
+    core.info(`Added ${newComponents.length} new components to existing ${SETTINGS_FILE_PATH} structure`);
+
+    // Return formatted JSON
+    return JSON.stringify(existingConfig, null, 2);
+  } catch (error) {
+    core.warning(`Failed to merge with existing ${SETTINGS_FILE_PATH}: ${error}`);
+    return null;
   }
 }

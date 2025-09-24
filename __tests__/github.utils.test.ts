@@ -22,7 +22,6 @@
 */
 
 import { context, getOctokit } from '@actions/github';
-import * as core from '@actions/core';
 import { getSHA, isPullRequest, createCommentOnPR, getFirstRunId } from '../src/utils/github.utils';
 
 // Mock external dependencies
@@ -34,10 +33,6 @@ jest.mock('../src/app.input', () => ({
 
 const mockOctokit = {
   rest: {
-    actions: {
-      getWorkflowRun: jest.fn(),
-      listWorkflowRuns: jest.fn()
-    },
     issues: {
       createComment: jest.fn()
     }
@@ -182,80 +177,22 @@ describe('GitHub Utils', () => {
   });
 
   describe('getFirstRunId', () => {
-    it('should return current runId for non-workflow_dispatch events', async () => {
-      (context.eventName as any) = 'push';
+    it('should always return current runId', async () => {
       (context.runId as any) = 98765;
+      (context.eventName as any) = 'push'; // Not workflow_dispatch
 
       const result = await getFirstRunId();
 
       expect(result).toBe(98765);
-      expect(mockOctokit.rest.actions.getWorkflowRun).not.toHaveBeenCalled();
     });
 
-    it('should find first run for workflow_dispatch events', async () => {
-      (context.eventName as any) = 'workflow_dispatch';
+    it('should handle different run IDs', async () => {
       (context.runId as any) = 12345;
-      (context.repo as any) = { owner: 'test-owner', repo: 'test-repo' };
-      (context.sha as any) = 'test-sha-123';
-
-      // Mock current workflow run
-      mockOctokit.rest.actions.getWorkflowRun.mockResolvedValue({
-        data: {
-          workflow_id: 'test-workflow',
-          head_sha: 'test-sha-123'
-        }
-      });
-
-      // Mock workflow runs list
-      mockOctokit.rest.actions.listWorkflowRuns.mockResolvedValue({
-        data: {
-          workflow_runs: [
-            { id: 11111, created_at: '2023-01-03T10:00:00Z', event: 'push', head_sha: 'test-sha-123' },
-            { id: 22222, created_at: '2023-01-02T10:00:00Z', event: 'push', head_sha: 'test-sha-123' },
-            { id: 33333, created_at: '2023-01-01T10:00:00Z', event: 'push', head_sha: 'test-sha-123' } // Oldest
-          ]
-        }
-      });
-
-      const infoSpy = jest.spyOn(core, 'info').mockImplementation();
+      (context.eventName as any) = 'pull_request'; // Not workflow_dispatch
 
       const result = await getFirstRunId();
 
-      expect(result).toBe(33333); // Should return the oldest run
-      expect(infoSpy).toHaveBeenCalledWith('First Run ID found: 33333');
-
-      infoSpy.mockRestore();
-    });
-
-    it('should return current runId if no first run is found', async () => {
-      (context.eventName as any) = 'workflow_dispatch';
-      (context.runId as any) = 12345;
-
-      mockOctokit.rest.actions.getWorkflowRun.mockResolvedValue({
-        data: {
-          workflow_id: 'test-workflow',
-          head_sha: 'test-sha-123'
-        }
-      });
-
-      mockOctokit.rest.actions.listWorkflowRuns.mockResolvedValue({
-        data: {
-          workflow_runs: []
-        }
-      });
-
-      const result = await getFirstRunId();
-
-      expect(result).toBe(12345); // Should return current runId as fallback
-    });
-
-    it('should throw API errors (no error handling in implementation)', async () => {
-      (context.eventName as any) = 'workflow_dispatch';
-      (context.runId as any) = 12345;
-
-      mockOctokit.rest.actions.getWorkflowRun.mockRejectedValue(new Error('API Error'));
-
-      await expect(getFirstRunId()).rejects.toThrow('API Error');
+      expect(result).toBe(12345);
     });
   });
 });

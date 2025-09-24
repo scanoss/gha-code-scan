@@ -56,6 +56,31 @@ export function getSHA(): string {
 }
 
 /**
+ * Resolves the correct repository owner, repo name, and SHA for fork-safe URL generation.
+ * For pull requests from forks, this ensures URLs point to the correct repository and commit.
+ */
+export function resolveRepoAndSha(): { owner: string; repo: string; sha: string } {
+  if (isPullRequest()) {
+    const pull = context.payload.pull_request;
+    if (pull?.head) {
+      // For PRs, use the head repository and SHA to ensure we point to the correct branch/fork
+      return {
+        owner: pull.head.repo?.owner.login || context.repo.owner,
+        repo: pull.head.repo?.name || context.repo.repo,
+        sha: pull.head.sha || context.sha
+      };
+    }
+  }
+
+  // Default to context values for non-PR scenarios
+  return {
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    sha: context.sha
+  };
+}
+
+/**
  * Creates a comment on the current pull request with the provided message.
  */
 export async function createCommentOnPR(message: string): Promise<void> {

@@ -32,6 +32,7 @@ import { DepTrackPolicyCheck } from './policies/dep-track-policy-check';
 import { dependencyTrackService } from './services/dependency-track.service';
 import { dependencyTrackStatusService } from './services/dependency-track-status.service';
 import { scanossService } from './services/scanoss.service';
+import { createSnippetAnnotations } from './utils/snippet-annotations.utils';
 
 /**
  * The main function for the action.
@@ -39,6 +40,10 @@ import { scanossService } from './services/scanoss.service';
  */
 export async function run(): Promise<void> {
   try {
+    // Mask sensitive inputs to prevent accidental leakage in logs
+    if (inputs.API_KEY) core.setSecret(inputs.API_KEY);
+    if (inputs.GITHUB_TOKEN) core.setSecret(inputs.GITHUB_TOKEN);
+
     core.debug(`SCANOSS Scan Action started...`);
 
     // create policies
@@ -69,6 +74,14 @@ export async function run(): Promise<void> {
         policy.setUploadAttempted(uploadResult.success); // Warn if DT upload was disabled or failed
       }
       await policy.run();
+    }
+
+    // 5: Create snippet match annotations
+    if (inputs.MATCH_ANNOTATIONS) {
+      core.info('Creating match annotations and commit comments...');
+      await createSnippetAnnotations(inputs.OUTPUT_FILEPATH);
+    } else {
+      core.info('Skipping match annotations - disabled by matchAnnotations parameter');
     }
 
     if (isPullRequest()) {
