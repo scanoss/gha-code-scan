@@ -128599,8 +128599,8 @@ async function createSnippetCommitComment(filePath, snippetMatch) {
         const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
         const { owner, repo, sha } = (0, github_utils_1.resolveRepoAndSha)();
         const params = {
-            owner: owner,
-            repo: repo,
+            owner,
+            repo,
             commit_sha: sha,
             path: filePath,
             line: localLines.start,
@@ -128643,8 +128643,8 @@ async function createFileCommitComment(filePath, fileMatch) {
         const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
         const { owner, repo, sha } = (0, github_utils_1.resolveRepoAndSha)();
         const params = {
-            owner: owner,
-            repo: repo,
+            owner,
+            repo,
             commit_sha: sha,
             path: filePath,
             body: commentBody
@@ -128709,8 +128709,8 @@ async function createMainConversationComment(snippetMatches, fileMatches) {
         const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
         await octokit.rest.issues.createComment({
             issue_number: github_1.context.issue.number,
-            owner: owner,
-            repo: repo,
+            owner,
+            repo,
             body: message
         });
         core.info(`Successfully created main conversation comment (PR #${github_1.context.issue.number})`);
