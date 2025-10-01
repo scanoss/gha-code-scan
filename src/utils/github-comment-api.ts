@@ -150,8 +150,8 @@ export async function createSnippetCommitComment(filePath: string, snippetMatch:
     const { owner, repo, sha } = resolveRepoAndSha();
 
     const params = {
-      owner,
-      repo,
+      owner: owner,
+      repo: repo,
       commit_sha: sha,
       path: filePath,
       line: localLines.start,
@@ -197,8 +197,8 @@ export async function createFileCommitComment(filePath: string, fileMatch: FileM
     const { owner, repo, sha } = resolveRepoAndSha();
 
     const params = {
-      owner,
-      repo,
+      owner: owner,
+      repo: repo,
       commit_sha: sha,
       path: filePath,
       body: commentBody
@@ -276,8 +276,8 @@ export async function createMainConversationComment(
 
     await octokit.rest.issues.createComment({
       issue_number: context.issue.number,
-      owner,
-      repo,
+      owner: owner,
+      repo: repo,
       body: message
     });
 
