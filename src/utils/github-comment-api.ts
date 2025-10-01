@@ -147,11 +147,12 @@ export async function createSnippetCommitComment(filePath: string, snippetMatch:
 
   try {
     const octokit = getOctokit(inputs.GITHUB_TOKEN);
+    const { owner, repo, sha } = resolveRepoAndSha();
 
     const params = {
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      commit_sha: context.sha,
+      owner,
+      repo,
+      commit_sha: sha,
       path: filePath,
       line: localLines.start,
       body: commentBody
@@ -160,7 +161,7 @@ export async function createSnippetCommitComment(filePath: string, snippetMatch:
     core.info(`Creating commit comment for snippet match at ${filePath}`);
 
     // Use request deduplication to prevent duplicate comments for the same file
-    const deduplicationKey = `snippet-comment:${context.sha}:${filePath}:${snippetMatch.component}`;
+    const deduplicationKey = `snippet-comment:${sha}:${filePath}:${snippetMatch.component}`;
     await requestDeduplicator.deduplicate(deduplicationKey, async () => {
       return await octokit.rest.repos.createCommitComment(params);
     });
@@ -193,11 +194,12 @@ export async function createFileCommitComment(filePath: string, fileMatch: FileM
 
   try {
     const octokit = getOctokit(inputs.GITHUB_TOKEN);
+    const { owner, repo, sha } = resolveRepoAndSha();
 
     const params = {
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      commit_sha: context.sha,
+      owner,
+      repo,
+      commit_sha: sha,
       path: filePath,
       body: commentBody
     };
@@ -205,7 +207,7 @@ export async function createFileCommitComment(filePath: string, fileMatch: FileM
     core.info(`Creating file commit comment for ${filePath}`);
 
     // Use request deduplication to prevent duplicate comments for the same file
-    const deduplicationKey = `file-comment:${context.sha}:${filePath}:${fileMatch.component}${fileMatch.version ? `:v${fileMatch.version}` : ''}`;
+    const deduplicationKey = `file-comment:${sha}:${filePath}:${fileMatch.component}${fileMatch.version ? `:v${fileMatch.version}` : ''}`;
     await requestDeduplicator.deduplicate(deduplicationKey, async () => {
       return await octokit.rest.repos.createCommitComment(params);
     });
@@ -253,7 +255,7 @@ export async function createMainConversationComment(
     message += `📋 **${fileMatches.length} full file matches** found\n`;
   }
 
-  message += `\n🔗 **[View detailed findings on commit ${context.sha.substring(0, 7)}](${commitUrl})**\n\n`;
+  message += `\n🔗 **[View detailed findings on commit ${sha.substring(0, 7)}](${commitUrl})**\n\n`;
 
   // Quick overview of most affected files
   const allFiles = new Set([...snippetMatches.map(m => m.filePath), ...fileMatches.map(m => m.filePath)]);
@@ -274,8 +276,8 @@ export async function createMainConversationComment(
 
     await octokit.rest.issues.createComment({
       issue_number: context.issue.number,
-      owner: context.repo.owner,
-      repo: context.repo.repo,
+      owner,
+      repo,
       body: message
     });
 
