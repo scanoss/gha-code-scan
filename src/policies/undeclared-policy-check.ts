@@ -166,50 +166,30 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
 }
 
 /**
- * Extracts JSON content from policy details using the marker text
+ * Extracts JSON content from policy details using markdown code block markers
  */
 function extractJsonFromPolicyDetails(details: string): string | null {
-  const marker = 'Add the following snippet into your';
-  const markerIndex = details.indexOf(marker);
-
-  if (markerIndex === -1) {
-    core.warning('Could not find JSON marker in policy details');
-    return null;
-  }
-
-  // Find the start of JSON (first '{' after the marker)
-  const searchStart = markerIndex + marker.length;
-  const jsonStart = details.indexOf('{', searchStart);
-
-  if (jsonStart === -1) {
-    core.warning('Could not find JSON start in policy details');
-    return null;
-  }
-
-  // Find the matching closing brace
-  let braceCount = 0;
+  const lines = details.split('\n');
+  let jsonStart = -1;
   let jsonEnd = -1;
 
-  for (let i = jsonStart; i < details.length; i++) {
-    if (details[i] === '{') {
-      braceCount++;
-    } else if (details[i] === '}') {
-      braceCount--;
-      if (braceCount === 0) {
-        jsonEnd = i;
-        break;
-      }
+  // Find ```json and closing ```
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === '```json' && jsonStart === -1) {
+      jsonStart = i + 1;
+    } else if (lines[i].trim() === '```' && jsonStart !== -1) {
+      jsonEnd = i;
+      break;
     }
   }
 
-  if (jsonEnd === -1) {
-    core.warning('Could not find JSON end in policy details');
+  if (jsonStart === -1 || jsonEnd === -1) {
+    core.warning('Could not find JSON code block in policy details');
     return null;
   }
 
-  const jsonContent = details.substring(jsonStart, jsonEnd + 1);
+  const jsonContent = lines.slice(jsonStart, jsonEnd).join('\n');
 
-  // Validate it's valid JSON
   try {
     JSON.parse(jsonContent);
     return jsonContent;
