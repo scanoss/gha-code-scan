@@ -99,6 +99,7 @@ describe('UndeclaredPolicyCheck', () => {
     // Set the required environment variables
     appInput.REPO_DIR = TEST_REPO_DIR;
     appInput.OUTPUT_FILEPATH = TEST_RESULTS_FILE;
+    appInput.POLICIES_HALT_ON_FAILURE = true;
 
     // Mock exec.getExecOutput to simulate undeclared components found
     jest.spyOn(exec, 'getExecOutput').mockResolvedValue({

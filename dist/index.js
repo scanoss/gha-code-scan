@@ -126687,25 +126687,30 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             // Try to replace the existing JSON with merged version
             const mergedJson = mergeWithExistingScanossJson(details);
             if (mergedJson) {
-                // Replace the first JSON block with merged version, fenced for readability
-                details = details.replace(/{[\s\S]*?}/, `\`\`\`json\n${mergedJson}\n\`\`\``);
+                // Replace the complete JSON block with merged version
+                const originalJson = extractJsonFromPolicyDetails(details);
+                if (originalJson) {
+                    const fullBlock = `\`\`\`json\n${originalJson}\n\`\`\``;
+                    const newBlock = `\`\`\`json\n${mergedJson}\n\`\`\``;
+                    details = details.replace(fullBlock, newBlock);
+                }
             }
-            details += `\n\n📝 Quick Fix:\n`;
             details += `[Edit ${app_input_1.SETTINGS_FILE_PATH} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
         }
         else {
             // Build JSON content from the details output that already contains the structure
-            let jsonContent = '';
-            const jsonMatch = details.match(/{[\s\S]*?}/);
-            if (jsonMatch) {
-                jsonContent = jsonMatch[0];
+            const jsonContent = extractJsonFromPolicyDetails(details);
+            if (jsonContent) {
+                const encodedJson = encodeURIComponent(jsonContent);
+                const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
+                const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${app_input_1.SETTINGS_FILE_PATH}&value=${encodedJson}`;
+                details += `${app_input_1.SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
+                details += `[Create ${app_input_1.SETTINGS_FILE_PATH} file](${createFileUrl})`;
             }
-            const encodedJson = encodeURIComponent(jsonContent);
-            const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
-            const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${app_input_1.SETTINGS_FILE_PATH}&value=${encodedJson}`;
-            details += `\n\n📝 Quick Fix:\n`;
-            details += `${app_input_1.SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
-            details += `[Create ${app_input_1.SETTINGS_FILE_PATH} file](${createFileUrl})`;
+            else {
+                core.warning('Could not extract JSON content for file creation link, but continuing with policy failure');
+                details += `${app_input_1.SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.`;
+            }
         }
         const { id } = await this.uploadArtifact(details);
         core.debug(`Undeclared Artifact ID: ${id}`);
@@ -126731,17 +126736,48 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
 }
 exports.UndeclaredPolicyCheck = UndeclaredPolicyCheck;
 /**
+ * Extracts JSON content from policy details using markdown code block markers
+ */
+function extractJsonFromPolicyDetails(details) {
+    const lines = details.split('\n');
+    let jsonStart = -1;
+    let jsonEnd = -1;
+    // Find ```json and closing ```
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() === '```json' && jsonStart === -1) {
+            jsonStart = i + 1;
+        }
+        else if (lines[i].trim() === '```' && jsonStart !== -1) {
+            jsonEnd = i;
+            break;
+        }
+    }
+    if (jsonStart === -1 || jsonEnd === -1) {
+        core.warning('Could not find JSON code block in policy details');
+        return null;
+    }
+    const jsonContent = lines.slice(jsonStart, jsonEnd).join('\n');
+    try {
+        JSON.parse(jsonContent);
+        return jsonContent;
+    }
+    catch (error) {
+        core.warning(`Extracted content is not valid JSON: ${error}`);
+        return null;
+    }
+}
+/**
  * Merges new undeclared components with existing scanoss.json file
  */
 function mergeWithExistingScanossJson(policyDetails) {
     try {
         // Extract new components from policy details
-        const jsonMatch = policyDetails.match(/{[\s\S]*?}/);
-        if (!jsonMatch) {
+        const jsonContent = extractJsonFromPolicyDetails(policyDetails);
+        if (!jsonContent) {
             core.warning('Could not extract new components from policy details');
             return null;
         }
-        const newStructure = JSON.parse(jsonMatch[0]);
+        const newStructure = JSON.parse(jsonContent);
         const newComponents = newStructure.bom?.include || [];
         if (newComponents.length === 0) {
             core.warning('No new components found to add');
