@@ -126693,7 +126693,6 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
                     details = details.replace(originalJson, mergedJson);
                 }
             }
-            details += `\n\n📝 Quick Fix:\n`;
             details += `[Edit ${app_input_1.SETTINGS_FILE_PATH} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
         }
         else {
@@ -126703,13 +126702,11 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
                 const encodedJson = encodeURIComponent(jsonContent);
                 const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
                 const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${app_input_1.SETTINGS_FILE_PATH}&value=${encodedJson}`;
-                details += `\n\n📝 Quick Fix:\n`;
                 details += `${app_input_1.SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
                 details += `[Create ${app_input_1.SETTINGS_FILE_PATH} file](${createFileUrl})`;
             }
             else {
                 core.warning('Could not extract JSON content for file creation link, but continuing with policy failure');
-                details += `\n\n📝 Quick Fix:\n`;
                 details += `${app_input_1.SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.`;
             }
         }
