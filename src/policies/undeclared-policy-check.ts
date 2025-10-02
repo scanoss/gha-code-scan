@@ -116,7 +116,9 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
         // Replace the complete JSON block with merged version
         const originalJson = extractJsonFromPolicyDetails(details);
         if (originalJson) {
-          details = details.replace(originalJson, mergedJson);
+          const fullBlock = '```json\n' + originalJson + '\n```';
+          const newBlock = '```json\n' + mergedJson + '\n```';
+          details = details.replace(fullBlock, newBlock);
         }
       }
 

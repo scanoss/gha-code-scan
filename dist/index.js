@@ -126690,7 +126690,9 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
                 // Replace the complete JSON block with merged version
                 const originalJson = extractJsonFromPolicyDetails(details);
                 if (originalJson) {
-                    details = details.replace(originalJson, mergedJson);
+                    const fullBlock = '```json\n' + originalJson + '\n```';
+                    const newBlock = '```json\n' + mergedJson + '\n```';
+                    details = details.replace(fullBlock, newBlock);
                 }
             }
             details += `[Edit ${app_input_1.SETTINGS_FILE_PATH} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
