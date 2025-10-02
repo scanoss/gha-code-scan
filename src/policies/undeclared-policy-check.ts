@@ -113,8 +113,11 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       // Try to replace the existing JSON with merged version
       const mergedJson = mergeWithExistingScanossJson(details);
       if (mergedJson) {
-        // Replace the first JSON block with merged version, fenced for readability
-        details = details.replace(/{[\s\S]*?}/, `\`\`\`json\n${mergedJson}\n\`\`\``);
+        // Replace the complete JSON block with merged version, fenced for readability
+        const originalJson = extractJsonFromPolicyDetails(details);
+        if (originalJson) {
+          details = details.replace(originalJson, `\`\`\`json\n${mergedJson}\n\`\`\``);
+        }
       }
 
       details += `\n\n📝 Quick Fix:\n`;
