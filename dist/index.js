@@ -126695,10 +126695,10 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         }
         else {
             // Build JSON content from the details output that already contains the structure
-            let jsonContent = '';
-            const jsonMatch = details.match(/{[\s\S]*?}/);
-            if (jsonMatch) {
-                jsonContent = jsonMatch[0];
+            const jsonContent = extractJsonFromPolicyDetails(details);
+            if (!jsonContent) {
+                core.warning('Could not extract JSON content from policy details');
+                return;
             }
             const encodedJson = encodeURIComponent(jsonContent);
             const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
@@ -126731,17 +126731,64 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
 }
 exports.UndeclaredPolicyCheck = UndeclaredPolicyCheck;
 /**
+ * Extracts JSON content from policy details using the marker text
+ */
+function extractJsonFromPolicyDetails(details) {
+    const marker = 'Add the following snippet into your';
+    const markerIndex = details.indexOf(marker);
+    if (markerIndex === -1) {
+        core.warning('Could not find JSON marker in policy details');
+        return null;
+    }
+    // Find the start of JSON (first '{' after the marker)
+    const searchStart = markerIndex + marker.length;
+    const jsonStart = details.indexOf('{', searchStart);
+    if (jsonStart === -1) {
+        core.warning('Could not find JSON start in policy details');
+        return null;
+    }
+    // Find the matching closing brace
+    let braceCount = 0;
+    let jsonEnd = -1;
+    for (let i = jsonStart; i < details.length; i++) {
+        if (details[i] === '{') {
+            braceCount++;
+        }
+        else if (details[i] === '}') {
+            braceCount--;
+            if (braceCount === 0) {
+                jsonEnd = i;
+                break;
+            }
+        }
+    }
+    if (jsonEnd === -1) {
+        core.warning('Could not find JSON end in policy details');
+        return null;
+    }
+    const jsonContent = details.substring(jsonStart, jsonEnd + 1);
+    // Validate it's valid JSON
+    try {
+        JSON.parse(jsonContent);
+        return jsonContent;
+    }
+    catch (error) {
+        core.warning(`Extracted content is not valid JSON: ${error}`);
+        return null;
+    }
+}
+/**
  * Merges new undeclared components with existing scanoss.json file
  */
 function mergeWithExistingScanossJson(policyDetails) {
     try {
         // Extract new components from policy details
-        const jsonMatch = policyDetails.match(/{[\s\S]*?}/);
-        if (!jsonMatch) {
+        const jsonContent = extractJsonFromPolicyDetails(policyDetails);
+        if (!jsonContent) {
             core.warning('Could not extract new components from policy details');
             return null;
         }
-        const newStructure = JSON.parse(jsonMatch[0]);
+        const newStructure = JSON.parse(jsonContent);
         const newComponents = newStructure.bom?.include || [];
         if (newComponents.length === 0) {
             core.warning('No new components found to add');
