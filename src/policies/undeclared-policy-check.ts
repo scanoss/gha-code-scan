@@ -125,17 +125,18 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     } else {
       // Build JSON content from the details output that already contains the structure
       const jsonContent = extractJsonFromPolicyDetails(details);
-      if (!jsonContent) {
-        core.warning('Could not extract JSON content from policy details');
-        return;
+      if (jsonContent) {
+        const encodedJson = encodeURIComponent(jsonContent);
+        const { owner, repo } = resolveRepoAndSha();
+        const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${SETTINGS_FILE_PATH}&value=${encodedJson}`;
+        details += `\n\n📝 Quick Fix:\n`;
+        details += `${SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
+        details += `[Create ${SETTINGS_FILE_PATH} file](${createFileUrl})`;
+      } else {
+        core.warning('Could not extract JSON content for file creation link, but continuing with policy failure');
+        details += `\n\n📝 Quick Fix:\n`;
+        details += `${SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.`;
       }
-
-      const encodedJson = encodeURIComponent(jsonContent);
-      const { owner, repo } = resolveRepoAndSha();
-      const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${SETTINGS_FILE_PATH}&value=${encodedJson}`;
-      details += `\n\n📝 Quick Fix:\n`;
-      details += `${SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
-      details += `[Create ${SETTINGS_FILE_PATH} file](${createFileUrl})`;
     }
 
     const { id } = await this.uploadArtifact(details);
