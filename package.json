@@ -74,7 +74,7 @@
     "@actions/github": "^6.0.0"
   },
   "devDependencies": {
-    "@octokit/types": "^13.5.0",
+    "@octokit/types": "^15.0.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.20",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
