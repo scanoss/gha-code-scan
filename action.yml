@@ -59,7 +59,7 @@ inputs:
     required: false
   runtimeContainer:
     description: 'Specify runtime container to perform the scan.'
-    default: 'ghcr.io/scanoss/scanoss-py:v1.32.0'
+    default: 'ghcr.io/scanoss/scanoss-py:v1.37.0'
     required: false
   skipSnippets:
     description: 'Skip the generation of snippets.'
@@ -76,6 +76,10 @@ inputs:
   settingsFilepath:
     description: 'SCANOSS settings file path.'
     default: 'scanoss.json'
+    required: false
+  scanMode:
+    description: 'Delta (diff) or full scan'
+    default: 'full'
     required: false
   debug:
     description: 'Enable debugging on scanoss.py'
