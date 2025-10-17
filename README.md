@@ -108,6 +108,7 @@ For example workflow runs, check out our
 | scanFiles                  | Enable or disable file and snippet scanning                                                                                                              | Optional     | `true`                               |
 | scanossSettings            | Settings file to use for scanning. See the SCANOSS settings [documentation](https://scanoss.readthedocs.io/projects/scanoss-py/en/latest/#settings-file) | Optional     | `true`                               |
 | settingsFilepath           | Filepath of the SCANOSS settings to be used for scanning                                                                                                 | Optional     | `scanoss.json`                       |
+| scanMode                   | Choose between delta scan and full scan                                                                                                                  | Optional     | `full`                               |
 | debug                      | Enable debugging                                                                                                                                         | Optional     | `false`                              |
 | deptrack.upload            | Enable automatic upload of scan results to Dependency Track                                                                                              | Optional     | `false`                              |
 | deptrack.url               | URL of the Dependency Track instance. Required when Dependency Track is enabled                                                                          | Required*    | -                                    |
@@ -236,6 +237,7 @@ jobs:
         uses: scanoss/code-scan-action@v1
         with:
           policies: copyleft, undeclared, dt
+          scanMode: 'delta'
           dependencies.enabled: true
           deptrack.upload: true
           deptrack.url: 'https://your-dt-instance.com'

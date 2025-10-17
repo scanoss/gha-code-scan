@@ -191,35 +191,27 @@ export class DeltaService {
       ignoreReturnCode: true
     };
 
-    let stdout = '';
-    let stderr = '';
+    const result = await exec.getExecOutput(inputs.EXECUTABLE, args, options);
+    const stdout = result.stdout;
+    const stderr = result.stderr;
 
-    try {
-      const result = await exec.getExecOutput(inputs.EXECUTABLE, args, options);
-      stdout = result.stdout;
-      stderr = result.stderr;
-
-      if (result.exitCode !== 0) {
-        core.error(`Delta copy command failed with exit code ${result.exitCode}`);
-        core.error(`Stderr: ${stderr}`);
-        throw new Error(`Delta copy command failed: ${stderr}`);
-      }
-
-      core.debug(`Delta copy stdout: ${stdout}`);
-
-      // Parse output to extract delta directory name
-      const deltaDir = this.extractDeltaDir(stdout);
-
-      if (!deltaDir) {
-        throw new Error('Failed to extract delta directory from command output');
-      }
-
-      core.info(`Delta directory created: ${deltaDir}`);
-      return deltaDir;
-    } catch (error) {
-      core.error(`Error running delta copy command: ${error}`);
-      throw error;
+    if (result.exitCode !== 0) {
+      core.error(`Delta copy command failed with exit code ${result.exitCode}`);
+      core.error(`Stderr: ${stderr}`);
+      throw new Error(`Delta copy command failed: ${stderr}`);
     }
+
+    core.debug(`Delta copy stdout: ${stdout}`);
+
+    // Parse output to extract delta directory name
+    const deltaDir = this.extractDeltaDir(stdout);
+
+    if (!deltaDir) {
+      throw new Error('Failed to extract delta directory from command output');
+    }
+
+    core.info(`Delta directory created: ${deltaDir}`);
+    return deltaDir;
   }
 
   /**
@@ -231,7 +223,21 @@ export class DeltaService {
    */
   private extractDeltaDir(output: string): string | null {
     const trimmed = output.trim();
-    return trimmed || null;
+    if (!trimmed) {
+      return null;
+    }
+    // Validate that the directory name is safe (no path traversal, no special chars)
+    if (trimmed.includes('..') || trimmed.includes('/') || trimmed.includes('\\')) {
+      core.error(`Invalid delta directory name: ${trimmed}`);
+      throw new Error('Delta directory name contains invalid path components');
+    }
+    // Ensure it matches expected pattern for a directory name
+    const safeDirPattern = /^[a-zA-Z0-9._-]+$/;
+    if (!safeDirPattern.test(trimmed)) {
+      core.error(`Invalid delta directory name: ${trimmed}`);
+      throw new Error('Delta directory name contains invalid characters');
+    }
+    return trimmed;
   }
 
   /**
