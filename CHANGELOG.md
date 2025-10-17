@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added delta scanning for pushes and pull requests
 - Added input scanMode to toggle delta/full scan
+### Changed
+- Upgraded scanoss-py version to v1.37.0 
 
 ## [1.2.5] - 2025-10-02
 ### Fixed
