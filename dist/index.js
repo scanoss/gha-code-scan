@@ -128337,7 +128337,11 @@ class ScanService {
         if (this.options.scanossSettings) {
             try {
                 await fs_1.default.promises.access(this.options.settingsFilePath, fs_1.default.constants.F_OK);
-                return ['--settings', this.options.settingsFilePath];
+                // Use absolute path in delta mode since scanoss-py looks relative to scan target
+                const settingsPath = this.deltaResult
+                    ? `/scanoss/${this.options.settingsFilePath}`
+                    : this.options.settingsFilePath;
+                return ['--settings', settingsPath];
             }
             catch (error) {
                 if (this.options.settingsFilePath === this.DEFAULT_SETTING_FILE_PATH)
