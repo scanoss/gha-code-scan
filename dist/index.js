@@ -127007,9 +127007,16 @@ class DeltaService {
         core.info(`Found ${changedFiles.length} changed files`);
         // Create temporary file with changed file paths
         const tempFile = await this.createTempFileList(changedFiles);
-        // Run delta copy command to create delta directory
-        const deltaDir = await this.runDeltaCopy(tempFile);
-        return { deltaDir, tempFile };
+        try {
+            // Run delta copy command to create delta directory
+            const deltaDir = await this.runDeltaCopy(tempFile);
+            return { deltaDir, tempFile };
+        }
+        catch (error) {
+            // Clean up temp file if delta copy fails
+            await this.cleanup(tempFile);
+            throw error;
+        }
     }
     /**
      * @brief Fetches the list of changed files from the current pull request
@@ -128189,26 +128196,25 @@ class ScanService {
         // Check for basic configuration before running the docker container
         this.checkBasicConfig();
         // Prepare delta scan if scan mode is delta
-        if (inputs.SCAN_MODE !== '') {
-            if (inputs.SCAN_MODE === 'delta') {
-                core.info('Delta scan mode enabled, preparing delta directory...');
-                try {
-                    this.deltaResult = await delta_service_1.deltaService.prepareDeltaScan();
-                    if (!this.deltaResult) {
-                        core.info('No changed files detected, performing full scan instead');
-                    }
-                }
-                catch (error) {
-                    core.error(`Failed to prepare delta scan: ${error}`);
-                    throw error;
+        const scanMode = inputs.SCAN_MODE || 'full';
+        if (scanMode === 'delta') {
+            core.info('Delta scan mode enabled, preparing delta directory...');
+            try {
+                this.deltaResult = await delta_service_1.deltaService.prepareDeltaScan();
+                if (!this.deltaResult) {
+                    core.info('No changed files detected, performing full scan instead');
                 }
             }
-            else if (inputs.SCAN_MODE === 'full') {
-                core.info('Full scan mode enabled.');
+            catch (error) {
+                core.error(`Failed to prepare delta scan: ${error}`);
+                throw error;
             }
-            else {
-                core.warning(`Unknown scan mode selected: ${inputs.SCAN_MODE}. Switching to full scan mode.`);
-            }
+        }
+        else if (scanMode === 'full') {
+            core.info('Full scan mode enabled.');
+        }
+        else {
+            core.warning(`Unknown scan mode selected: ${scanMode}. Switching to full scan mode.`);
         }
         const options = {
             failOnStdErr: false,

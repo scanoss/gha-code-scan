@@ -87,10 +87,15 @@ export class DeltaService {
     // Create temporary file with changed file paths
     const tempFile = await this.createTempFileList(changedFiles);
 
-    // Run delta copy command to create delta directory
-    const deltaDir = await this.runDeltaCopy(tempFile);
-
-    return { deltaDir, tempFile };
+    try {
+      // Run delta copy command to create delta directory
+      const deltaDir = await this.runDeltaCopy(tempFile);
+      return { deltaDir, tempFile };
+    } catch (error) {
+      // Clean up temp file if delta copy fails
+      await this.cleanup(tempFile);
+      throw error;
+    }
   }
 
   /**
