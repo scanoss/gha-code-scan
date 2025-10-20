@@ -36,6 +36,7 @@ import {
   SETTINGS_FILE_PATH,
   SKIP_SNIPPETS
 } from '../app.input';
+import { deltaService, DeltaResult } from './delta.service';
 
 const artifact = new DefaultArtifactClient();
 
@@ -150,6 +151,8 @@ export interface Options {
 export class ScanService {
   private readonly options: Options;
   private DEFAULT_SETTING_FILE_PATH = 'scanoss.json';
+  private deltaResult: DeltaResult | null = null;
+
   constructor(options?: Options) {
     this.options = options || {
       apiKey: inputs.API_KEY,
@@ -187,23 +190,50 @@ export class ScanService {
     // Check for basic configuration before running the docker container
     this.checkBasicConfig();
 
+    // Prepare delta scan if scan mode is delta
+    const scanMode = inputs.SCAN_MODE || 'full';
+    if (scanMode === 'delta') {
+      core.info('Delta scan mode enabled, preparing delta directory...');
+      try {
+        this.deltaResult = await deltaService.prepareDeltaScan();
+        if (!this.deltaResult) {
+          core.info('No changed files detected, performing full scan instead');
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        core.error(`Failed to prepare delta scan: ${message}`);
+        throw error;
+      }
+    } else if (scanMode === 'full') {
+      core.info('Full scan mode enabled.');
+    } else {
+      core.warning(`Unknown scan mode selected: ${scanMode}. Switching to full scan mode.`);
+    }
+
     const options = {
       failOnStdErr: false,
       ignoreReturnCode: true
     };
 
-    const args = await this.buildArgs();
-    const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
-    if (exitCode !== 0) {
-      core.error(`Scan execution completed with exit code ${exitCode}`);
-      if (stderr) {
-        core.error(`Scan stderr: ${stderr}`);
+    try {
+      const args = await this.buildArgs();
+      const { stdout, stderr, exitCode } = await exec.getExecOutput(EXECUTABLE, args, options);
+      if (exitCode !== 0) {
+        core.error(`Scan execution completed with exit code ${exitCode}`);
+        if (stderr) {
+          core.error(`Scan stderr: ${stderr}`);
+        }
+        throw new Error(`Scan execution failed with stderr: ${stderr}`);
       }
-      throw new Error(`Scan execution failed with stderr: ${stderr}`);
-    }
 
-    const scan = await this.parseResult();
-    return { scan, stdout, stderr };
+      const scan = await this.parseResult();
+      return { scan, stdout, stderr };
+    } finally {
+      // Cleanup temporary files if delta scan was used
+      if (this.deltaResult) {
+        await deltaService.cleanup(this.deltaResult.tempFile);
+      }
+    }
   }
 
   /**
@@ -292,13 +322,18 @@ export class ScanService {
    *
    */
   private async buildArgs(): Promise<string[]> {
+    // Determine scan path: use delta directory if in delta mode, otherwise scan current directory
+    const scanPath = this.deltaResult ? `./${this.deltaResult.deltaDir}` : '.';
+
+    core.debug(`Building scan args with scan path: ${scanPath}`);
+
     return [
       'run',
       '-v',
       `${this.options.inputFilepath}:/scanoss`,
       this.options.runtimeContainer,
       'scan',
-      '.',
+      scanPath,
       '--output',
       `./${OUTPUT_FILEPATH}`,
       ...this.buildDependenciesArgs(),
@@ -343,9 +378,22 @@ export class ScanService {
   private async detectSBOM(): Promise<string[]> {
     // Overrides sbom file if is set
     if (this.options.scanossSettings) {
+      // Validate settings file path before accessing
+      const hostPath = this.options.settingsFilePath;
+      const rel = path.isAbsolute(hostPath) ? path.relative(this.options.inputFilepath, hostPath) : hostPath;
+
+      if (rel.startsWith('..')) {
+        core.error('Settings file must reside under the scan input path');
+        throw new Error('Settings file must reside under the scan input path');
+      }
+
       try {
-        await fs.promises.access(this.options.settingsFilePath, fs.constants.F_OK);
-        return ['--settings', this.options.settingsFilePath];
+        // Resolve to absolute path for file existence check
+        const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, hostPath);
+        await fs.promises.access(abs, fs.constants.F_OK);
+        // Always pass a container-visible path under /scanoss
+        const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;
+        return ['--settings', containerPath];
       } catch (error: any) {
         if (this.options.settingsFilePath === this.DEFAULT_SETTING_FILE_PATH) return [];
         core.warning(`SCANOSS settings file not found at '${this.options.settingsFilePath}'.

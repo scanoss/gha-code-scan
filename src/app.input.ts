@@ -109,7 +109,7 @@ export const COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explic
 
 // Runtime Configuration
 /** Docker container image for scanoss-py execution */
-export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.32.0';
+export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.37.0';
 /** Skip snippet generation during scan */
 export const SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 /** Enable match annotations and commit comments */
@@ -120,6 +120,8 @@ export const SCAN_FILES = core.getInput('scanFiles') === 'true';
 export const SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
 /** Path to SCANOSS settings file */
 export const SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
+/** Set scan mode (delta or full) */
+export const SCAN_MODE = core.getInput('scanMode') || 'full';
 /** Docker executable command */
 export const EXECUTABLE = 'docker';
 /** Enable debug mode */

@@ -103,11 +103,12 @@ For example workflow runs, check out our
 | licenses.copyleft.include  | List of Copyleft licenses to append to the default list. Provide licenses as a comma-separated list.                                                     | Optional     | -                                    |
 | licenses.copyleft.exclude  | List of Copyleft licenses to remove from default list. Provide licenses as a comma-separated list.                                                       | Optional     | -                                    |
 | licenses.copyleft.explicit | Explicit list of Copyleft licenses to consider. Provide licenses as a comma-separated list.                                                              | Optional     | -                                    |
-| runtimeContainer           | Runtime URL                                                                                                                                              | Optional     | `ghcr.io/scanoss/scanoss-py:v1.32.0` |
+| runtimeContainer           | Runtime URL                                                                                                                                              | Optional     | `ghcr.io/scanoss/scanoss-py:v1.37.0` |
 | skipSnippets               | Skip the generation of snippets. (scanFiles option must be enabled)                                                                                      | Optional     | `false`                              |
 | scanFiles                  | Enable or disable file and snippet scanning                                                                                                              | Optional     | `true`                               |
 | scanossSettings            | Settings file to use for scanning. See the SCANOSS settings [documentation](https://scanoss.readthedocs.io/projects/scanoss-py/en/latest/#settings-file) | Optional     | `true`                               |
 | settingsFilepath           | Filepath of the SCANOSS settings to be used for scanning                                                                                                 | Optional     | `scanoss.json`                       |
+| scanMode                   | Choose between delta scan and full scan                                                                                                                  | Optional     | `full`                               |
 | debug                      | Enable debugging                                                                                                                                         | Optional     | `false`                              |
 | deptrack.upload            | Enable automatic upload of scan results to Dependency Track                                                                                              | Optional     | `false`                              |
 | deptrack.url               | URL of the Dependency Track instance. Required when Dependency Track is enabled                                                                          | Required*    | -                                    |
@@ -236,6 +237,7 @@ jobs:
         uses: scanoss/code-scan-action@v1
         with:
           policies: copyleft, undeclared, dt
+          scanMode: 'delta'
           dependencies.enabled: true
           deptrack.upload: true
           deptrack.url: 'https://your-dt-instance.com'
