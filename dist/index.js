@@ -127060,7 +127060,7 @@ class DeltaService {
             const repo = github_1.context.repo.repo;
             const before = github_1.context.payload.before;
             const after = github_1.context.payload.after || github_1.context.sha;
-            let files = [];
+            let files;
             if (before && after && before !== after) {
                 // Multi-commit push: compare entire range
                 const comparison = await octokit.rest.repos.compareCommitsWithBasehead({
