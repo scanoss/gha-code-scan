@@ -127039,6 +127039,8 @@ class DeltaService {
      * @brief Fetches the list of changed files from the current push commit
      * @returns {Promise<string[]>} Array of file paths changed in the push
      * @throws {Error} When GitHub API request fails
+     *
+     * @note GitHub API may truncate file lists for commits with 3000+ files
      */
     async getChangedFilesFromPush() {
         const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
@@ -127050,7 +127052,13 @@ class DeltaService {
                 ref: github_1.context.sha
             });
             // Extract file paths from commit (filename contains full path from repo root)
-            return commit.data.files?.map(file => file.filename) || [];
+            const files = commit.data.files?.map(file => file.filename) || [];
+            // Warn if file list might be truncated by GitHub API
+            if (files.length >= 3000) {
+                core.warning(`Commit contains ${files.length} files. GitHub API may truncate file lists for commits with 3000+ files. ` +
+                    'Delta scan may be incomplete. Consider using full scan mode for very large commits.');
+            }
+            return files;
         }
         catch (error) {
             core.error(`Failed to fetch commit files: ${error}`);
