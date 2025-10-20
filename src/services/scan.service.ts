@@ -200,7 +200,8 @@ export class ScanService {
           core.info('No changed files detected, performing full scan instead');
         }
       } catch (error) {
-        core.error(`Failed to prepare delta scan: ${error}`);
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        core.error(`Failed to prepare delta scan: ${message}`);
         throw error;
       }
     } else if (scanMode === 'full') {
@@ -387,7 +388,9 @@ export class ScanService {
       }
 
       try {
-        await fs.promises.access(hostPath, fs.constants.F_OK);
+        // Resolve to absolute path for file existence check
+        const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, hostPath);
+        await fs.promises.access(abs, fs.constants.F_OK);
         // Always pass a container-visible path under /scanoss
         const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;
         return ['--settings', containerPath];

@@ -129,28 +129,43 @@ export class DeltaService {
   }
 
   /**
-   * @brief Fetches the list of changed files from the current push commit
+   * @brief Fetches the list of changed files from the current push commit(s)
    * @returns {Promise<string[]>} Array of file paths changed in the push
    * @throws {Error} When GitHub API request fails
    *
    * @note GitHub API may truncate file lists for commits with 3000+ files
+   * @note For multi-commit pushes, uses compareCommits to capture all changes
    */
   private async getChangedFilesFromPush(): Promise<string[]> {
     const octokit = getOctokit(inputs.GITHUB_TOKEN);
 
     try {
-      // Get commit details including changed files
-      const commit = await octokit.rest.repos.getCommit({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        ref: context.sha
-      });
+      const owner = context.repo.owner;
+      const repo = context.repo.repo;
+      const before = (context.payload as any).before;
+      const after = (context.payload as any).after || context.sha;
 
-      // Extract file paths from commit (exclude removed)
-      const files =
-        commit.data.files
-          ?.filter(f => ['added', 'modified', 'renamed'].includes(f.status || ''))
-          .map(f => f.filename) || [];
+      let files: string[];
+      if (before && after && before !== after) {
+        // Multi-commit push: compare entire range
+        const comparison = await octokit.rest.repos.compareCommitsWithBasehead({
+          owner,
+          repo,
+          basehead: `${before}...${after}`,
+          per_page: 100
+        });
+        files =
+          comparison.data.files
+            ?.filter(f => ['added', 'modified', 'renamed'].includes(f.status || ''))
+            .map(f => f.filename) || [];
+      } else {
+        // Single commit or no before/after available: fallback to single commit
+        const commit = await octokit.rest.repos.getCommit({ owner, repo, ref: after });
+        files =
+          commit.data.files
+            ?.filter(f => ['added', 'modified', 'renamed'].includes(f.status || ''))
+            .map(f => f.filename) || [];
+      }
 
       // Warn if file list might be truncated by GitHub API
       if (files.length >= 3000) {

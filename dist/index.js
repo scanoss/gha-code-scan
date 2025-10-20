@@ -127046,25 +127046,42 @@ class DeltaService {
         }
     }
     /**
-     * @brief Fetches the list of changed files from the current push commit
+     * @brief Fetches the list of changed files from the current push commit(s)
      * @returns {Promise<string[]>} Array of file paths changed in the push
      * @throws {Error} When GitHub API request fails
      *
      * @note GitHub API may truncate file lists for commits with 3000+ files
+     * @note For multi-commit pushes, uses compareCommits to capture all changes
      */
     async getChangedFilesFromPush() {
         const octokit = (0, github_1.getOctokit)(inputs.GITHUB_TOKEN);
         try {
-            // Get commit details including changed files
-            const commit = await octokit.rest.repos.getCommit({
-                owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                ref: github_1.context.sha
-            });
-            // Extract file paths from commit (exclude removed)
-            const files = commit.data.files
-                ?.filter(f => ['added', 'modified', 'renamed'].includes(f.status || ''))
-                .map(f => f.filename) || [];
+            const owner = github_1.context.repo.owner;
+            const repo = github_1.context.repo.repo;
+            const before = github_1.context.payload.before;
+            const after = github_1.context.payload.after || github_1.context.sha;
+            let files = [];
+            if (before && after && before !== after) {
+                // Multi-commit push: compare entire range
+                const comparison = await octokit.rest.repos.compareCommitsWithBasehead({
+                    owner,
+                    repo,
+                    basehead: `${before}...${after}`,
+                    per_page: 100
+                });
+                files =
+                    comparison.data.files
+                        ?.filter(f => ['added', 'modified', 'renamed'].includes(f.status || ''))
+                        .map(f => f.filename) || [];
+            }
+            else {
+                // Single commit or no before/after available: fallback to single commit
+                const commit = await octokit.rest.repos.getCommit({ owner, repo, ref: after });
+                files =
+                    commit.data.files
+                        ?.filter(f => ['added', 'modified', 'renamed'].includes(f.status || ''))
+                        .map(f => f.filename) || [];
+            }
             // Warn if file list might be truncated by GitHub API
             if (files.length >= 3000) {
                 core.warning(`Commit contains ${files.length} files. GitHub API may truncate file lists for commits with 3000+ files. ` +
@@ -128208,7 +128225,8 @@ class ScanService {
                 }
             }
             catch (error) {
-                core.error(`Failed to prepare delta scan: ${error}`);
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                core.error(`Failed to prepare delta scan: ${message}`);
                 throw error;
             }
         }
@@ -128382,7 +128400,9 @@ class ScanService {
                 throw new Error('Settings file must reside under the scan input path');
             }
             try {
-                await fs_1.default.promises.access(hostPath, fs_1.default.constants.F_OK);
+                // Resolve to absolute path for file existence check
+                const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, hostPath);
+                await fs_1.default.promises.access(abs, fs_1.default.constants.F_OK);
                 // Always pass a container-visible path under /scanoss
                 const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;
                 return ['--settings', containerPath];
