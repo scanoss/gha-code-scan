@@ -114,8 +114,9 @@ export class DeltaService {
       // Extract file paths (filename contains full path from repo root)
       return files.map(file => file.filename);
     } catch (error) {
-      core.error(`Failed to fetch PR files: ${error}`);
-      throw new Error(`Failed to fetch changed files from GitHub API: ${error}`);
+      const message = error instanceof Error ? error.message : 'Unknown Error';
+      core.error(`Failed to fetch PR files: ${message}`);
+      throw new Error(`Failed to fetch changed files from GitHub API: ${message}`);
     }
   }
 
@@ -150,8 +151,9 @@ export class DeltaService {
 
       return files;
     } catch (error) {
-      core.error(`Failed to fetch commit files: ${error}`);
-      throw new Error(`Failed to fetch changed files from GitHub API: ${error}`);
+      const message = error instanceof Error ? error.message : 'Unknown Error';
+      core.error(`Failed to fetch commit files: ${message}`);
+      throw new Error(`Failed to fetch changed files from GitHub API: ${message}`);
     }
   }
 
@@ -171,8 +173,9 @@ export class DeltaService {
       core.debug(`Created temporary file list at: ${tempFile}`);
       return tempFile;
     } catch (error) {
-      core.error(`Failed to create temporary file: ${error}`);
-      throw new Error(`Failed to create temporary file list: ${error}`);
+      const message = error instanceof Error ? error.message : 'Unknown Error';
+      core.error(`Failed to create temporary file: ${message}`);
+      throw new Error(`Failed to create temporary file list: ${message}`);
     }
   }
 
