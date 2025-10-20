@@ -191,16 +191,22 @@ export class ScanService {
     this.checkBasicConfig();
 
     // Prepare delta scan if scan mode is delta
-    if (inputs.SCAN_MODE === 'delta') {
-      core.info('Delta scan mode enabled, preparing delta directory...');
-      try {
-        this.deltaResult = await deltaService.prepareDeltaScan();
-        if (!this.deltaResult) {
-          core.info('No changed files detected, performing full scan instead');
+    if (inputs.SCAN_MODE !== '') {
+      if (inputs.SCAN_MODE === 'delta') {
+        core.info('Delta scan mode enabled, preparing delta directory...');
+        try {
+          this.deltaResult = await deltaService.prepareDeltaScan();
+          if (!this.deltaResult) {
+            core.info('No changed files detected, performing full scan instead');
+          }
+        } catch (error) {
+          core.error(`Failed to prepare delta scan: ${error}`);
+          throw error;
         }
-      } catch (error) {
-        core.error(`Failed to prepare delta scan: ${error}`);
-        throw error;
+      } else if (inputs.SCAN_MODE === 'full') {
+        core.info('Full scan mode enabled.');
+      } else {
+        core.warning(`Unknown scan mode selected: ${inputs.SCAN_MODE}. Switching to full scan mode.`);
       }
     }
 

@@ -126955,6 +126955,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.deltaService = exports.DeltaService = void 0;
+const artifact_1 = __nccwpck_require__(79450);
 const github_1 = __nccwpck_require__(95438);
 const core = __importStar(__nccwpck_require__(42186));
 const exec = __importStar(__nccwpck_require__(71514));
@@ -126962,6 +126963,7 @@ const inputs = __importStar(__nccwpck_require__(483));
 const fs = __importStar(__nccwpck_require__(57147));
 const path = __importStar(__nccwpck_require__(71017));
 const github_utils_1 = __nccwpck_require__(17889);
+const artifact = new artifact_1.DefaultArtifactClient();
 /**
  * @class DeltaService
  * @brief Service for handling delta scanning of only changed files
@@ -127031,7 +127033,7 @@ class DeltaService {
             return files.map(file => file.filename);
         }
         catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown Error';
+            const message = error instanceof Error ? error.message : 'Unknown error';
             core.error(`Failed to fetch PR files: ${message}`);
             throw new Error(`Failed to fetch changed files from GitHub API: ${message}`);
         }
@@ -127062,7 +127064,7 @@ class DeltaService {
             return files;
         }
         catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown Error';
+            const message = error instanceof Error ? error.message : 'Unknown error';
             core.error(`Failed to fetch commit files: ${message}`);
             throw new Error(`Failed to fetch changed files from GitHub API: ${message}`);
         }
@@ -127079,10 +127081,11 @@ class DeltaService {
             const content = filePaths.join('\n');
             await fs.promises.writeFile(tempFile, content, 'utf-8');
             core.debug(`Created temporary file list at: ${tempFile}`);
+            await this.uploadDeltaResults(tempFile);
             return tempFile;
         }
         catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown Error';
+            const message = error instanceof Error ? error.message : 'Unknown error';
             core.error(`Failed to create temporary file: ${message}`);
             throw new Error(`Failed to create temporary file list: ${message}`);
         }
@@ -127153,6 +127156,14 @@ class DeltaService {
         return trimmed;
     }
     /**
+     * @brief Uploads delta file list artifact for traceability
+     * @param filename
+     * @private
+     */
+    async uploadDeltaResults(filename) {
+        await artifact.uploadArtifact('delta-file-list.txt', [filename], '.');
+    }
+    /**
      * @brief Cleans up temporary files created during delta scan preparation
      * @param {string} tempFile - Path to the temporary file to delete
      *
@@ -127167,7 +127178,8 @@ class DeltaService {
             core.debug(`Delta directory is preserved and will be cleaned up by CI environment`);
         }
         catch (error) {
-            core.warning(`Failed to cleanup temporary file ${tempFile}: ${error}`);
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            core.warning(`Failed to cleanup temporary file ${tempFile}: ${message}`);
         }
     }
 }
@@ -128177,17 +128189,25 @@ class ScanService {
         // Check for basic configuration before running the docker container
         this.checkBasicConfig();
         // Prepare delta scan if scan mode is delta
-        if (inputs.SCAN_MODE === 'delta') {
-            core.info('Delta scan mode enabled, preparing delta directory...');
-            try {
-                this.deltaResult = await delta_service_1.deltaService.prepareDeltaScan();
-                if (!this.deltaResult) {
-                    core.info('No changed files detected, performing full scan instead');
+        if (inputs.SCAN_MODE !== '') {
+            if (inputs.SCAN_MODE === 'delta') {
+                core.info('Delta scan mode enabled, preparing delta directory...');
+                try {
+                    this.deltaResult = await delta_service_1.deltaService.prepareDeltaScan();
+                    if (!this.deltaResult) {
+                        core.info('No changed files detected, performing full scan instead');
+                    }
+                }
+                catch (error) {
+                    core.error(`Failed to prepare delta scan: ${error}`);
+                    throw error;
                 }
             }
-            catch (error) {
-                core.error(`Failed to prepare delta scan: ${error}`);
-                throw error;
+            else if (inputs.SCAN_MODE === 'full') {
+                core.info('Full scan mode enabled.');
+            }
+            else {
+                core.warning(`Unknown scan mode selected: ${inputs.SCAN_MODE}. Switching to full scan mode.`);
             }
         }
         const options = {

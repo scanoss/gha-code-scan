@@ -21,6 +21,7 @@
    THE SOFTWARE.
 */
 
+import { DefaultArtifactClient } from '@actions/artifact';
 import { context, getOctokit } from '@actions/github';
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
@@ -28,6 +29,8 @@ import * as inputs from '../app.input';
 import * as fs from 'fs';
 import * as path from 'path';
 import { isPullRequest } from '../utils/github.utils';
+
+const artifact = new DefaultArtifactClient();
 
 export interface DeltaResult {
   deltaDir: string;
@@ -114,7 +117,7 @@ export class DeltaService {
       // Extract file paths (filename contains full path from repo root)
       return files.map(file => file.filename);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Error';
+      const message = error instanceof Error ? error.message : 'Unknown error';
       core.error(`Failed to fetch PR files: ${message}`);
       throw new Error(`Failed to fetch changed files from GitHub API: ${message}`);
     }
@@ -151,7 +154,7 @@ export class DeltaService {
 
       return files;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Error';
+      const message = error instanceof Error ? error.message : 'Unknown error';
       core.error(`Failed to fetch commit files: ${message}`);
       throw new Error(`Failed to fetch changed files from GitHub API: ${message}`);
     }
@@ -171,9 +174,10 @@ export class DeltaService {
       await fs.promises.writeFile(tempFile, content, 'utf-8');
 
       core.debug(`Created temporary file list at: ${tempFile}`);
+      await this.uploadDeltaResults(tempFile);
       return tempFile;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Error';
+      const message = error instanceof Error ? error.message : 'Unknown error';
       core.error(`Failed to create temporary file: ${message}`);
       throw new Error(`Failed to create temporary file list: ${message}`);
     }
@@ -256,6 +260,15 @@ export class DeltaService {
   }
 
   /**
+   * @brief Uploads delta file list artifact for traceability
+   * @param filename
+   * @private
+   */
+  private async uploadDeltaResults(filename: string): Promise<void> {
+    await artifact.uploadArtifact('delta-file-list.txt', [filename], '.');
+  }
+
+  /**
    * @brief Cleans up temporary files created during delta scan preparation
    * @param {string} tempFile - Path to the temporary file to delete
    *
@@ -269,7 +282,8 @@ export class DeltaService {
       core.debug(`Cleaned up temporary file: ${tempFile}`);
       core.debug(`Delta directory is preserved and will be cleaned up by CI environment`);
     } catch (error) {
-      core.warning(`Failed to cleanup temporary file ${tempFile}: ${error}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      core.warning(`Failed to cleanup temporary file ${tempFile}: ${message}`);
     }
   }
 }
