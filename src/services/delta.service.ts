@@ -119,8 +119,8 @@ export class DeltaService {
         pull_number: pullNumber
       });
 
-      // Extract file paths (filename contains full path from repo root)
-      return files.map(file => file.filename);
+      // Extract file paths (exclude removed to avoid missing paths)
+      return files.filter(f => ['added', 'modified', 'renamed'].includes((f as any).status)).map(file => file.filename);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       core.error(`Failed to fetch PR files: ${message}`);
@@ -146,8 +146,11 @@ export class DeltaService {
         ref: context.sha
       });
 
-      // Extract file paths from commit (filename contains full path from repo root)
-      const files = commit.data.files?.map(file => file.filename) || [];
+      // Extract file paths from commit (exclude removed)
+      const files =
+        commit.data.files
+          ?.filter(f => ['added', 'modified', 'renamed'].includes(f.status || ''))
+          .map(f => f.filename) || [];
 
       // Warn if file list might be truncated by GitHub API
       if (files.length >= 3000) {

@@ -127036,8 +127036,8 @@ class DeltaService {
                 repo: github_1.context.repo.repo,
                 pull_number: pullNumber
             });
-            // Extract file paths (filename contains full path from repo root)
-            return files.map(file => file.filename);
+            // Extract file paths (exclude removed to avoid missing paths)
+            return files.filter(f => ['added', 'modified', 'renamed'].includes(f.status)).map(file => file.filename);
         }
         catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error';
@@ -127061,8 +127061,10 @@ class DeltaService {
                 repo: github_1.context.repo.repo,
                 ref: github_1.context.sha
             });
-            // Extract file paths from commit (filename contains full path from repo root)
-            const files = commit.data.files?.map(file => file.filename) || [];
+            // Extract file paths from commit (exclude removed)
+            const files = commit.data.files
+                ?.filter(f => ['added', 'modified', 'renamed'].includes(f.status || ''))
+                .map(f => f.filename) || [];
             // Warn if file list might be truncated by GitHub API
             if (files.length >= 3000) {
                 core.warning(`Commit contains ${files.length} files. GitHub API may truncate file lists for commits with 3000+ files. ` +
@@ -128372,13 +128374,18 @@ class ScanService {
     async detectSBOM() {
         // Overrides sbom file if is set
         if (this.options.scanossSettings) {
+            // Validate settings file path before accessing
+            const hostPath = this.options.settingsFilePath;
+            const rel = path.isAbsolute(hostPath) ? path.relative(this.options.inputFilepath, hostPath) : hostPath;
+            if (rel.startsWith('..')) {
+                core.error('Settings file must reside under the scan input path');
+                throw new Error('Settings file must reside under the scan input path');
+            }
             try {
-                await fs_1.default.promises.access(this.options.settingsFilePath, fs_1.default.constants.F_OK);
-                // Use absolute path in delta mode since scanoss-py looks relative to scan target
-                const settingsPath = this.deltaResult
-                    ? `/scanoss/${this.options.settingsFilePath}`
-                    : this.options.settingsFilePath;
-                return ['--settings', settingsPath];
+                await fs_1.default.promises.access(hostPath, fs_1.default.constants.F_OK);
+                // Always pass a container-visible path under /scanoss
+                const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;
+                return ['--settings', containerPath];
             }
             catch (error) {
                 if (this.options.settingsFilePath === this.DEFAULT_SETTING_FILE_PATH)

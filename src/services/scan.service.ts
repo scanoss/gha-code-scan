@@ -377,13 +377,20 @@ export class ScanService {
   private async detectSBOM(): Promise<string[]> {
     // Overrides sbom file if is set
     if (this.options.scanossSettings) {
+      // Validate settings file path before accessing
+      const hostPath = this.options.settingsFilePath;
+      const rel = path.isAbsolute(hostPath) ? path.relative(this.options.inputFilepath, hostPath) : hostPath;
+
+      if (rel.startsWith('..')) {
+        core.error('Settings file must reside under the scan input path');
+        throw new Error('Settings file must reside under the scan input path');
+      }
+
       try {
-        await fs.promises.access(this.options.settingsFilePath, fs.constants.F_OK);
-        // Use absolute path in delta mode since scanoss-py looks relative to scan target
-        const settingsPath = this.deltaResult
-          ? `/scanoss/${this.options.settingsFilePath}`
-          : this.options.settingsFilePath;
-        return ['--settings', settingsPath];
+        await fs.promises.access(hostPath, fs.constants.F_OK);
+        // Always pass a container-visible path under /scanoss
+        const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;
+        return ['--settings', containerPath];
       } catch (error: any) {
         if (this.options.settingsFilePath === this.DEFAULT_SETTING_FILE_PATH) return [];
         core.warning(`SCANOSS settings file not found at '${this.options.settingsFilePath}'.
