@@ -43,7 +43,7 @@ inputs:
   output.filepath:
     description: 'Scanner results filepath'
     required: false
-    default: 'results.json'
+    default: 'scanoss-raw.json'
   github.token:
     description: 'Your GitHub token'
     required: false

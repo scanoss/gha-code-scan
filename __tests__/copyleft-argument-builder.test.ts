@@ -28,7 +28,7 @@ import * as core from '@actions/core';
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
   REPO_DIR: 'scanoss',
-  OUTPUT_FILEPATH: 'results.json',
+  OUTPUT_FILEPATH: 'scanoss-raw.json',
   COPYLEFT_LICENSE_EXCLUDE: '',
   COPYLEFT_LICENSE_EXPLICIT: '',
   COPYLEFT_LICENSE_INCLUDE: ''
@@ -56,7 +56,7 @@ describe('CopyleftArgumentBuilder', () => {
       'inspect',
       'copyleft',
       '--input',
-      'results.json',
+      'scanoss-raw.json',
       '--format',
       'md',
       '--explicit',
@@ -76,7 +76,7 @@ describe('CopyleftArgumentBuilder', () => {
       'inspect',
       'copyleft',
       '--input',
-      'results.json',
+      'scanoss-raw.json',
       '--format',
       'md',
       '--exclude',
@@ -96,7 +96,7 @@ describe('CopyleftArgumentBuilder', () => {
       'inspect',
       'copyleft',
       '--input',
-      'results.json',
+      'scanoss-raw.json',
       '--format',
       'md',
       '--include',
@@ -115,7 +115,7 @@ describe('CopyleftArgumentBuilder', () => {
       'inspect',
       'copyleft',
       '--input',
-      'results.json',
+      'scanoss-raw.json',
       '--format',
       'md'
     ]);
@@ -132,7 +132,7 @@ describe('CopyleftArgumentBuilder', () => {
       'inspect',
       'copyleft',
       '--input',
-      'results.json',
+      'scanoss-raw.json',
       '--format',
       'md'
     ]);
@@ -152,7 +152,7 @@ describe('CopyleftArgumentBuilder', () => {
       'inspect',
       'copyleft',
       '--input',
-      'results.json',
+      'scanoss-raw.json',
       '--format',
       'md',
       '--exclude',

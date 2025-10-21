@@ -34,6 +34,8 @@ jest.mock('@actions/core', () => ({
   error: jest.fn()
 }));
 
+import { RAW_RESULT_FILE_NAME } from '../src/app.output';
+
 describe('Filename Validation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -44,7 +46,7 @@ describe('Filename Validation', () => {
   it('should return default filename when input is undefined', () => {
     mockGetInput.mockReturnValue('');
     const { OUTPUT_FILEPATH } = require('../src/app.input');
-    expect(OUTPUT_FILEPATH).toBe('results.json');
+    expect(OUTPUT_FILEPATH).toBe(RAW_RESULT_FILE_NAME);
   });
 
   it('should allow valid filenames', () => {
@@ -56,27 +58,27 @@ describe('Filename Validation', () => {
   it('should reject directory traversal attempts', () => {
     mockGetInput.mockReturnValue('../../../etc/passwd');
     const { OUTPUT_FILEPATH } = require('../src/app.input');
-    expect(OUTPUT_FILEPATH).toBe('results.json');
+    expect(OUTPUT_FILEPATH).toBe(RAW_RESULT_FILE_NAME);
     expect(mockWarning).toHaveBeenCalledWith(
-      'Invalid filename detected: ../../../etc/passwd. Using default: results.json'
+      `Invalid filename detected: ../../../etc/passwd. Using default: ${RAW_RESULT_FILE_NAME}`
     );
   });
 
   it('should reject absolute paths', () => {
     mockGetInput.mockReturnValue('/tmp/malicious.json');
     const { OUTPUT_FILEPATH } = require('../src/app.input');
-    expect(OUTPUT_FILEPATH).toBe('results.json');
+    expect(OUTPUT_FILEPATH).toBe(RAW_RESULT_FILE_NAME);
     expect(mockWarning).toHaveBeenCalledWith(
-      'Invalid filename detected: /tmp/malicious.json. Using default: results.json'
+      `Invalid filename detected: /tmp/malicious.json. Using default: ${RAW_RESULT_FILE_NAME}`
     );
   });
 
   it('should reject filenames with invalid characters', () => {
     mockGetInput.mockReturnValue('file<>|with|bad|chars.json');
     const { OUTPUT_FILEPATH } = require('../src/app.input');
-    expect(OUTPUT_FILEPATH).toBe('results.json');
+    expect(OUTPUT_FILEPATH).toBe(RAW_RESULT_FILE_NAME);
     expect(mockWarning).toHaveBeenCalledWith(
-      'Unsafe filename detected: file<>|with|bad|chars.json. Using default: results.json'
+      `Unsafe filename detected: file<>|with|bad|chars.json. Using default: ${RAW_RESULT_FILE_NAME}`
     );
   });
 

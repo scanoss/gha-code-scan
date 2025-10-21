@@ -91,7 +91,7 @@ For example workflow runs, check out our
 
 | **Parameter**              | **Description**                                                                                                                                          | **Required** | **Default**                          | 
 |----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|--------------------------------------|
-| output.filepath            | Scan output file name.                                                                                                                                   | Optional     | `results.json`                       |
+| output.filepath            | Scan output file name.                                                                                                                                   | Optional     | `scanoss-raw.json`                   |
 | dependencies.enabled       | Option to enable or disable scanning of dependencies.                                                                                                    | Optional     | `false`                              |
 | dependencies.scope         | Gets development or production dependencies (scopes: prod - dev)                                                                                         | Optional     | -                                    |
 | dependencies.scope.include | Custom list of dependency scopes to be included. Provide scopes as a comma-separated list.                                                               | Optional     | -                                    |

@@ -23,7 +23,7 @@
 
 import { RUNTIME_CONTAINER } from '../src/app.input';
 import { ScanOssService } from '../src/services/scanoss.service';
-import { CYCLONEDX_FILE_NAME } from '../src/app.output';
+import { CYCLONEDX_FILE_NAME, SPDXLITE_FIlE_NAME, CSV_FILE_NAME } from '../src/app.output';
 import * as exec from '@actions/exec';
 import * as core from '@actions/core';
 
@@ -54,7 +54,7 @@ jest.mock('../src/services/github.service', () => ({
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
   REPO_DIR: '',
-  OUTPUT_FILEPATH: 'results.json',
+  OUTPUT_FILEPATH: 'scanoss-raw.json',
   EXECUTABLE: 'docker',
   COPYLEFT_LICENSE_EXCLUDE: '',
   COPYLEFT_LICENSE_EXPLICIT: '',
@@ -76,9 +76,9 @@ describe('Scanoss service tests', () => {
     mockFsAccess = fs.promises.access as jest.Mock;
   });
 
-  describe('buildCycloneDXParameters', () => {
+  describe('buildReformatParameters', () => {
     it('should correctly return the scanoss-py CycloneDX conversion command', () => {
-      const command = (scanossService as any).buildCycloneDXParameters();
+      const command = (scanossService as any).buildReformatParameters('cyclonedx', CYCLONEDX_FILE_NAME);
       expect(command).toEqual([
         'run',
         '-v',
@@ -86,16 +86,50 @@ describe('Scanoss service tests', () => {
         RUNTIME_CONTAINER,
         'convert',
         '--input',
-        './results.json',
+        './scanoss-raw.json',
         '--format',
         'cyclonedx',
         '--output',
         `./${CYCLONEDX_FILE_NAME}`
       ]);
     });
+
+    it('should correctly return the scanoss-py SPDX Lite conversion command', () => {
+      const command = (scanossService as any).buildReformatParameters('spdxlite', SPDXLITE_FIlE_NAME);
+      expect(command).toEqual([
+        'run',
+        '-v',
+        ':/scanoss',
+        RUNTIME_CONTAINER,
+        'convert',
+        '--input',
+        './scanoss-raw.json',
+        '--format',
+        'spdxlite',
+        '--output',
+        `./${SPDXLITE_FIlE_NAME}`
+      ]);
+    });
+
+    it('should correctly return the scanoss-py CSV conversion command', () => {
+      const command = (scanossService as any).buildReformatParameters('csv', CSV_FILE_NAME);
+      expect(command).toEqual([
+        'run',
+        '-v',
+        ':/scanoss',
+        RUNTIME_CONTAINER,
+        'convert',
+        '--input',
+        './scanoss-raw.json',
+        '--format',
+        'csv',
+        '--output',
+        `./${CSV_FILE_NAME}`
+      ]);
+    });
   });
 
-  describe('scanResultsToCycloneDX', () => {
+  describe('reformatScanResults', () => {
     it('should successfully convert results to CycloneDX format', async () => {
       const { uploadToArtifacts } = require('../src/services/github.service');
 
@@ -108,7 +142,7 @@ describe('Scanoss service tests', () => {
 
       const infoSpy = jest.spyOn(core, 'info').mockImplementation();
 
-      const result = await scanossService.reformatScanResults();
+      const result = await scanossService.reformatScanResults('cyclonedx');
 
       expect(result).toBeUndefined();
       expect(mockGetExecOutput).toHaveBeenCalledWith(
@@ -119,11 +153,75 @@ describe('Scanoss service tests', () => {
           ignoreReturnCode: false
         })
       );
-      expect(infoSpy).toHaveBeenCalledWith('Converting SCANOSS results to CycloneDX format...');
+      expect(infoSpy).toHaveBeenCalledWith('Converting SCANOSS results to cyclonedx format...');
       // Due to dynamic import, we can't easily test the fs.access call and upload
       // The important part is that the conversion command was executed successfully
 
       infoSpy.mockRestore();
+    });
+
+    it('should successfully convert results to SPDX Lite format', async () => {
+      const { uploadToArtifacts } = require('../src/services/github.service');
+
+      mockGetExecOutput.mockResolvedValue({
+        stdout: 'Conversion successful',
+        stderr: '',
+        exitCode: 0
+      });
+      (uploadToArtifacts as jest.Mock).mockResolvedValue(undefined);
+
+      const infoSpy = jest.spyOn(core, 'info').mockImplementation();
+
+      const result = await scanossService.reformatScanResults('spdxlite');
+
+      expect(result).toBeUndefined();
+      expect(mockGetExecOutput).toHaveBeenCalledWith(
+        'docker',
+        expect.arrayContaining(['convert', '--format', 'spdxlite']),
+        expect.objectContaining({
+          failOnStdErr: false,
+          ignoreReturnCode: false
+        })
+      );
+      expect(infoSpy).toHaveBeenCalledWith('Converting SCANOSS results to spdxlite format...');
+
+      infoSpy.mockRestore();
+    });
+
+    it('should successfully convert results to CSV format', async () => {
+      const { uploadToArtifacts } = require('../src/services/github.service');
+
+      mockGetExecOutput.mockResolvedValue({
+        stdout: 'Conversion successful',
+        stderr: '',
+        exitCode: 0
+      });
+      (uploadToArtifacts as jest.Mock).mockResolvedValue(undefined);
+
+      const infoSpy = jest.spyOn(core, 'info').mockImplementation();
+
+      const result = await scanossService.reformatScanResults('csv');
+
+      expect(result).toBeUndefined();
+      expect(mockGetExecOutput).toHaveBeenCalledWith(
+        'docker',
+        expect.arrayContaining(['convert', '--format', 'csv']),
+        expect.objectContaining({
+          failOnStdErr: false,
+          ignoreReturnCode: false
+        })
+      );
+      expect(infoSpy).toHaveBeenCalledWith('Converting SCANOSS results to csv format...');
+
+      infoSpy.mockRestore();
+    });
+
+    it('should handle unknown format', async () => {
+      const result = await scanossService.reformatScanResults('unknown');
+
+      expect(result).toBeInstanceOf(Error);
+      expect(result?.message).toBe('Unknown format: unknown');
+      expect(mockGetExecOutput).not.toHaveBeenCalled();
     });
 
     it('should handle conversion failure with non-zero exit code', async () => {
@@ -133,14 +231,14 @@ describe('Scanoss service tests', () => {
         exitCode: 1
       });
 
-      const result = await scanossService.reformatScanResults();
+      const result = await scanossService.reformatScanResults('cyclonedx');
 
       expect(result).toBeInstanceOf(Error);
-      expect(result?.message).toBe('Error converting scan results into CycloneDX format');
+      expect(result?.message).toBe('Error converting scan results into cyclonedx format');
       expect(mockFsAccess).not.toHaveBeenCalled();
     });
 
-    it('should handle missing CycloneDX file (empty repository)', async () => {
+    it('should handle missing output file (empty repository)', async () => {
       mockGetExecOutput.mockResolvedValue({
         stdout: 'Conversion completed',
         stderr: '',
@@ -150,11 +248,11 @@ describe('Scanoss service tests', () => {
 
       const infoSpy = jest.spyOn(core, 'info').mockImplementation();
 
-      const result = await scanossService.reformatScanResults();
+      const result = await scanossService.reformatScanResults('cyclonedx');
 
       expect(result).toBeUndefined();
       expect(infoSpy).toHaveBeenCalledWith(
-        'CycloneDX conversion completed but no file generated (likely empty repository)'
+        'cyclonedx conversion completed but no file generated (likely empty repository)'
       );
 
       infoSpy.mockRestore();
@@ -165,7 +263,7 @@ describe('Scanoss service tests', () => {
 
       const errorSpy = jest.spyOn(core, 'error').mockImplementation();
 
-      const result = await scanossService.reformatScanResults();
+      const result = await scanossService.reformatScanResults('cyclonedx');
 
       expect(result).toBeUndefined();
       expect(errorSpy).toHaveBeenCalledWith('Docker command failed');
@@ -186,11 +284,11 @@ describe('Scanoss service tests', () => {
 
       const infoSpy = jest.spyOn(core, 'info').mockImplementation();
 
-      const result = await scanossService.reformatScanResults();
+      const result = await scanossService.reformatScanResults('cyclonedx');
 
       expect(result).toBeUndefined();
       expect(infoSpy).toHaveBeenCalledWith(
-        'CycloneDX conversion completed but no file generated (likely empty repository)'
+        'cyclonedx conversion completed but no file generated (likely empty repository)'
       );
 
       infoSpy.mockRestore();
