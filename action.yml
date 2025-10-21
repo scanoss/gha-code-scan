@@ -43,7 +43,7 @@ inputs:
   output.filepath:
     description: 'Scanner results filepath'
     required: false
-    default: 'results.json'
+    default: 'scanoss-raw.json'
   github.token:
     description: 'Your GitHub token'
     required: false
@@ -59,7 +59,7 @@ inputs:
     required: false
   runtimeContainer:
     description: 'Specify runtime container to perform the scan.'
-    default: 'ghcr.io/scanoss/scanoss-py:v1.37.0'
+    default: 'ghcr.io/scanoss/scanoss-py:v1.37.1'
     required: false
   skipSnippets:
     description: 'Skip the generation of snippets.'

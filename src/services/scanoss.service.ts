@@ -25,7 +25,7 @@ import * as exec from '@actions/exec';
 import * as inputs from '../app.input';
 import * as core from '@actions/core';
 import { uploadToArtifacts } from './github.service';
-import { CYCLONEDX_FILE_NAME } from '../app.output';
+import { CYCLONEDX_FILE_NAME, CSV_FILE_NAME, SPDXLITE_FILE_NAME } from '../app.output';
 
 /**
  * Service for converting SCANOSS scan results to different formats using scanoss-py.
@@ -33,8 +33,8 @@ import { CYCLONEDX_FILE_NAME } from '../app.output';
  */
 export class ScanOssService {
   /**
-   * Build scanoss-py CycloneDX conversion parameters */
-  private buildCycloneDXParameters(): string[] {
+   * Build scanoss-py conversion parameters */
+  private buildReformatParameters(format: string, filename: string): string[] {
     return [
       'run',
       '-v',
@@ -44,9 +44,9 @@ export class ScanOssService {
       '--input',
       `./${inputs.OUTPUT_FILEPATH}`,
       '--format',
-      'cyclonedx',
+      `${format}`,
       '--output',
-      `./${CYCLONEDX_FILE_NAME}`
+      `./${filename}`
     ];
   }
 
@@ -55,26 +55,41 @@ export class ScanOssService {
    * Currently always generates CycloneDX file which can be used by Dependency Track
    * or uploaded as an artifact for other integrations.
    */
-  async scanResultsToCycloneDX(): Promise<Error | undefined> {
+  async reformatScanResults(format: string): Promise<Error | undefined> {
     try {
-      core.info('Converting SCANOSS results to CycloneDX format...');
+      core.info(`Converting SCANOSS results to ${format} format...`);
       const options = {
         failOnStdErr: false,
         ignoreReturnCode: false
       };
-      const { exitCode } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildCycloneDXParameters(), options);
-      if (exitCode !== 0) {
-        return new Error(`Error converting scan results into CycloneDX format`);
+      const filename =
+        format === 'cyclonedx'
+          ? CYCLONEDX_FILE_NAME
+          : format === 'spdxlite'
+            ? SPDXLITE_FILE_NAME
+            : format === 'csv'
+              ? CSV_FILE_NAME
+              : undefined;
+      if (!filename) {
+        return new Error(`Unknown format: ${format}`);
       }
-      // Check if CycloneDX file was actually created before trying to upload it
+      const { exitCode } = await exec.getExecOutput(
+        inputs.EXECUTABLE,
+        this.buildReformatParameters(format, filename),
+        options
+      );
+      if (exitCode !== 0) {
+        return new Error(`Error converting scan results into ${format} format`);
+      }
+      // Check if reformatted file was actually created before trying to upload it
       try {
         const fs = await import('fs');
-        await fs.promises.access(CYCLONEDX_FILE_NAME, fs.constants.F_OK);
-        await uploadToArtifacts(CYCLONEDX_FILE_NAME);
-        core.info('Successfully converted results into CycloneDX format');
+        await fs.promises.access(filename, fs.constants.F_OK);
+        await uploadToArtifacts(filename);
+        core.info(`Successfully converted results into ${format} format`);
       } catch (fileError) {
         // File doesn't exist - this can happen with empty repos
-        core.info('CycloneDX conversion completed but no file generated (likely empty repository)');
+        core.info(`${format} conversion completed but no file generated (likely empty repository)`);
       }
     } catch (e: any) {
       core.error(e.message);

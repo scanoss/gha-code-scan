@@ -30,7 +30,7 @@ import * as core from '@actions/core';
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
   REPO_DIR: '',
-  OUTPUT_FILEPATH: 'results.json',
+  OUTPUT_FILEPATH: 'scanoss-raw.json',
   COPYLEFT_LICENSE_EXCLUDE: '',
   COPYLEFT_LICENSE_EXPLICIT: '',
   COPYLEFT_LICENSE_INCLUDE: '',

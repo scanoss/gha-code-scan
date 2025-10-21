@@ -111,12 +111,12 @@ export abstract class PolicyCheck {
     });
     this.checkRunId = result.data.id;
     this.detailsUrl = result.data.details_url;
-    this._raw = result.data;
+    this._raw = result.data as CheckRun;
 
     this._firstRunId = runId;
 
     this._status = STATUS.INITIALIZED;
-    return result.data;
+    return result.data as CheckRun;
   }
 
   /**

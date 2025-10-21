@@ -32,7 +32,7 @@ import * as core from '@actions/core';
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
   REPO_DIR: '',
-  OUTPUT_FILEPATH: 'results.json',
+  OUTPUT_FILEPATH: 'scanoss-raw.json',
   DEPENDENCY_TRACK_URL: 'https://dep-track.example.com',
   DEPENDENCY_TRACK_API_KEY: 'test-api-key',
   DEPENDENCY_TRACK_PROJECT_ID: 'test-project-id',
@@ -85,7 +85,7 @@ describe('DepTrackPolicyCheck', () => {
 
   beforeEach(() => {
     appInput.REPO_DIR = TEST_REPO_DIR;
-    appInput.OUTPUT_FILEPATH = 'results.json';
+    appInput.OUTPUT_FILEPATH = 'scanoss-raw.json';
     appInput.DEPENDENCY_TRACK_URL = 'https://dep-track.example.com';
     appInput.DEPENDENCY_TRACK_API_KEY = 'test-api-key';
     appInput.DEPENDENCY_TRACK_PROJECT_ID = 'test-project-id';

@@ -27,7 +27,7 @@ import { UndeclaredArgumentBuilder } from '../src/policies/argument_builders/com
 jest.mock('../src/app.input', () => ({
   ...jest.requireActual('../src/app.input'),
   REPO_DIR: '',
-  OUTPUT_FILEPATH: 'results.json',
+  OUTPUT_FILEPATH: 'scanoss-raw.json',
   COPYLEFT_LICENSE_EXCLUDE: '',
   COPYLEFT_LICENSE_EXPLICIT: '',
   COPYLEFT_LICENSE_INCLUDE: '',
@@ -40,7 +40,7 @@ describe('UndeclaredArgumentBuilder', () => {
 
   it('Build Command test', async function () {
     appInput.REPO_DIR = 'repodir';
-    appInput.OUTPUT_FILEPATH = 'results.json';
+    appInput.OUTPUT_FILEPATH = 'scanoss-raw.json';
     appInput.SCANOSS_SETTINGS = false;
     const builder = new UndeclaredArgumentBuilder();
     const cmd = await builder.build();
@@ -52,7 +52,7 @@ describe('UndeclaredArgumentBuilder', () => {
       'inspect',
       'undeclared',
       '--input',
-      'results.json',
+      'scanoss-raw.json',
       '--format',
       'md'
     ]);
@@ -60,7 +60,7 @@ describe('UndeclaredArgumentBuilder', () => {
 
   it('Build Command style scanoss.json', async function () {
     appInput.REPO_DIR = 'repodir';
-    appInput.OUTPUT_FILEPATH = 'results.json';
+    appInput.OUTPUT_FILEPATH = 'scanoss-raw.json';
     appInput.SCANOSS_SETTINGS = true;
     const builder = new UndeclaredArgumentBuilder();
     const cmd = await builder.build();
@@ -72,7 +72,7 @@ describe('UndeclaredArgumentBuilder', () => {
       'inspect',
       'undeclared',
       '--input',
-      'results.json',
+      'scanoss-raw.json',
       '--format',
       'md'
     ]);
@@ -80,7 +80,7 @@ describe('UndeclaredArgumentBuilder', () => {
 
   it('Should build a command with --debug parameter', async function () {
     appInput.REPO_DIR = 'repodir';
-    appInput.OUTPUT_FILEPATH = 'results.json';
+    appInput.OUTPUT_FILEPATH = 'scanoss-raw.json';
     appInput.SCANOSS_SETTINGS = true;
     appInput.DEBUG = true;
     const builder = new UndeclaredArgumentBuilder();
@@ -93,7 +93,7 @@ describe('UndeclaredArgumentBuilder', () => {
       'inspect',
       'undeclared',
       '--input',
-      'results.json',
+      'scanoss-raw.json',
       '--format',
       'md',
       '--debug'

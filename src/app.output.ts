@@ -36,6 +36,21 @@ export const RESULT_FILEPATH = 'result-filepath';
 export const STDOUT_SCAN_COMMAND = 'stdout-scan-command';
 
 /**
+ * Default filename for raw scan result.
+ */
+export const RAW_RESULT_FILE_NAME = 'scanoss-raw.json';
+
+/**
  * Default filename for CycloneDX format exports.
  */
 export const CYCLONEDX_FILE_NAME = 'scanoss-cyclonedx.json';
+
+/**
+ * Default filename for SpDX format exports.
+ */
+export const SPDXLITE_FILE_NAME = 'scanoss-spdxlite.json';
+
+/**
+ * Default filename for CSV format exports.
+ */
+export const CSV_FILE_NAME = 'scanoss-sbom.csv';
