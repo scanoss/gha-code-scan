@@ -24,6 +24,7 @@
 import * as core from '@actions/core';
 import * as path from 'path';
 import { sanitiseUrl } from './utils/url.utils';
+import { RAW_RESULT_FILE_NAME } from './app.output';
 
 /**
  * Validates a filename to prevent directory traversal and ensure safe file operations.
@@ -32,7 +33,7 @@ import { sanitiseUrl } from './utils/url.utils';
  */
 function validateFilename(filename: string | undefined): string {
   if (!filename) {
-    return 'results.json';
+    return RAW_RESULT_FILE_NAME;
   }
 
   // Normalize the path to handle any path traversal attempts
@@ -40,8 +41,8 @@ function validateFilename(filename: string | undefined): string {
 
   // Check for directory traversal attempts
   if (normalizedPath.includes('..') || normalizedPath.startsWith('/') || normalizedPath.includes('\\')) {
-    core.warning(`Invalid filename detected: ${filename}. Using default: results.json`);
-    return 'results.json';
+    core.warning(`Invalid filename detected: ${filename}. Using default: ${RAW_RESULT_FILE_NAME}`);
+    return RAW_RESULT_FILE_NAME;
   }
 
   // Extract just the filename (no directory components)
@@ -50,8 +51,8 @@ function validateFilename(filename: string | undefined): string {
   // Ensure it's a valid filename (alphanumeric, dots, dashes, underscores)
   const safeFilenameRegex = /^[a-zA-Z0-9._-]+$/;
   if (!safeFilenameRegex.test(basename)) {
-    core.warning(`Unsafe filename detected: ${filename}. Using default: results.json`);
-    return 'results.json';
+    core.warning(`Unsafe filename detected: ${filename}. Using default: ${RAW_RESULT_FILE_NAME}`);
+    return RAW_RESULT_FILE_NAME;
   }
 
   // Ensure it has a proper extension

@@ -125026,6 +125026,7 @@ exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = ex
 const core = __importStar(__nccwpck_require__(42186));
 const path = __importStar(__nccwpck_require__(71017));
 const url_utils_1 = __nccwpck_require__(13060);
+const app_output_1 = __nccwpck_require__(22698);
 /**
  * Validates a filename to prevent directory traversal and ensure safe file operations.
  * @param filename - The filename to validate
@@ -125033,22 +125034,22 @@ const url_utils_1 = __nccwpck_require__(13060);
  */
 function validateFilename(filename) {
     if (!filename) {
-        return 'results.json';
+        return app_output_1.RAW_RESULT_FILE_NAME;
     }
     // Normalize the path to handle any path traversal attempts
     const normalizedPath = path.normalize(filename);
     // Check for directory traversal attempts
     if (normalizedPath.includes('..') || normalizedPath.startsWith('/') || normalizedPath.includes('\\')) {
-        core.warning(`Invalid filename detected: ${filename}. Using default: results.json`);
-        return 'results.json';
+        core.warning(`Invalid filename detected: ${filename}. Using default: ${app_output_1.RAW_RESULT_FILE_NAME}`);
+        return app_output_1.RAW_RESULT_FILE_NAME;
     }
     // Extract just the filename (no directory components)
     const basename = path.basename(normalizedPath);
     // Ensure it's a valid filename (alphanumeric, dots, dashes, underscores)
     const safeFilenameRegex = /^[a-zA-Z0-9._-]+$/;
     if (!safeFilenameRegex.test(basename)) {
-        core.warning(`Unsafe filename detected: ${filename}. Using default: results.json`);
-        return 'results.json';
+        core.warning(`Unsafe filename detected: ${filename}. Using default: ${app_output_1.RAW_RESULT_FILE_NAME}`);
+        return app_output_1.RAW_RESULT_FILE_NAME;
     }
     // Ensure it has a proper extension
     if (!basename.includes('.')) {
@@ -125174,7 +125175,7 @@ exports.setDependencyTrackProjectId = setDependencyTrackProjectId;
    THE SOFTWARE.
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CSV_FILE_NAME = exports.SPDXLITE_FIlE_NAME = exports.CYCLONEDX_FILE_NAME = exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
+exports.CSV_FILE_NAME = exports.SPDXLITE_FIlE_NAME = exports.CYCLONEDX_FILE_NAME = exports.RAW_RESULT_FILE_NAME = exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
 /**
  * Output constants for GitHub Actions outputs and artifact names.
  */
@@ -125187,6 +125188,10 @@ exports.RESULT_FILEPATH = 'result-filepath';
  */
 exports.STDOUT_SCAN_COMMAND = 'stdout-scan-command';
 /**
+ * Default filename for raw scan result.
+ */
+exports.RAW_RESULT_FILE_NAME = 'scanoss-raw.json';
+/**
  * Default filename for CycloneDX format exports.
  */
 exports.CYCLONEDX_FILE_NAME = 'scanoss-cyclonedx.json';
@@ -125197,7 +125202,7 @@ exports.SPDXLITE_FIlE_NAME = 'scanoss-spdxlite.json';
 /**
  * Default filename for CSV format exports.
  */
-exports.CSV_FILE_NAME = 'scanoss-csv.json';
+exports.CSV_FILE_NAME = 'scanoss-sbom.csv';
 
 
 /***/ }),
