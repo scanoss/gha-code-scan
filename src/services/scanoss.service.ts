@@ -25,7 +25,7 @@ import * as exec from '@actions/exec';
 import * as inputs from '../app.input';
 import * as core from '@actions/core';
 import { uploadToArtifacts } from './github.service';
-import { CYCLONEDX_FILE_NAME, CSV_FILE_NAME, SPDXLITE_FIlE_NAME } from '../app.output';
+import { CYCLONEDX_FILE_NAME, CSV_FILE_NAME, SPDXLITE_FILE_NAME } from '../app.output';
 
 /**
  * Service for converting SCANOSS scan results to different formats using scanoss-py.
@@ -66,7 +66,7 @@ export class ScanOssService {
         format === 'cyclonedx'
           ? CYCLONEDX_FILE_NAME
           : format === 'spdxlite'
-            ? SPDXLITE_FIlE_NAME
+            ? SPDXLITE_FILE_NAME
             : format === 'csv'
               ? CSV_FILE_NAME
               : undefined;

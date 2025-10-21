@@ -48,7 +48,7 @@ export const CYCLONEDX_FILE_NAME = 'scanoss-cyclonedx.json';
 /**
  * Default filename for SpDX format exports.
  */
-export const SPDXLITE_FIlE_NAME = 'scanoss-spdxlite.json';
+export const SPDXLITE_FILE_NAME = 'scanoss-spdxlite.json';
 
 /**
  * Default filename for CSV format exports.

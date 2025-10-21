@@ -23,7 +23,7 @@
 
 import { RUNTIME_CONTAINER } from '../src/app.input';
 import { ScanOssService } from '../src/services/scanoss.service';
-import { CYCLONEDX_FILE_NAME, SPDXLITE_FIlE_NAME, CSV_FILE_NAME } from '../src/app.output';
+import { CYCLONEDX_FILE_NAME, SPDXLITE_FILE_NAME, CSV_FILE_NAME } from '../src/app.output';
 import * as exec from '@actions/exec';
 import * as core from '@actions/core';
 
@@ -95,7 +95,7 @@ describe('Scanoss service tests', () => {
     });
 
     it('should correctly return the scanoss-py SPDX Lite conversion command', () => {
-      const command = (scanossService as any).buildReformatParameters('spdxlite', SPDXLITE_FIlE_NAME);
+      const command = (scanossService as any).buildReformatParameters('spdxlite', SPDXLITE_FILE_NAME);
       expect(command).toEqual([
         'run',
         '-v',
@@ -107,7 +107,7 @@ describe('Scanoss service tests', () => {
         '--format',
         'spdxlite',
         '--output',
-        `./${SPDXLITE_FIlE_NAME}`
+        `./${SPDXLITE_FILE_NAME}`
       ]);
     });
 

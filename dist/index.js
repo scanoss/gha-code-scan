@@ -125098,7 +125098,7 @@ exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 // Runtime Configuration
 /** Docker container image for scanoss-py execution */
-exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.37.0';
+exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.37.1';
 /** Skip snippet generation during scan */
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 /** Enable match annotations and commit comments */
@@ -125175,7 +125175,7 @@ exports.setDependencyTrackProjectId = setDependencyTrackProjectId;
    THE SOFTWARE.
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CSV_FILE_NAME = exports.SPDXLITE_FIlE_NAME = exports.CYCLONEDX_FILE_NAME = exports.RAW_RESULT_FILE_NAME = exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
+exports.CSV_FILE_NAME = exports.SPDXLITE_FILE_NAME = exports.CYCLONEDX_FILE_NAME = exports.RAW_RESULT_FILE_NAME = exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
 /**
  * Output constants for GitHub Actions outputs and artifact names.
  */
@@ -125198,7 +125198,7 @@ exports.CYCLONEDX_FILE_NAME = 'scanoss-cyclonedx.json';
 /**
  * Default filename for SpDX format exports.
  */
-exports.SPDXLITE_FIlE_NAME = 'scanoss-spdxlite.json';
+exports.SPDXLITE_FILE_NAME = 'scanoss-spdxlite.json';
 /**
  * Default filename for CSV format exports.
  */
@@ -128542,7 +128542,7 @@ class ScanOssService {
             const filename = format === 'cyclonedx'
                 ? app_output_1.CYCLONEDX_FILE_NAME
                 : format === 'spdxlite'
-                    ? app_output_1.SPDXLITE_FIlE_NAME
+                    ? app_output_1.SPDXLITE_FILE_NAME
                     : format === 'csv'
                         ? app_output_1.CSV_FILE_NAME
                         : undefined;
