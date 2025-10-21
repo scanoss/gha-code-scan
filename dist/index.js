@@ -125174,7 +125174,7 @@ exports.setDependencyTrackProjectId = setDependencyTrackProjectId;
    THE SOFTWARE.
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CYCLONEDX_FILE_NAME = exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
+exports.CSV_FILE_NAME = exports.SPDXLITE_FIlE_NAME = exports.CYCLONEDX_FILE_NAME = exports.STDOUT_SCAN_COMMAND = exports.RESULT_FILEPATH = void 0;
 /**
  * Output constants for GitHub Actions outputs and artifact names.
  */
@@ -125190,6 +125190,14 @@ exports.STDOUT_SCAN_COMMAND = 'stdout-scan-command';
  * Default filename for CycloneDX format exports.
  */
 exports.CYCLONEDX_FILE_NAME = 'scanoss-cyclonedx.json';
+/**
+ * Default filename for SpDX format exports.
+ */
+exports.SPDXLITE_FIlE_NAME = 'scanoss-spdxlite.json';
+/**
+ * Default filename for CSV format exports.
+ */
+exports.CSV_FILE_NAME = 'scanoss-csv.json';
 
 
 /***/ }),
@@ -125281,8 +125289,11 @@ async function run() {
         // 1: run scan
         const { stdout } = await scan_service_1.scanService.scan();
         await (0, scan_service_1.uploadResults)();
-        // 2: Convert scan results to CycloneDX
-        await scanoss_service_1.scanossService.scanResultsToCycloneDX();
+        // 2: Convert scan results to CycloneDX, SPDX and CSV
+        const formats = ['cyclonedx', 'spdxlite', 'csv'];
+        for (const format of formats) {
+            await scanoss_service_1.scanossService.reformatScanResults(format);
+        }
         // 3: Dependency Track
         const uploadResult = await dependency_track_service_1.dependencyTrackService.uploadToDependencyTrack();
         // 3.1: Report Dependency Track upload status
@@ -128495,8 +128506,8 @@ const app_output_1 = __nccwpck_require__(22698);
  */
 class ScanOssService {
     /**
-     * Build scanoss-py CycloneDX conversion parameters */
-    buildCycloneDXParameters() {
+     * Build scanoss-py conversion parameters */
+    buildReformatParameters(format, filename) {
         return [
             'run',
             '-v',
@@ -128506,9 +128517,9 @@ class ScanOssService {
             '--input',
             `./${inputs.OUTPUT_FILEPATH}`,
             '--format',
-            'cyclonedx',
+            `${format}`,
             '--output',
-            `./${app_output_1.CYCLONEDX_FILE_NAME}`
+            `./${filename}`
         ];
     }
     /**
@@ -128516,27 +128527,37 @@ class ScanOssService {
      * Currently always generates CycloneDX file which can be used by Dependency Track
      * or uploaded as an artifact for other integrations.
      */
-    async scanResultsToCycloneDX() {
+    async reformatScanResults(format) {
         try {
-            core.info('Converting SCANOSS results to CycloneDX format...');
+            core.info(`Converting SCANOSS results to ${format} format...`);
             const options = {
                 failOnStdErr: false,
                 ignoreReturnCode: false
             };
-            const { exitCode } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildCycloneDXParameters(), options);
-            if (exitCode !== 0) {
-                return new Error(`Error converting scan results into CycloneDX format`);
+            const filename = format === 'cyclonedx'
+                ? app_output_1.CYCLONEDX_FILE_NAME
+                : format === 'spdxlite'
+                    ? app_output_1.SPDXLITE_FIlE_NAME
+                    : format === 'csv'
+                        ? app_output_1.CSV_FILE_NAME
+                        : undefined;
+            if (!filename) {
+                return new Error(`Unknown format: ${format}`);
             }
-            // Check if CycloneDX file was actually created before trying to upload it
+            const { exitCode } = await exec.getExecOutput(inputs.EXECUTABLE, this.buildReformatParameters(format, filename), options);
+            if (exitCode !== 0) {
+                return new Error(`Error converting scan results into ${format} format`);
+            }
+            // Check if reformatted file was actually created before trying to upload it
             try {
                 const fs = await Promise.resolve(/* import() */).then(__nccwpck_require__.t.bind(__nccwpck_require__, 57147, 23));
-                await fs.promises.access(app_output_1.CYCLONEDX_FILE_NAME, fs.constants.F_OK);
-                await (0, github_service_1.uploadToArtifacts)(app_output_1.CYCLONEDX_FILE_NAME);
-                core.info('Successfully converted results into CycloneDX format');
+                await fs.promises.access(filename, fs.constants.F_OK);
+                await (0, github_service_1.uploadToArtifacts)(filename);
+                core.info(`Successfully converted results into ${format} format`);
             }
             catch (fileError) {
                 // File doesn't exist - this can happen with empty repos
-                core.info('CycloneDX conversion completed but no file generated (likely empty repository)');
+                core.info(`${format} conversion completed but no file generated (likely empty repository)`);
             }
         }
         catch (e) {

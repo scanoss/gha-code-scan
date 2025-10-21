@@ -108,7 +108,7 @@ describe('Scanoss service tests', () => {
 
       const infoSpy = jest.spyOn(core, 'info').mockImplementation();
 
-      const result = await scanossService.scanResultsToCycloneDX();
+      const result = await scanossService.reformatScanResults();
 
       expect(result).toBeUndefined();
       expect(mockGetExecOutput).toHaveBeenCalledWith(
@@ -133,7 +133,7 @@ describe('Scanoss service tests', () => {
         exitCode: 1
       });
 
-      const result = await scanossService.scanResultsToCycloneDX();
+      const result = await scanossService.reformatScanResults();
 
       expect(result).toBeInstanceOf(Error);
       expect(result?.message).toBe('Error converting scan results into CycloneDX format');
@@ -150,7 +150,7 @@ describe('Scanoss service tests', () => {
 
       const infoSpy = jest.spyOn(core, 'info').mockImplementation();
 
-      const result = await scanossService.scanResultsToCycloneDX();
+      const result = await scanossService.reformatScanResults();
 
       expect(result).toBeUndefined();
       expect(infoSpy).toHaveBeenCalledWith(
@@ -165,7 +165,7 @@ describe('Scanoss service tests', () => {
 
       const errorSpy = jest.spyOn(core, 'error').mockImplementation();
 
-      const result = await scanossService.scanResultsToCycloneDX();
+      const result = await scanossService.reformatScanResults();
 
       expect(result).toBeUndefined();
       expect(errorSpy).toHaveBeenCalledWith('Docker command failed');
@@ -186,7 +186,7 @@ describe('Scanoss service tests', () => {
 
       const infoSpy = jest.spyOn(core, 'info').mockImplementation();
 
-      const result = await scanossService.scanResultsToCycloneDX();
+      const result = await scanossService.reformatScanResults();
 
       expect(result).toBeUndefined();
       expect(infoSpy).toHaveBeenCalledWith(

@@ -39,3 +39,13 @@ export const STDOUT_SCAN_COMMAND = 'stdout-scan-command';
  * Default filename for CycloneDX format exports.
  */
 export const CYCLONEDX_FILE_NAME = 'scanoss-cyclonedx.json';
+
+/**
+ * Default filename for SpDX format exports.
+ */
+export const SPDXLITE_FIlE_NAME = 'scanoss-spdxlite.json';
+
+/**
+ * Default filename for CSV format exports.
+ */
+export const CSV_FILE_NAME = 'scanoss-csv.json';

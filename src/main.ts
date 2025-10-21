@@ -60,8 +60,11 @@ export async function run(): Promise<void> {
     const { stdout } = await scanService.scan();
     await uploadResults();
 
-    // 2: Convert scan results to CycloneDX
-    await scanossService.scanResultsToCycloneDX();
+    // 2: Convert scan results to CycloneDX, SPDX and CSV
+    const formats = ['cyclonedx', 'spdxlite', 'csv'];
+    for (const format of formats) {
+      await scanossService.reformatScanResults(format);
+    }
 
     // 3: Dependency Track
     const uploadResult = await dependencyTrackService.uploadToDependencyTrack();
