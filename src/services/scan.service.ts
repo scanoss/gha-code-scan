@@ -34,7 +34,8 @@ import {
   SCAN_FILES,
   SCANOSS_SETTINGS,
   SETTINGS_FILE_PATH,
-  SKIP_SNIPPETS
+  SKIP_SNIPPETS,
+  SCAN_PATH
 } from '../app.input';
 import { deltaService, DeltaResult } from './delta.service';
 
@@ -323,7 +324,7 @@ export class ScanService {
    */
   private async buildArgs(): Promise<string[]> {
     // Determine scan path: use delta directory if in delta mode, otherwise scan current directory
-    const scanPath = this.deltaResult ? `./${this.deltaResult.deltaDir}` : '.';
+    const scanPath = this.deltaResult ? `./${this.deltaResult.deltaDir}` : SCAN_PATH;
 
     core.debug(`Building scan args with scan path: ${scanPath}`);
 

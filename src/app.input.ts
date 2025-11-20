@@ -123,6 +123,8 @@ export const SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
 export const SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
 /** Set scan mode (delta or full) */
 export const SCAN_MODE = core.getInput('scanMode') || 'full';
+/** Set scan root */
+export const SCAN_PATH = core.getInput('scanPath') || '.';
 /** Docker executable command */
 export const EXECUTABLE = 'docker';
 /** Enable debug mode */
