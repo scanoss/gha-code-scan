@@ -24,7 +24,7 @@
 import { PolicyCheck } from './policy-check';
 import { CHECK_NAME } from '../app.config';
 import * as core from '@actions/core';
-import { EXECUTABLE, SCANOSS_SETTINGS, SETTINGS_FILE_PATH } from '../app.input';
+import { EXECUTABLE, SCANOSS_SETTINGS, SETTINGS_FILE_PATH, SCAN_PATH, REPO_DIR } from '../app.input';
 import * as exec from '@actions/exec';
 import { UndeclaredArgumentBuilder } from './argument_builders/components/undeclared-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
@@ -32,6 +32,7 @@ import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 import { context } from '@actions/github';
 import { isPullRequest, resolveRepoAndSha } from '../utils/github.utils';
 import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
@@ -106,12 +107,22 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       }
     }
 
-    if (fs.existsSync(SETTINGS_FILE_PATH)) {
+    // Build full settings file path accounting for SCAN_PATH
+    const fullSettingsPath = path.isAbsolute(SETTINGS_FILE_PATH)
+      ? SETTINGS_FILE_PATH
+      : path.join(REPO_DIR, SCAN_PATH, SETTINGS_FILE_PATH);
+
+    // Build the relative path for GitHub URLs (relative to repo root)
+    const githubSettingsPath = path.isAbsolute(SETTINGS_FILE_PATH)
+      ? path.relative(REPO_DIR, SETTINGS_FILE_PATH)
+      : path.join(SCAN_PATH, SETTINGS_FILE_PATH);
+
+    if (fs.existsSync(fullSettingsPath)) {
       const { owner, repo } = resolveRepoAndSha();
-      const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${SETTINGS_FILE_PATH}`;
+      const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${githubSettingsPath}`;
 
       // Try to replace the existing JSON with merged version
-      const mergedJson = mergeWithExistingScanossJson(details);
+      const mergedJson = mergeWithExistingScanossJson(details, fullSettingsPath);
       if (mergedJson) {
         // Replace the complete JSON block with merged version
         const originalJson = extractJsonFromPolicyDetails(details);
@@ -122,19 +133,19 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
         }
       }
 
-      details += `[Edit ${SETTINGS_FILE_PATH} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
+      details += `[Edit ${githubSettingsPath} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
     } else {
       // Build JSON content from the details output that already contains the structure
       const jsonContent = extractJsonFromPolicyDetails(details);
       if (jsonContent) {
         const encodedJson = encodeURIComponent(jsonContent);
         const { owner, repo } = resolveRepoAndSha();
-        const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${SETTINGS_FILE_PATH}&value=${encodedJson}`;
-        details += `${SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
-        details += `[Create ${SETTINGS_FILE_PATH} file](${createFileUrl})`;
+        const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${githubSettingsPath}&value=${encodedJson}`;
+        details += `${githubSettingsPath} doesn't exist. Create it in your repository with the JSON snippet provided above to resolve policy violations.\n\n`;
+        details += `[Create ${githubSettingsPath} file](${createFileUrl})`;
       } else {
         core.warning('Could not extract JSON content for file creation link, but continuing with policy failure');
-        details += `${SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.`;
+        details += `${githubSettingsPath} doesn't exist. Create it in your repository with the JSON snippet provided above to resolve policy violations.`;
       }
     }
 
@@ -201,7 +212,7 @@ function extractJsonFromPolicyDetails(details: string): string | null {
 /**
  * Merges new undeclared components with existing scanoss.json file
  */
-function mergeWithExistingScanossJson(policyDetails: string): string | null {
+function mergeWithExistingScanossJson(policyDetails: string, settingsFilePath: string): string | null {
   try {
     // Extract new components from policy details
     const jsonContent = extractJsonFromPolicyDetails(policyDetails);
@@ -218,8 +229,8 @@ function mergeWithExistingScanossJson(policyDetails: string): string | null {
       return null;
     }
 
-    // Read existing settings file
-    const existingContent = fs.readFileSync(SETTINGS_FILE_PATH, 'utf8');
+    // Read existing settings file using the full path
+    const existingContent = fs.readFileSync(settingsFilePath, 'utf8');
     const existingConfig = JSON.parse(existingContent);
 
     // Ensure bom section exists
@@ -241,12 +252,12 @@ function mergeWithExistingScanossJson(policyDetails: string): string | null {
     // Add all new components (no duplicate checking needed)
     existingConfig.bom.include.push(...newComponents);
 
-    core.info(`Added ${newComponents.length} new components to existing ${SETTINGS_FILE_PATH} structure`);
+    core.info(`Added ${newComponents.length} new components to existing settings file structure`);
 
     // Return formatted JSON
     return JSON.stringify(existingConfig, null, 2);
   } catch (error) {
-    core.warning(`Failed to merge with existing ${SETTINGS_FILE_PATH}: ${error}`);
+    core.warning(`Failed to merge with existing settings file: ${error}`);
     return null;
   }
 }

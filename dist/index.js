@@ -126927,6 +126927,7 @@ const github_service_1 = __nccwpck_require__(40304);
 const github_1 = __nccwpck_require__(93228);
 const github_utils_1 = __nccwpck_require__(12205);
 const fs = __importStar(__nccwpck_require__(79896));
+const path = __importStar(__nccwpck_require__(16928));
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
  * The run method compares components found by the scanner against those declared in the SBOM.
@@ -126991,11 +126992,19 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
                 branchName = pull.head.ref;
             }
         }
-        if (fs.existsSync(app_input_1.SETTINGS_FILE_PATH)) {
+        // Build full settings file path accounting for SCAN_PATH
+        const fullSettingsPath = path.isAbsolute(app_input_1.SETTINGS_FILE_PATH)
+            ? app_input_1.SETTINGS_FILE_PATH
+            : path.join(app_input_1.REPO_DIR, app_input_1.SCAN_PATH, app_input_1.SETTINGS_FILE_PATH);
+        // Build the relative path for GitHub URLs (relative to repo root)
+        const githubSettingsPath = path.isAbsolute(app_input_1.SETTINGS_FILE_PATH)
+            ? path.relative(app_input_1.REPO_DIR, app_input_1.SETTINGS_FILE_PATH)
+            : path.join(app_input_1.SCAN_PATH, app_input_1.SETTINGS_FILE_PATH);
+        if (fs.existsSync(fullSettingsPath)) {
             const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
-            const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${app_input_1.SETTINGS_FILE_PATH}`;
+            const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${githubSettingsPath}`;
             // Try to replace the existing JSON with merged version
-            const mergedJson = mergeWithExistingScanossJson(details);
+            const mergedJson = mergeWithExistingScanossJson(details, fullSettingsPath);
             if (mergedJson) {
                 // Replace the complete JSON block with merged version
                 const originalJson = extractJsonFromPolicyDetails(details);
@@ -127005,7 +127014,7 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
                     details = details.replace(fullBlock, newBlock);
                 }
             }
-            details += `[Edit ${app_input_1.SETTINGS_FILE_PATH} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
+            details += `[Edit ${githubSettingsPath} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
         }
         else {
             // Build JSON content from the details output that already contains the structure
@@ -127013,13 +127022,13 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             if (jsonContent) {
                 const encodedJson = encodeURIComponent(jsonContent);
                 const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
-                const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${app_input_1.SETTINGS_FILE_PATH}&value=${encodedJson}`;
-                details += `${app_input_1.SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
-                details += `[Create ${app_input_1.SETTINGS_FILE_PATH} file](${createFileUrl})`;
+                const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${githubSettingsPath}&value=${encodedJson}`;
+                details += `${githubSettingsPath} doesn't exist. Create it in your repository with the JSON snippet provided above to resolve policy violations.\n\n`;
+                details += `[Create ${githubSettingsPath} file](${createFileUrl})`;
             }
             else {
                 core.warning('Could not extract JSON content for file creation link, but continuing with policy failure');
-                details += `${app_input_1.SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.`;
+                details += `${githubSettingsPath} doesn't exist. Create it in your repository with the JSON snippet provided above to resolve policy violations.`;
             }
         }
         const { id } = await this.uploadArtifact(details);
@@ -127079,7 +127088,7 @@ function extractJsonFromPolicyDetails(details) {
 /**
  * Merges new undeclared components with existing scanoss.json file
  */
-function mergeWithExistingScanossJson(policyDetails) {
+function mergeWithExistingScanossJson(policyDetails, settingsFilePath) {
     try {
         // Extract new components from policy details
         const jsonContent = extractJsonFromPolicyDetails(policyDetails);
@@ -127093,8 +127102,8 @@ function mergeWithExistingScanossJson(policyDetails) {
             core.warning('No new components found to add');
             return null;
         }
-        // Read existing settings file
-        const existingContent = fs.readFileSync(app_input_1.SETTINGS_FILE_PATH, 'utf8');
+        // Read existing settings file using the full path
+        const existingContent = fs.readFileSync(settingsFilePath, 'utf8');
         const existingConfig = JSON.parse(existingContent);
         // Ensure bom section exists
         if (!existingConfig.bom) {
@@ -127111,12 +127120,12 @@ function mergeWithExistingScanossJson(policyDetails) {
         }
         // Add all new components (no duplicate checking needed)
         existingConfig.bom.include.push(...newComponents);
-        core.info(`Added ${newComponents.length} new components to existing ${app_input_1.SETTINGS_FILE_PATH} structure`);
+        core.info(`Added ${newComponents.length} new components to existing settings file structure`);
         // Return formatted JSON
         return JSON.stringify(existingConfig, null, 2);
     }
     catch (error) {
-        core.warning(`Failed to merge with existing ${app_input_1.SETTINGS_FILE_PATH}: ${error}`);
+        core.warning(`Failed to merge with existing settings file: ${error}`);
         return null;
     }
 }
