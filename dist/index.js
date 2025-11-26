@@ -125243,7 +125243,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SCAN_MODE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.MATCH_ANNOTATIONS = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.REPO_DIR = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.HALT_ON_ERROR = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
+exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SCAN_PATH = exports.SCAN_MODE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.MATCH_ANNOTATIONS = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.REPO_DIR = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.HALT_ON_ERROR = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
 const core = __importStar(__nccwpck_require__(37484));
 const path = __importStar(__nccwpck_require__(16928));
 const url_utils_1 = __nccwpck_require__(44671);
@@ -125332,6 +125332,8 @@ exports.SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
 exports.SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
 /** Set scan mode (delta or full) */
 exports.SCAN_MODE = core.getInput('scanMode') || 'full';
+/** Set scan root */
+exports.SCAN_PATH = core.getInput('scanPath') || '.';
 /** Docker executable command */
 exports.EXECUTABLE = 'docker';
 /** Enable debug mode */
@@ -128713,7 +128715,7 @@ class ScanService {
      */
     async buildArgs() {
         // Determine scan path: use delta directory if in delta mode, otherwise scan current directory
-        const scanPath = this.deltaResult ? `./${this.deltaResult.deltaDir}` : '.';
+        const scanPath = this.deltaResult ? `./${this.deltaResult.deltaDir}` : app_input_1.SCAN_PATH;
         core.debug(`Building scan args with scan path: ${scanPath}`);
         return [
             'run',
@@ -128766,14 +128768,20 @@ class ScanService {
         if (this.options.scanossSettings) {
             // Validate settings file path before accessing
             const hostPath = this.options.settingsFilePath;
-            const rel = path.isAbsolute(hostPath) ? path.relative(this.options.inputFilepath, hostPath) : hostPath;
+            // If relative path, resolve it relative to SCAN_PATH (the subfolder being scanned)
+            // If absolute path, get relative path from inputFilepath
+            const rel = path.isAbsolute(hostPath)
+                ? path.relative(this.options.inputFilepath, hostPath)
+                : path.join(app_input_1.SCAN_PATH, hostPath);
             if (rel.startsWith('..')) {
                 core.error('Settings file must reside under the scan input path');
                 throw new Error('Settings file must reside under the scan input path');
             }
             try {
-                // Resolve to absolute path for file existence check
-                const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, hostPath);
+                // Resolve to absolute path for file existence check, accounting for SCAN_PATH
+                const abs = path.isAbsolute(hostPath)
+                    ? hostPath
+                    : path.join(this.options.inputFilepath, app_input_1.SCAN_PATH, hostPath);
                 await fs_1.default.promises.access(abs, fs_1.default.constants.F_OK);
                 // Always pass a container-visible path under /scanoss
                 const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;

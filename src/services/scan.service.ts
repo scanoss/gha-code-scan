@@ -381,7 +381,12 @@ export class ScanService {
     if (this.options.scanossSettings) {
       // Validate settings file path before accessing
       const hostPath = this.options.settingsFilePath;
-      const rel = path.isAbsolute(hostPath) ? path.relative(this.options.inputFilepath, hostPath) : hostPath;
+
+      // If relative path, resolve it relative to SCAN_PATH (the subfolder being scanned)
+      // If absolute path, get relative path from inputFilepath
+      const rel = path.isAbsolute(hostPath)
+        ? path.relative(this.options.inputFilepath, hostPath)
+        : path.join(SCAN_PATH, hostPath);
 
       if (rel.startsWith('..')) {
         core.error('Settings file must reside under the scan input path');
@@ -389,8 +394,11 @@ export class ScanService {
       }
 
       try {
-        // Resolve to absolute path for file existence check
-        const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, hostPath);
+        // Resolve to absolute path for file existence check, accounting for SCAN_PATH
+        const abs = path.isAbsolute(hostPath)
+          ? hostPath
+          : path.join(this.options.inputFilepath, SCAN_PATH, hostPath);
+
         await fs.promises.access(abs, fs.constants.F_OK);
         // Always pass a container-visible path under /scanoss
         const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;
