@@ -126927,7 +126927,7 @@ const github_service_1 = __nccwpck_require__(40304);
 const github_1 = __nccwpck_require__(93228);
 const github_utils_1 = __nccwpck_require__(12205);
 const fs = __importStar(__nccwpck_require__(79896));
-const path = __importStar(__nccwpck_require__(16928));
+const path_utils_1 = __nccwpck_require__(53141);
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
  * The run method compares components found by the scanner against those declared in the SBOM.
@@ -126992,14 +126992,8 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
                 branchName = pull.head.ref;
             }
         }
-        // Build full settings file path accounting for SCAN_PATH
-        const fullSettingsPath = path.isAbsolute(app_input_1.SETTINGS_FILE_PATH)
-            ? app_input_1.SETTINGS_FILE_PATH
-            : path.join(app_input_1.REPO_DIR, app_input_1.SCAN_PATH, app_input_1.SETTINGS_FILE_PATH);
-        // Build the relative path for GitHub URLs (relative to repo root)
-        const githubSettingsPath = path.isAbsolute(app_input_1.SETTINGS_FILE_PATH)
-            ? path.relative(app_input_1.REPO_DIR, app_input_1.SETTINGS_FILE_PATH)
-            : path.join(app_input_1.SCAN_PATH, app_input_1.SETTINGS_FILE_PATH);
+        // Resolve settings file path using utility function
+        const { fullPath: fullSettingsPath, githubPath: githubSettingsPath } = (0, path_utils_1.resolveSettingsPath)(app_input_1.SETTINGS_FILE_PATH, app_input_1.SCAN_PATH, app_input_1.REPO_DIR);
         if (fs.existsSync(fullSettingsPath)) {
             const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
             const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${githubSettingsPath}`;
@@ -128520,6 +128514,7 @@ const inputs = __importStar(__nccwpck_require__(37162));
 const fs_1 = __importDefault(__nccwpck_require__(79896));
 const core = __importStar(__nccwpck_require__(37484));
 const path = __importStar(__nccwpck_require__(16928));
+const path_utils_1 = __nccwpck_require__(53141);
 const app_input_1 = __nccwpck_require__(37162);
 const delta_service_1 = __nccwpck_require__(99491);
 const artifact = new artifact_1.DefaultArtifactClient();
@@ -128777,18 +128772,13 @@ class ScanService {
         if (this.options.scanossSettings) {
             // Validate settings file path before accessing
             const hostPath = this.options.settingsFilePath;
-            // If relative path, resolve it relative to SCAN_PATH (the subfolder being scanned)
-            // If absolute path, get relative path from inputFilepath
-            const rel = path.isAbsolute(hostPath)
-                ? path.relative(this.options.inputFilepath, hostPath)
-                : path.join(app_input_1.SCAN_PATH, hostPath);
+            // Resolve settings file path using utility function
+            const { fullPath: abs, githubPath: rel } = (0, path_utils_1.resolveSettingsPath)(hostPath, app_input_1.SCAN_PATH, this.options.inputFilepath);
             if (rel.startsWith('..')) {
                 core.error('Settings file must reside under the scan input path');
                 throw new Error('Settings file must reside under the scan input path');
             }
             try {
-                // Resolve to absolute path for file existence check, accounting for SCAN_PATH
-                const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, app_input_1.SCAN_PATH, hostPath);
                 await fs_1.default.promises.access(abs, fs_1.default.constants.F_OK);
                 // Always pass a container-visible path under /scanoss
                 const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;
@@ -130009,6 +129999,39 @@ const generateTable = (headers, rows, centeredColumns) => {
   `;
 };
 exports.generateTable = generateTable;
+
+
+/***/ }),
+
+/***/ 53141:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.resolveSettingsPath = resolveSettingsPath;
+const path_1 = __importDefault(__nccwpck_require__(16928));
+/**
+ * Resolves a settings file path to both its full filesystem path and GitHub-relative path.
+ * Handles both absolute and relative paths, accounting for scan subdirectories.
+ *
+ * @param settingsPath - The settings file path (can be absolute or relative)
+ * @param scanPath - The scan subdirectory path (e.g., 'subfolder/')
+ * @param repoDir - The repository root directory
+ * @returns An object containing the full filesystem path and GitHub-relative path
+ */
+function resolveSettingsPath(settingsPath, scanPath, repoDir) {
+    // Build full settings file path accounting for SCAN_PATH
+    const fullPath = path_1.default.isAbsolute(settingsPath) ? settingsPath : path_1.default.join(repoDir, scanPath, settingsPath);
+    // Build the relative path for GitHub URLs (relative to repo root)
+    const githubPath = path_1.default.isAbsolute(settingsPath)
+        ? path_1.default.relative(repoDir, settingsPath)
+        : path_1.default.join(scanPath, settingsPath);
+    return { fullPath, githubPath };
+}
 
 
 /***/ }),

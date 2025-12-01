@@ -32,7 +32,7 @@ import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 import { context } from '@actions/github';
 import { isPullRequest, resolveRepoAndSha } from '../utils/github.utils';
 import * as fs from 'fs';
-import * as path from 'path';
+import { resolveSettingsPath } from '../utils/path.utils';
 
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
@@ -107,15 +107,12 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       }
     }
 
-    // Build full settings file path accounting for SCAN_PATH
-    const fullSettingsPath = path.isAbsolute(SETTINGS_FILE_PATH)
-      ? SETTINGS_FILE_PATH
-      : path.join(REPO_DIR, SCAN_PATH, SETTINGS_FILE_PATH);
-
-    // Build the relative path for GitHub URLs (relative to repo root)
-    const githubSettingsPath = path.isAbsolute(SETTINGS_FILE_PATH)
-      ? path.relative(REPO_DIR, SETTINGS_FILE_PATH)
-      : path.join(SCAN_PATH, SETTINGS_FILE_PATH);
+    // Resolve settings file path using utility function
+    const { fullPath: fullSettingsPath, githubPath: githubSettingsPath } = resolveSettingsPath(
+      SETTINGS_FILE_PATH,
+      SCAN_PATH,
+      REPO_DIR
+    );
 
     if (fs.existsSync(fullSettingsPath)) {
       const { owner, repo } = resolveRepoAndSha();

@@ -28,6 +28,7 @@ import { ScannerResults } from './result.interfaces';
 import fs from 'fs';
 import * as core from '@actions/core';
 import * as path from 'path';
+import { resolveSettingsPath } from '../utils/path.utils';
 import {
   EXECUTABLE,
   OUTPUT_FILEPATH,
@@ -382,11 +383,8 @@ export class ScanService {
       // Validate settings file path before accessing
       const hostPath = this.options.settingsFilePath;
 
-      // If relative path, resolve it relative to SCAN_PATH (the subfolder being scanned)
-      // If absolute path, get relative path from inputFilepath
-      const rel = path.isAbsolute(hostPath)
-        ? path.relative(this.options.inputFilepath, hostPath)
-        : path.join(SCAN_PATH, hostPath);
+      // Resolve settings file path using utility function
+      const { fullPath: abs, githubPath: rel } = resolveSettingsPath(hostPath, SCAN_PATH, this.options.inputFilepath);
 
       if (rel.startsWith('..')) {
         core.error('Settings file must reside under the scan input path');
@@ -394,9 +392,6 @@ export class ScanService {
       }
 
       try {
-        // Resolve to absolute path for file existence check, accounting for SCAN_PATH
-        const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, SCAN_PATH, hostPath);
-
         await fs.promises.access(abs, fs.constants.F_OK);
         // Always pass a container-visible path under /scanoss
         const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;
