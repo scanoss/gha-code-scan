@@ -395,9 +395,7 @@ export class ScanService {
 
       try {
         // Resolve to absolute path for file existence check, accounting for SCAN_PATH
-        const abs = path.isAbsolute(hostPath)
-          ? hostPath
-          : path.join(this.options.inputFilepath, SCAN_PATH, hostPath);
+        const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, SCAN_PATH, hostPath);
 
         await fs.promises.access(abs, fs.constants.F_OK);
         // Always pass a container-visible path under /scanoss
