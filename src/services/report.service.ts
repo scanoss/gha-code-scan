@@ -32,6 +32,7 @@ import { getLicenseSummary, License } from './license.service';
 import { getComponentSummary } from './component.service';
 import { DependencyTrackUploadResult } from './dependency-track-status.service';
 import * as inputs from '../app.input';
+import { getScanPathSuffix } from '../utils/path.utils';
 
 /**
  * Generates a summary report for pull request comments.
@@ -52,7 +53,8 @@ export async function generatePRSummary(policies: PolicyCheck[]): Promise<string
     success: polCount.success ? `:white_check_mark: ${polCount.success} pass` : '',
     fail: polCount.fail ? `:x: ${polCount.fail} fail` : ''
   };
-  return `### SCANOSS SCAN Completed :rocket:
+
+  return `### SCANOSS SCAN Completed :rocket:${getScanPathSuffix(inputs.SCAN_PATH)}
 - **Detected components:** ${componentSummary.totalComponents}
 - **Undeclared components:** ${componentSummary.undeclaredComponents}
 - **Declared components:** ${componentSummary.declaredComponents}
@@ -177,8 +179,14 @@ export async function generateJobSummary(
     licenseTable = 'License table too large to display, omitted from GitHub UI due to length';
   }
 
+  // Add scan path context if scanning a subfolder
+  const scanPathHeading =
+    inputs.SCAN_PATH && inputs.SCAN_PATH !== '.'
+      ? `Scan Report Section (Scanned: \`${inputs.SCAN_PATH}\`)`
+      : 'Scan Report Section';
+
   const summary = core.summary
-    .addHeading('Scan Report Section', 2)
+    .addHeading(scanPathHeading, 2)
     .addHeading('Licenses', 3)
     .addCodeBlock(LicensesPie(licenseSummary.licenses), 'mermaid')
     .addRaw(licenseTable)

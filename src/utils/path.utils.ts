@@ -46,3 +46,45 @@ export function resolveSettingsPath(
 
   return { fullPath, githubPath };
 }
+
+/**
+ * Resolves a scan-relative file path to a repository-root-relative path.
+ * When scanning a subfolder, scan results contain paths relative to that subfolder.
+ * This function prepends the scan path to get the correct repository-relative path.
+ *
+ * @param scanRelativePath - Path relative to the scanned subfolder (e.g., 'file.c')
+ * @param scanPath - The scan subdirectory path (e.g., 'src/folder1' or '.')
+ * @returns Path relative to repository root (e.g., 'src/folder1/file.c' or 'file.c')
+ *
+ * @example
+ * // Scanning root directory
+ * resolveScanPath('file.c', '.') // Returns 'file.c'
+ *
+ * @example
+ * // Scanning subfolder
+ * resolveScanPath('file.c', 'src/folder1') // Returns 'src/folder1/file.c'
+ */
+export function resolveScanPath(scanRelativePath: string, scanPath: string): string {
+  // If scanning root ('.'), return path as-is
+  if (!scanPath || scanPath === '.') {
+    return scanRelativePath;
+  }
+
+  // Join scan path with the file path, normalize separators
+  return path.join(scanPath, scanRelativePath).replace(/\\/g, '/');
+}
+
+/**
+ * Returns a formatted scan path suffix for display in titles/headings.
+ * Used to make the scanned folder instantly visible in PR comments and status checks.
+ *
+ * @param scanPath - The scan subdirectory path (e.g., 'src/folder1' or '.')
+ * @returns Formatted suffix like " (📁 `src/folder1`)" or empty string for root
+ *
+ * @example
+ * getScanPathSuffix('.') // Returns ''
+ * getScanPathSuffix('src/folder1') // Returns ' (📁 `src/folder1`)'
+ */
+export function getScanPathSuffix(scanPath: string): string {
+  return scanPath && scanPath !== '.' ? ` (📁 \`${scanPath}\`)` : '';
+}

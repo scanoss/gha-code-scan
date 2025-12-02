@@ -25,6 +25,8 @@ import * as core from '@actions/core';
 import { resolveRepoAndSha } from './github.utils';
 import { SnippetMatch, LineRange, SnippetMatchWithPath, FileMatchWithPath } from '../types/annotations';
 import { parseLineRange } from './line-parsers';
+import { resolveScanPath } from './path.utils';
+import { SCAN_PATH } from '../app.input';
 
 /**
  * Creates a GitHub URL for the file
@@ -79,8 +81,12 @@ export function createSnippetSummaryAnnotation(snippetMatches: SnippetMatchWithP
   for (const [filePath, matches] of fileEntries) {
     const firstMatch = matches[0];
     const localLines = parseLineRange(firstMatch.lines);
-    const fileUrl = localLines ? getFileUrlWithLineHighlight(filePath, localLines) : getFileUrl(filePath);
-    message += `- [${filePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
+    // Resolve scan-relative path to repo-relative path for GitHub URLs
+    const repoRelativePath = resolveScanPath(filePath, SCAN_PATH);
+    const fileUrl = localLines
+      ? getFileUrlWithLineHighlight(repoRelativePath, localLines)
+      : getFileUrl(repoRelativePath);
+    message += `- [${repoRelativePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
   }
 
   if (Object.keys(fileGroups).length > 10) {
@@ -109,9 +115,11 @@ export function createFileMatchSummaryAnnotation(fileMatches: FileMatchWithPath[
   // Limit to avoid annotation length issues
   const limitedMatches = fileMatches.slice(0, 10);
   for (const { filePath, match } of limitedMatches) {
-    const fileUrl = getFileUrl(filePath);
+    // Resolve scan-relative path to repo-relative path for GitHub URLs
+    const repoRelativePath = resolveScanPath(filePath, SCAN_PATH);
+    const fileUrl = getFileUrl(repoRelativePath);
     const component = `${match.component}${match.version ? ` v${match.version}` : ''}`;
-    message += `- [${filePath}](${fileUrl}) → ${component}\n`;
+    message += `- [${repoRelativePath}](${fileUrl}) → ${component}\n`;
   }
 
   if (fileMatches.length > 10) {

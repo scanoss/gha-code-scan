@@ -126098,6 +126098,7 @@ const app_input_1 = __nccwpck_require__(37162);
 const exec = __importStar(__nccwpck_require__(95236));
 const copyleft_argument_builder_1 = __nccwpck_require__(96548);
 const github_service_1 = __nccwpck_require__(40304);
+const path_utils_1 = __nccwpck_require__(53141);
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
  * It filters components based on their licenses and looks for those with copyleft obligations.
@@ -126126,14 +126127,14 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
         let details = stderr;
         // Happy path. All goodness
         if (exitCode === 0) {
-            await this.success('### :white_check_mark: Policy Pass \n #### No copyleft licenses were found', undefined);
+            await this.success(`### :white_check_mark: Policy Pass${(0, path_utils_1.getScanPathSuffix)(app_input_1.SCAN_PATH)} \n #### No copyleft licenses were found`, undefined);
             return;
         }
         else if (exitCode === 1) {
             // Technical error occurred
             core.warning('Copyleft policy check encountered an error');
             core.debug(`Copyleft policy check stderr: ${stderr}`);
-            const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete copyleft license check';
+            const errorSummary = `### :warning: Policy Check Error${(0, path_utils_1.getScanPathSuffix)(app_input_1.SCAN_PATH)} \n #### Unable to complete copyleft license check`;
             const errorDetails = 'Error details: Check debug logs for more information';
             await this.technicalError(errorSummary, errorDetails);
             return;
@@ -126239,6 +126240,7 @@ const exec = __importStar(__nccwpck_require__(95236));
 const dep_track_argument_builder_1 = __nccwpck_require__(69124);
 const github_service_1 = __nccwpck_require__(40304);
 const inputs = __importStar(__nccwpck_require__(37162));
+const path_utils_1 = __nccwpck_require__(53141);
 /**
  * This class performs policy checks using Dependency Track integration.
  * It uploads SBOM (Software Bill of Materials) data to a Dependency Track server
@@ -126428,7 +126430,7 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
             let summary = stdout;
             let details = stderr;
             if (exitCode === 0) {
-                let successMessage = '### :white_check_mark: Policy Pass \n #### No policy violations were found';
+                let successMessage = `### :white_check_mark: Policy Pass${(0, path_utils_1.getScanPathSuffix)(inputs.SCAN_PATH)} \n #### No policy violations were found`;
                 if (!this.uploadAttempted) {
                     core.warning('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
                     successMessage +=
@@ -126448,7 +126450,7 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                     errorDetails = details;
                 }
                 core.warning(`Dependency Track policy check encountered an error: ${errorMessage}`);
-                const errorSummary = `### :warning: Policy Check Error \n #### ${errorMessage}`;
+                const errorSummary = `### :warning: Policy Check Error${(0, path_utils_1.getScanPathSuffix)(inputs.SCAN_PATH)} \n #### ${errorMessage}`;
                 await this.technicalError(errorSummary, errorDetails);
                 return;
             }
@@ -126986,14 +126988,14 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             core.warning('Undeclared policy is being used with SCANOSS settings disabled');
         }
         if (exitCode === 0) {
-            await this.success('### :white_check_mark: Policy Pass \n #### No undeclared components were found', undefined);
+            await this.success(`### :white_check_mark: Policy Pass${(0, path_utils_1.getScanPathSuffix)(app_input_1.SCAN_PATH)} \n #### No undeclared components were found`, undefined);
             return;
         }
         if (exitCode === 1) {
             // Technical error occurred
             core.warning('Undeclared policy check encountered an error');
             core.debug(`Undeclared policy check stderr: ${stderr}`);
-            const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete undeclared component check';
+            const errorSummary = `### :warning: Policy Check Error${(0, path_utils_1.getScanPathSuffix)(app_input_1.SCAN_PATH)} \n #### Unable to complete undeclared component check`;
             const errorDetails = 'Error details: Check debug logs for more information';
             await this.technicalError(errorSummary, errorDetails);
             return;
@@ -128315,6 +128317,7 @@ const github_service_1 = __nccwpck_require__(40304);
 const license_service_1 = __nccwpck_require__(52046);
 const component_service_1 = __nccwpck_require__(85530);
 const inputs = __importStar(__nccwpck_require__(37162));
+const path_utils_1 = __nccwpck_require__(53141);
 /**
  * Generates a summary report for pull request comments.
  * Includes policy check results, component counts, and license statistics.
@@ -128332,7 +128335,7 @@ async function generatePRSummary(policies) {
         success: polCount.success ? `:white_check_mark: ${polCount.success} pass` : '',
         fail: polCount.fail ? `:x: ${polCount.fail} fail` : ''
     };
-    return `### SCANOSS SCAN Completed :rocket:
+    return `### SCANOSS SCAN Completed :rocket:${(0, path_utils_1.getScanPathSuffix)(inputs.SCAN_PATH)}
 - **Detected components:** ${componentSummary.totalComponents}
 - **Undeclared components:** ${componentSummary.undeclaredComponents}
 - **Declared components:** ${componentSummary.declaredComponents}
@@ -128441,8 +128444,12 @@ async function generateJobSummary(policies, uploadResult) {
     if ((0, github_service_1.isOverMaxCharacterLimitAPI)(licenseTable)) {
         licenseTable = 'License table too large to display, omitted from GitHub UI due to length';
     }
+    // Add scan path context if scanning a subfolder
+    const scanPathHeading = inputs.SCAN_PATH && inputs.SCAN_PATH !== '.'
+        ? `Scan Report Section (Scanned: \`${inputs.SCAN_PATH}\`)`
+        : 'Scan Report Section';
     const summary = core.summary
-        .addHeading('Scan Report Section', 2)
+        .addHeading(scanPathHeading, 2)
         .addHeading('Licenses', 3)
         .addCodeBlock(LicensesPie(licenseSummary.licenses), 'mermaid')
         .addRaw(licenseTable)
@@ -129040,6 +129047,8 @@ exports.createFileMatchSummaryAnnotation = createFileMatchSummaryAnnotation;
 const core = __importStar(__nccwpck_require__(37484));
 const github_utils_1 = __nccwpck_require__(12205);
 const line_parsers_1 = __nccwpck_require__(63666);
+const path_utils_1 = __nccwpck_require__(53141);
+const app_input_1 = __nccwpck_require__(37162);
 /**
  * Creates a GitHub URL for the file
  * @param filePath - The file path relative to repository root
@@ -129086,8 +129095,12 @@ function createSnippetSummaryAnnotation(snippetMatches) {
     for (const [filePath, matches] of fileEntries) {
         const firstMatch = matches[0];
         const localLines = (0, line_parsers_1.parseLineRange)(firstMatch.lines);
-        const fileUrl = localLines ? getFileUrlWithLineHighlight(filePath, localLines) : getFileUrl(filePath);
-        message += `- [${filePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
+        // Resolve scan-relative path to repo-relative path for GitHub URLs
+        const repoRelativePath = (0, path_utils_1.resolveScanPath)(filePath, app_input_1.SCAN_PATH);
+        const fileUrl = localLines
+            ? getFileUrlWithLineHighlight(repoRelativePath, localLines)
+            : getFileUrl(repoRelativePath);
+        message += `- [${repoRelativePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
     }
     if (Object.keys(fileGroups).length > 10) {
         message += `- ... and ${Object.keys(fileGroups).length - 10} more files\n`;
@@ -129110,9 +129123,11 @@ function createFileMatchSummaryAnnotation(fileMatches) {
     // Limit to avoid annotation length issues
     const limitedMatches = fileMatches.slice(0, 10);
     for (const { filePath, match } of limitedMatches) {
-        const fileUrl = getFileUrl(filePath);
+        // Resolve scan-relative path to repo-relative path for GitHub URLs
+        const repoRelativePath = (0, path_utils_1.resolveScanPath)(filePath, app_input_1.SCAN_PATH);
+        const fileUrl = getFileUrl(repoRelativePath);
         const component = `${match.component}${match.version ? ` v${match.version}` : ''}`;
-        message += `- [${filePath}](${fileUrl}) → ${component}\n`;
+        message += `- [${repoRelativePath}](${fileUrl}) → ${component}\n`;
     }
     if (fileMatches.length > 10) {
         message += `- ... and ${fileMatches.length - 10} more files\n`;
@@ -130040,6 +130055,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.resolveSettingsPath = resolveSettingsPath;
+exports.resolveScanPath = resolveScanPath;
+exports.getScanPathSuffix = getScanPathSuffix;
 // SPDX-License-Identifier: MIT
 /*
    Copyright (c) 2025, SCANOSS
@@ -130080,6 +130097,45 @@ function resolveSettingsPath(settingsPath, scanPath, repoDir) {
         ? path_1.default.relative(repoDir, settingsPath)
         : path_1.default.join(scanPath, settingsPath);
     return { fullPath, githubPath };
+}
+/**
+ * Resolves a scan-relative file path to a repository-root-relative path.
+ * When scanning a subfolder, scan results contain paths relative to that subfolder.
+ * This function prepends the scan path to get the correct repository-relative path.
+ *
+ * @param scanRelativePath - Path relative to the scanned subfolder (e.g., 'file.c')
+ * @param scanPath - The scan subdirectory path (e.g., 'src/folder1' or '.')
+ * @returns Path relative to repository root (e.g., 'src/folder1/file.c' or 'file.c')
+ *
+ * @example
+ * // Scanning root directory
+ * resolveScanPath('file.c', '.') // Returns 'file.c'
+ *
+ * @example
+ * // Scanning subfolder
+ * resolveScanPath('file.c', 'src/folder1') // Returns 'src/folder1/file.c'
+ */
+function resolveScanPath(scanRelativePath, scanPath) {
+    // If scanning root ('.'), return path as-is
+    if (!scanPath || scanPath === '.') {
+        return scanRelativePath;
+    }
+    // Join scan path with the file path, normalize separators
+    return path_1.default.join(scanPath, scanRelativePath).replace(/\\/g, '/');
+}
+/**
+ * Returns a formatted scan path suffix for display in titles/headings.
+ * Used to make the scanned folder instantly visible in PR comments and status checks.
+ *
+ * @param scanPath - The scan subdirectory path (e.g., 'src/folder1' or '.')
+ * @returns Formatted suffix like " (📁 `src/folder1`)" or empty string for root
+ *
+ * @example
+ * getScanPathSuffix('.') // Returns ''
+ * getScanPathSuffix('src/folder1') // Returns ' (📁 `src/folder1`)'
+ */
+function getScanPathSuffix(scanPath) {
+    return scanPath && scanPath !== '.' ? ` (📁 \`${scanPath}\`)` : '';
 }
 
 
@@ -130152,6 +130208,8 @@ const fs = __importStar(__nccwpck_require__(79896));
 const github_1 = __nccwpck_require__(93228);
 const annotation_creators_1 = __nccwpck_require__(77640);
 const github_comment_api_1 = __nccwpck_require__(18271);
+const path_utils_1 = __nccwpck_require__(53141);
+const app_input_1 = __nccwpck_require__(37162);
 /**
  * Creates hybrid snippet annotations: summary annotations + commit comments
  */
@@ -130165,10 +130223,12 @@ async function createSnippetAnnotations(resultsPath) {
         const results = JSON.parse(resultsContent);
         const snippetMatches = [];
         const fileMatches = [];
-        // Collect all matches
-        for (const [filePath, matches] of Object.entries(results)) {
+        // Collect all matches and resolve paths from scan-relative to repo-relative
+        for (const [scanRelativePath, matches] of Object.entries(results)) {
             if (!Array.isArray(matches))
                 continue;
+            // Resolve scan-relative path to repo-relative path for GitHub URLs
+            const filePath = (0, path_utils_1.resolveScanPath)(scanRelativePath, app_input_1.SCAN_PATH);
             for (const match of matches) {
                 if (match.status === 'pending') {
                     if (match.id === 'snippet') {

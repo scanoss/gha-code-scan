@@ -30,6 +30,7 @@ import { DependencyTrackArgumentBuilder } from './argument_builders/dependency_t
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 import * as inputs from '../app.input';
+import { getScanPathSuffix } from '../utils/path.utils';
 
 /**
  * This class performs policy checks using Dependency Track integration.
@@ -245,7 +246,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
       let details = stderr;
 
       if (exitCode === 0) {
-        let successMessage = '### :white_check_mark: Policy Pass \n #### No policy violations were found';
+        let successMessage = `### :white_check_mark: Policy Pass${getScanPathSuffix(inputs.SCAN_PATH)} \n #### No policy violations were found`;
         if (!this.uploadAttempted) {
           core.warning(
             'No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues'
@@ -270,7 +271,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
         }
 
         core.warning(`Dependency Track policy check encountered an error: ${errorMessage}`);
-        const errorSummary = `### :warning: Policy Check Error \n #### ${errorMessage}`;
+        const errorSummary = `### :warning: Policy Check Error${getScanPathSuffix(inputs.SCAN_PATH)} \n #### ${errorMessage}`;
         await this.technicalError(errorSummary, errorDetails);
         return;
       }

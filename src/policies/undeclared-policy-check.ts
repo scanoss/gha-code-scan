@@ -32,7 +32,7 @@ import { isOverMaxCharacterLimitAPI } from '../services/github.service';
 import { context } from '@actions/github';
 import { isPullRequest, resolveRepoAndSha } from '../utils/github.utils';
 import * as fs from 'fs';
-import { resolveSettingsPath } from '../utils/path.utils';
+import { resolveSettingsPath, getScanPathSuffix } from '../utils/path.utils';
 
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
@@ -71,7 +71,10 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
     }
 
     if (exitCode === 0) {
-      await this.success('### :white_check_mark: Policy Pass \n #### No undeclared components were found', undefined);
+      await this.success(
+        `### :white_check_mark: Policy Pass${getScanPathSuffix(SCAN_PATH)} \n #### No undeclared components were found`,
+        undefined
+      );
       return;
     }
 
@@ -79,7 +82,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
       // Technical error occurred
       core.warning('Undeclared policy check encountered an error');
       core.debug(`Undeclared policy check stderr: ${stderr}`);
-      const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete undeclared component check';
+      const errorSummary = `### :warning: Policy Check Error${getScanPathSuffix(SCAN_PATH)} \n #### Unable to complete undeclared component check`;
       const errorDetails = 'Error details: Check debug logs for more information';
 
       await this.technicalError(errorSummary, errorDetails);
