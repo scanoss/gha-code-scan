@@ -48,11 +48,11 @@ Add these sections to make it reusable:
             # ... other parameters
 ```
 
-## Step 2: Create Trigger Workflows
+### Step 2: Create Trigger Workflows
 
 Create separate workflow files for each component:
 
-.github/workflows/scanoss-component1.yml:
+`.github/workflows/scanoss-component1.yml`:
 ```yaml
 name: SCANOSS - Component1
 
@@ -75,7 +75,7 @@ jobs:
     secrets: inherit
 ```
 
-.github/workflows/scanoss-component2.yml:
+`.github/workflows/scanoss-component2.yml`:
 ```yaml
 name: SCANOSS - Component2
 
@@ -98,7 +98,7 @@ jobs:
     secrets: inherit
 ```
 
-# Example Structure
+## Example Structure
 
 my-monorepo/
 ├── .github/workflows/
@@ -110,14 +110,14 @@ my-monorepo/
 ├── component2/
 └── common/
 
-# Key Points
+## Key Points
 
 - Path filters: Only trigger workflows when specific directories change
 - secrets: inherit: Required to pass repository secrets to the reusable workflow
 - Local workflow reference: Use ./.github/workflows/scanoss.yml (no branch name)
 - Secrets are optional: SC_API_KEY and DT_API_KEY enhance functionality but aren't required
 
-# Benefits
+## Benefits
 
 - Faster CI/CD - only scan affected components
 - Clearer results - each component has its own scan
