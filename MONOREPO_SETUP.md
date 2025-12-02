@@ -1,4 +1,4 @@
-# SCANOSS Github Actions Code Scan: Monorepo Setup Guide
+# SCANOSS GitHub Actions Code Scan: Monorepo Setup Guide
 
 ## Introduction
 
@@ -114,8 +114,8 @@ my-monorepo/
 
 - Path filters: Only trigger workflows when specific directories change
 - secrets: inherit: Required to pass repository secrets to the reusable workflow
-- Local workflow reference: Use ./.github/workflows/scanoss.yml (no branch name)
-- Secrets are optional: SC_API_KEY and DT_API_KEY enhance functionality but aren't required
+- Local workflow reference: for example ./.github/workflows/scanoss.yml (no branch name)
+- Secrets are optional: SC_API_KEY and DT_API_KEY (dt required if Dependency Track is enabled)
 
 ## Benefits
 
