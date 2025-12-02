@@ -127021,7 +127021,9 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
         const { fullPath: fullSettingsPath, githubPath: githubSettingsPath } = (0, path_utils_1.resolveSettingsPath)(app_input_1.SETTINGS_FILE_PATH, app_input_1.SCAN_PATH, app_input_1.REPO_DIR);
         if (fs.existsSync(fullSettingsPath)) {
             const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
-            const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${githubSettingsPath}`;
+            // Encode each path segment to handle spaces/special chars while preserving directory structure
+            const encodedPath = githubSettingsPath.split('/').map(encodeURIComponent).join('/');
+            const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${encodedPath}`;
             // Try to replace the existing JSON with merged version
             const mergedJson = mergeWithExistingScanossJson(details, fullSettingsPath);
             if (mergedJson) {
@@ -127041,7 +127043,7 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             if (jsonContent) {
                 const encodedJson = encodeURIComponent(jsonContent);
                 const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
-                const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${githubSettingsPath}&value=${encodedJson}`;
+                const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${encodeURIComponent(githubSettingsPath)}&value=${encodedJson}`;
                 details += `${githubSettingsPath} doesn't exist. Create it in your repository with the JSON snippet provided above to resolve policy violations.\n\n`;
                 details += `[Create ${githubSettingsPath} file](${createFileUrl})`;
             }
