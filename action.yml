@@ -82,7 +82,7 @@ inputs:
     default: 'full'
     required: false
   scanPath:
-    description: 'Path to scan from.'
+    description: 'Relative path within the repository to scan (e.g., "src" or "packages/api"). Must be relative, no parent directory references (..) allowed.'
     default: '.'
     required: false
   debug:

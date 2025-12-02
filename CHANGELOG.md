@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.1] - 2025-10-21
 ### Added
+- Added basic subfolder scanning
+- Added input scanPath to specify a folder to scan
+### Changed
+- Upgraded scanoss-py version to v1.41.0
+
+## [1.3.1] - 2025-10-21
+### Added
 - Added results conversion to spdxlite and csv
 ### Changed
 - Upgraded scanoss-py version to v1.37.1
