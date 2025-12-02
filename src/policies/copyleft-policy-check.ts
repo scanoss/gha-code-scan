@@ -22,7 +22,7 @@
  */
 
 import * as core from '@actions/core';
-import { CHECK_NAME } from '../app.config';
+import { CHECK_NAME, formatCheckName } from '../app.config';
 import { PolicyCheck } from './policy-check';
 import { EXECUTABLE, SCAN_PATH } from '../app.input';
 import * as exec from '@actions/exec';
@@ -41,7 +41,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
   private argumentBuilder: ArgumentBuilder;
 
   constructor(argumentBuilder: CopyLeftArgumentBuilder = new CopyLeftArgumentBuilder()) {
-    super(`${CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`);
+    super(formatCheckName(`${CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`, SCAN_PATH));
     this.argumentBuilder = argumentBuilder;
   }
 

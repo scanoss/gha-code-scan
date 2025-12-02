@@ -125173,11 +125173,27 @@ ZipStream.prototype.finalize = function() {
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.STATUS_NAME = exports.CHECK_NAME = void 0;
+exports.formatCheckName = formatCheckName;
 /**
  * Configuration constants for the SCANOSS action.
  */
 exports.CHECK_NAME = 'Policy Check';
 exports.STATUS_NAME = 'Status Check';
+/**
+ * Formats a check name with scan path context for GitHub status checks.
+ * Appends the scan path to help identify which folder was scanned when running multiple parallel scans.
+ *
+ * @param baseName - The base check name (e.g., "Policy Check: Undeclared")
+ * @param scanPath - The scan subdirectory path (e.g., 'src/folder1' or '.')
+ * @returns Formatted check name like "Policy Check: Undeclared - src/folder1" or just the base name for root
+ *
+ * @example
+ * formatCheckName('Policy Check: Copyleft', '.') // Returns 'Policy Check: Copyleft'
+ * formatCheckName('Policy Check: Copyleft', 'src') // Returns 'Policy Check: Copyleft - src'
+ */
+function formatCheckName(baseName, scanPath) {
+    return scanPath && scanPath !== '.' ? `${baseName} - ${scanPath}` : baseName;
+}
 
 
 /***/ }),
@@ -126108,7 +126124,7 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
     static policyName = 'Copyleft';
     argumentBuilder;
     constructor(argumentBuilder = new copyleft_argument_builder_1.CopyLeftArgumentBuilder()) {
-        super(`${app_config_1.CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`);
+        super((0, app_config_1.formatCheckName)(`${app_config_1.CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`, app_input_1.SCAN_PATH));
         this.argumentBuilder = argumentBuilder;
     }
     /**
@@ -126253,7 +126269,7 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
     argumentBuilder;
     uploadAttempted = false;
     constructor(argumentBuilder = new dep_track_argument_builder_1.DependencyTrackArgumentBuilder()) {
-        super(`${app_config_1.CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
+        super((0, app_config_1.formatCheckName)(`${app_config_1.CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`, inputs.SCAN_PATH));
         this.argumentBuilder = argumentBuilder;
     }
     /**
@@ -126966,7 +126982,7 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
     static policyName = 'Undeclared';
     argumentBuilder;
     constructor(argumentBuilder = new undeclared_argument_builder_1.UndeclaredArgumentBuilder()) {
-        super(`${app_config_1.CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`);
+        super((0, app_config_1.formatCheckName)(`${app_config_1.CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`, app_input_1.SCAN_PATH));
         this.argumentBuilder = argumentBuilder;
     }
     /**
@@ -127645,7 +127661,7 @@ const app_config_1 = __nccwpck_require__(30454);
  * Service for reporting Dependency Track upload status as a GitHub check
  */
 class DependencyTrackStatusService {
-    checkName = `${app_config_1.STATUS_NAME}: Dependency Track Upload`;
+    checkName = (0, app_config_1.formatCheckName)(`${app_config_1.STATUS_NAME}: Dependency Track Upload`, inputs.SCAN_PATH);
     /**
      * Reports the Dependency Track upload status as a GitHub check run
      * Returns the created check run ID for linking purposes

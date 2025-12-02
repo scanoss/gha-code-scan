@@ -22,7 +22,7 @@
  */
 
 import * as core from '@actions/core';
-import { CHECK_NAME } from '../app.config';
+import { CHECK_NAME, formatCheckName } from '../app.config';
 import { PolicyCheck } from './policy-check';
 import { EXECUTABLE } from '../app.input';
 import * as exec from '@actions/exec';
@@ -45,7 +45,7 @@ export class DepTrackPolicyCheck extends PolicyCheck {
   private uploadAttempted = false;
 
   constructor(argumentBuilder: DependencyTrackArgumentBuilder = new DependencyTrackArgumentBuilder()) {
-    super(`${CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
+    super(formatCheckName(`${CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`, inputs.SCAN_PATH));
     this.argumentBuilder = argumentBuilder;
   }
 

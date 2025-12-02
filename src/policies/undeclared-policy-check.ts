@@ -22,7 +22,7 @@
  */
 
 import { PolicyCheck } from './policy-check';
-import { CHECK_NAME } from '../app.config';
+import { CHECK_NAME, formatCheckName } from '../app.config';
 import * as core from '@actions/core';
 import { EXECUTABLE, SCANOSS_SETTINGS, SETTINGS_FILE_PATH, SCAN_PATH, REPO_DIR } from '../app.input';
 import * as exec from '@actions/exec';
@@ -45,7 +45,7 @@ export class UndeclaredPolicyCheck extends PolicyCheck {
   static policyName = 'Undeclared';
   private argumentBuilder: ArgumentBuilder;
   constructor(argumentBuilder: ArgumentBuilder = new UndeclaredArgumentBuilder()) {
-    super(`${CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`);
+    super(formatCheckName(`${CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`, SCAN_PATH));
     this.argumentBuilder = argumentBuilder;
   }
 
