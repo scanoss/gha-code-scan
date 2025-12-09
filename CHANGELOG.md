@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added basic subfolder scanning
 - Added input scanPath to specify a folder to scan
-- Added MONOREPO_SETUP.md to guide workflow setup for individual folder scanning
+- Added [MONOREPO_SETUP.md](MONOREPO_SETUP.md) to guide workflow setup for individual folder scanning
 ### Changed
 - Upgraded scanoss-py version to v1.41.0
 

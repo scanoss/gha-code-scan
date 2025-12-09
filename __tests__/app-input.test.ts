@@ -227,12 +227,16 @@ describe('Scan Path Validation', () => {
       mockGetInput.mockReturnValue('/var/log/secrets');
       const { SCAN_PATH } = require('../src/app.input');
       expect(SCAN_PATH).toBe('.');
+      expect(mockWarning).toHaveBeenCalledWith('Absolute scan paths not allowed: /var/log/secrets. Using default: .');
     });
 
     it('should prevent absolute Windows path with forward slashes', () => {
       mockGetInput.mockReturnValue('C:/Windows/System32');
       const { SCAN_PATH } = require('../src/app.input');
       expect(SCAN_PATH).toBe('.');
+      expect(mockWarning).toHaveBeenCalledWith(
+        'Absolute scan paths not allowed: C:/Windows/System32. Using default: .'
+      );
     });
   });
 });
