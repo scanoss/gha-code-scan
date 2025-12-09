@@ -76,8 +76,10 @@ function validateScanPath(scanPath: string | undefined): string {
   // Normalize and convert to forward slashes for consistency
   const normalizedPath = path.normalize(scanPath).replace(/\\/g, '/');
 
-  // Reject absolute paths
-  if (path.isAbsolute(scanPath)) {
+  // Reject absolute paths (Unix-style and Windows-style)
+  // Windows paths: C:/, D:/, etc. (drive letter followed by colon)
+  const windowsAbsolutePattern = /^[a-zA-Z]:/;
+  if (path.isAbsolute(scanPath) || windowsAbsolutePattern.test(normalizedPath)) {
     core.warning(`Absolute scan paths not allowed: ${scanPath}. Using default: .`);
     return '.';
   }

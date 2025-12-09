@@ -80,6 +80,17 @@ export function parseLineRange(lineRange: string): LineRange | null {
     return { start: 1, end: 1 };
   }
 
+  // Sanitize input first
+  const sanitized = sanitizeLineRange(lineRange);
+
+  // Try simple single number first (most common case)
+  if (/^\d+$/.test(sanitized)) {
+    const singleLine = parseInt(sanitized, 10);
+    if (!isNaN(singleLine)) {
+      return { start: singleLine, end: singleLine };
+    }
+  }
+
   // Handle complex ranges like "7-9,47-81,99-158" using regex to get first and last numbers
   const extracted = extractFirstAndLastNumbers(lineRange);
   if (extracted) {
@@ -89,13 +100,6 @@ export function parseLineRange(lineRange: string): LineRange | null {
     if (!isNaN(start) && !isNaN(end)) {
       return { start, end };
     }
-  }
-
-  // Fallback for single number (sanitize first)
-  const sanitized = sanitizeLineRange(lineRange);
-  const singleLine = parseInt(sanitized, 10);
-  if (!isNaN(singleLine)) {
-    return { start: singleLine, end: singleLine };
   }
 
   return null;

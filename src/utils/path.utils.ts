@@ -42,7 +42,7 @@ export function resolveSettingsPath(
   // Build the relative path for GitHub URLs (relative to repo root)
   // Normalize to forward slashes for cross-platform compatibility and GitHub URLs
   const githubPath = path.isAbsolute(settingsPath)
-    ? path.relative(repoDir, settingsPath).replace(/\\/g, '/')
+    ? path.relative(repoDir, settingsPath).replace(/\\/g, '/') // TODO Is this necessary?
     : path.join(scanPath, settingsPath).replace(/\\/g, '/');
 
   return { fullPath, githubPath };
