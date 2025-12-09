@@ -40,9 +40,10 @@ export function resolveSettingsPath(
   const fullPath = path.isAbsolute(settingsPath) ? settingsPath : path.join(repoDir, scanPath, settingsPath);
 
   // Build the relative path for GitHub URLs (relative to repo root)
+  // Normalize to forward slashes for cross-platform compatibility and GitHub URLs
   const githubPath = path.isAbsolute(settingsPath)
-    ? path.relative(repoDir, settingsPath)
-    : path.join(scanPath, settingsPath);
+    ? path.relative(repoDir, settingsPath).replace(/\\/g, '/')
+    : path.join(scanPath, settingsPath).replace(/\\/g, '/');
 
   return { fullPath, githubPath };
 }

@@ -130109,9 +130109,10 @@ function resolveSettingsPath(settingsPath, scanPath, repoDir) {
     // Build full settings file path accounting for SCAN_PATH
     const fullPath = path_1.default.isAbsolute(settingsPath) ? settingsPath : path_1.default.join(repoDir, scanPath, settingsPath);
     // Build the relative path for GitHub URLs (relative to repo root)
+    // Normalize to forward slashes for cross-platform compatibility and GitHub URLs
     const githubPath = path_1.default.isAbsolute(settingsPath)
-        ? path_1.default.relative(repoDir, settingsPath)
-        : path_1.default.join(scanPath, settingsPath);
+        ? path_1.default.relative(repoDir, settingsPath).replace(/\\/g, '/')
+        : path_1.default.join(scanPath, settingsPath).replace(/\\/g, '/');
     return { fullPath, githubPath };
 }
 /**
