@@ -166,21 +166,21 @@ describe('Scan Path Validation', () => {
       mockGetInput.mockReturnValue('../../../etc');
       const { SCAN_PATH } = require('../src/app.input');
       expect(SCAN_PATH).toBe('.');
-      expect(mockWarning).toHaveBeenCalledWith('Invalid scan path detected: ../../../etc. Using default: .');
+      expect(mockWarning).toHaveBeenCalledWith('Invalid scan path detected: "../../../etc". Using default: .');
     });
 
     it('should reject paths with parent references in the middle', () => {
       mockGetInput.mockReturnValue('src/../../etc');
       const { SCAN_PATH } = require('../src/app.input');
       expect(SCAN_PATH).toBe('.');
-      expect(mockWarning).toHaveBeenCalledWith('Invalid scan path detected: src/../../etc. Using default: .');
+      expect(mockWarning).toHaveBeenCalledWith('Invalid scan path detected: "src/../../etc". Using default: .');
     });
 
     it('should reject single parent reference', () => {
       mockGetInput.mockReturnValue('..');
       const { SCAN_PATH } = require('../src/app.input');
       expect(SCAN_PATH).toBe('.');
-      expect(mockWarning).toHaveBeenCalledWith('Invalid scan path detected: ... Using default: .');
+      expect(mockWarning).toHaveBeenCalledWith('Invalid scan path detected: "..". Using default: .');
     });
   });
 
@@ -211,12 +211,14 @@ describe('Scan Path Validation', () => {
       mockGetInput.mockReturnValue('../../../../etc/passwd');
       const { SCAN_PATH } = require('../src/app.input');
       expect(SCAN_PATH).toBe('.');
+      expect(mockWarning).toHaveBeenCalledWith('Invalid scan path detected: "../../../../etc/passwd". Using default: .');
     });
 
     it('should prevent directory traversal attempt 2', () => {
       mockGetInput.mockReturnValue('src/../../../etc');
       const { SCAN_PATH } = require('../src/app.input');
       expect(SCAN_PATH).toBe('.');
+      expect(mockWarning).toHaveBeenCalledWith('Invalid scan path detected: "src/../../../etc". Using default: .');
     });
 
     it('should prevent absolute Unix path', () => {

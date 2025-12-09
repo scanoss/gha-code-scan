@@ -125314,7 +125314,7 @@ function validateScanPath(scanPath) {
     }
     // Reject directory traversal attempts
     if (normalizedPath.includes('..')) {
-        core.warning(`Invalid scan path detected: ${scanPath}. Using default: .`);
+        core.warning(`Invalid scan path detected: "${scanPath}". Using default: .`);
         return '.';
     }
     // Remove leading './' for consistency
