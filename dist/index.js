@@ -125305,8 +125305,10 @@ function validateScanPath(scanPath) {
     }
     // Normalize and convert to forward slashes for consistency
     const normalizedPath = path.normalize(scanPath).replace(/\\/g, '/');
-    // Reject absolute paths
-    if (path.isAbsolute(scanPath)) {
+    // Reject absolute paths (Unix-style and Windows-style)
+    // Windows paths: C:/, D:/, etc. (drive letter followed by colon)
+    const windowsAbsolutePattern = /^[a-zA-Z]:/;
+    if (path.isAbsolute(scanPath) || windowsAbsolutePattern.test(normalizedPath)) {
         core.warning(`Absolute scan paths not allowed: ${scanPath}. Using default: .`);
         return '.';
     }
@@ -129980,6 +129982,15 @@ function parseLineRange(lineRange) {
     if (lineRange === 'all') {
         return { start: 1, end: 1 };
     }
+    // Sanitize input first
+    const sanitized = sanitizeLineRange(lineRange);
+    // Try simple single number first (most common case)
+    if (/^\d+$/.test(sanitized)) {
+        const singleLine = parseInt(sanitized, 10);
+        if (!isNaN(singleLine)) {
+            return { start: singleLine, end: singleLine };
+        }
+    }
     // Handle complex ranges like "7-9,47-81,99-158" using regex to get first and last numbers
     const extracted = extractFirstAndLastNumbers(lineRange);
     if (extracted) {
@@ -129988,12 +129999,6 @@ function parseLineRange(lineRange) {
         if (!isNaN(start) && !isNaN(end)) {
             return { start, end };
         }
-    }
-    // Fallback for single number (sanitize first)
-    const sanitized = sanitizeLineRange(lineRange);
-    const singleLine = parseInt(sanitized, 10);
-    if (!isNaN(singleLine)) {
-        return { start: singleLine, end: singleLine };
     }
     return null;
 }
@@ -130111,7 +130116,7 @@ function resolveSettingsPath(settingsPath, scanPath, repoDir) {
     // Build the relative path for GitHub URLs (relative to repo root)
     // Normalize to forward slashes for cross-platform compatibility and GitHub URLs
     const githubPath = path_1.default.isAbsolute(settingsPath)
-        ? path_1.default.relative(repoDir, settingsPath).replace(/\\/g, '/')
+        ? path_1.default.relative(repoDir, settingsPath).replace(/\\/g, '/') // TODO Is this necessary?
         : path_1.default.join(scanPath, settingsPath).replace(/\\/g, '/');
     return { fullPath, githubPath };
 }

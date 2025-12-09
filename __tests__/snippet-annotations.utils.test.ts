@@ -150,10 +150,7 @@ describe('Snippet Annotations Utils', () => {
           match: expect.objectContaining({ id: 'file' })
         }
       ]);
-      expect(mockCreateFileCommitComment).toHaveBeenCalledWith(
-        'file1.ts',
-        expect.objectContaining({ id: 'file' })
-      );
+      expect(mockCreateFileCommitComment).toHaveBeenCalledWith('file1.ts', expect.objectContaining({ id: 'file' }));
     });
 
     it('should process both snippet and file matches', async () => {
@@ -296,9 +293,7 @@ describe('Snippet Annotations Utils', () => {
 
       await createSnippetAnnotations('/path/to/results.json');
 
-      expect(mockInfo).toHaveBeenCalledWith(
-        expect.stringContaining('owner=test-owner, repo=test-repo, sha=abc123')
-      );
+      expect(mockInfo).toHaveBeenCalledWith(expect.stringContaining('owner=test-owner, repo=test-repo, sha=abc123'));
     });
 
     it('should handle failed commit comments gracefully', async () => {
@@ -354,9 +349,7 @@ describe('Snippet Annotations Utils', () => {
 
       await createSnippetAnnotations('/path/to/results.json');
 
-      expect(mockError).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to create snippet annotations')
-      );
+      expect(mockError).toHaveBeenCalledWith(expect.stringContaining('Failed to create snippet annotations'));
     });
 
     it('should handle file read error', async () => {
@@ -367,9 +360,7 @@ describe('Snippet Annotations Utils', () => {
 
       await createSnippetAnnotations('/path/to/results.json');
 
-      expect(mockError).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to create snippet annotations')
-      );
+      expect(mockError).toHaveBeenCalledWith(expect.stringContaining('Failed to create snippet annotations'));
     });
 
     it('should log summary of operations performed', async () => {

@@ -71,18 +71,16 @@ describe('Annotation Creators', () => {
 
       createSnippetSummaryAnnotation(snippetMatches);
 
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('Found 1 snippet matches'),
-        { title: 'Code Snippet Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('Found 1 snippet matches'), {
+        title: 'Code Snippet Matches Summary'
+      });
       expect(mockNotice).toHaveBeenCalledWith(
         expect.stringContaining('https://github.com/test-owner/test-repo/commit/abc123'),
         { title: 'Code Snippet Matches Summary' }
       );
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('src/test.ts'),
-        { title: 'Code Snippet Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('src/test.ts'), {
+        title: 'Code Snippet Matches Summary'
+      });
       expect(mockInfo).toHaveBeenCalledWith('Created snippet summary annotation for 1 matches');
     });
 
@@ -120,14 +118,12 @@ describe('Annotation Creators', () => {
 
       createSnippetSummaryAnnotation(snippetMatches);
 
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('Found 2 snippet matches'),
-        { title: 'Code Snippet Matches Summary' }
-      );
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('(2 matches)'),
-        { title: 'Code Snippet Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('Found 2 snippet matches'), {
+        title: 'Code Snippet Matches Summary'
+      });
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('(2 matches)'), {
+        title: 'Code Snippet Matches Summary'
+      });
     });
 
     it('should create annotation for multiple snippet matches in different files', () => {
@@ -164,18 +160,15 @@ describe('Annotation Creators', () => {
 
       createSnippetSummaryAnnotation(snippetMatches);
 
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('src/file1.ts'),
-        { title: 'Code Snippet Matches Summary' }
-      );
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('src/file2.ts'),
-        { title: 'Code Snippet Matches Summary' }
-      );
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('(1 match)'),
-        { title: 'Code Snippet Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('src/file1.ts'), {
+        title: 'Code Snippet Matches Summary'
+      });
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('src/file2.ts'), {
+        title: 'Code Snippet Matches Summary'
+      });
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('(1 match)'), {
+        title: 'Code Snippet Matches Summary'
+      });
     });
 
     it('should limit to 10 files and show overflow message', () => {
@@ -196,10 +189,9 @@ describe('Annotation Creators', () => {
 
       createSnippetSummaryAnnotation(snippetMatches);
 
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('... and 5 more files'),
-        { title: 'Code Snippet Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('... and 5 more files'), {
+        title: 'Code Snippet Matches Summary'
+      });
     });
 
     it('should include line highlight in URL when lines are parseable', () => {
@@ -297,14 +289,12 @@ describe('Annotation Creators', () => {
 
       createFileMatchSummaryAnnotation(fileMatches);
 
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('Found 1 full file matches'),
-        { title: 'Full File Matches Summary' }
-      );
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('test-component v1.0.0'),
-        { title: 'Full File Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('Found 1 full file matches'), {
+        title: 'Full File Matches Summary'
+      });
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('test-component v1.0.0'), {
+        title: 'Full File Matches Summary'
+      });
       expect(mockInfo).toHaveBeenCalledWith('Created file match summary annotation for 1 matches');
     });
 
@@ -336,18 +326,15 @@ describe('Annotation Creators', () => {
 
       createFileMatchSummaryAnnotation(fileMatches);
 
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('Found 2 full file matches'),
-        { title: 'Full File Matches Summary' }
-      );
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('component1 v1.0.0'),
-        { title: 'Full File Matches Summary' }
-      );
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('component2 v2.0.0'),
-        { title: 'Full File Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('Found 2 full file matches'), {
+        title: 'Full File Matches Summary'
+      });
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('component1 v1.0.0'), {
+        title: 'Full File Matches Summary'
+      });
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('component2 v2.0.0'), {
+        title: 'Full File Matches Summary'
+      });
     });
 
     it('should handle match without version', () => {
@@ -366,14 +353,12 @@ describe('Annotation Creators', () => {
 
       createFileMatchSummaryAnnotation(fileMatches);
 
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('test-component\n'),
-        { title: 'Full File Matches Summary' }
-      );
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.not.stringContaining(' v'),
-        { title: 'Full File Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('test-component\n'), {
+        title: 'Full File Matches Summary'
+      });
+      expect(mockNotice).toHaveBeenCalledWith(expect.not.stringContaining(' v'), {
+        title: 'Full File Matches Summary'
+      });
     });
 
     it('should limit to 10 files and show overflow message', () => {
@@ -391,10 +376,9 @@ describe('Annotation Creators', () => {
 
       createFileMatchSummaryAnnotation(fileMatches);
 
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.stringContaining('... and 5 more files'),
-        { title: 'Full File Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('... and 5 more files'), {
+        title: 'Full File Matches Summary'
+      });
     });
 
     it('should include commit URL', () => {
@@ -441,10 +425,9 @@ describe('Annotation Creators', () => {
         expect.stringContaining('https://github.com/test-owner/test-repo/blob/abc123/src/test.ts)'),
         { title: 'Full File Matches Summary' }
       );
-      expect(mockNotice).toHaveBeenCalledWith(
-        expect.not.stringContaining('#L'),
-        { title: 'Full File Matches Summary' }
-      );
+      expect(mockNotice).toHaveBeenCalledWith(expect.not.stringContaining('#L'), {
+        title: 'Full File Matches Summary'
+      });
     });
   });
 });
