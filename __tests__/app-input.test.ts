@@ -211,7 +211,9 @@ describe('Scan Path Validation', () => {
       mockGetInput.mockReturnValue('../../../../etc/passwd');
       const { SCAN_PATH } = require('../src/app.input');
       expect(SCAN_PATH).toBe('.');
-      expect(mockWarning).toHaveBeenCalledWith('Invalid scan path detected: "../../../../etc/passwd". Using default: .');
+      expect(mockWarning).toHaveBeenCalledWith(
+        'Invalid scan path detected: "../../../../etc/passwd". Using default: .'
+      );
     });
 
     it('should prevent directory traversal attempt 2', () => {
