@@ -64,6 +64,39 @@ function validateFilename(filename: string | undefined): string {
 }
 
 /**
+ * Validates a scan path to prevent directory traversal and ensure safe operations.
+ * @param scanPath - The scan path to validate
+ * @returns A safe scan path or defaults to current directory
+ */
+function validateScanPath(scanPath: string | undefined): string {
+  if (!scanPath) {
+    return '.';
+  }
+
+  // Normalize and convert to forward slashes for consistency
+  const normalizedPath = path.normalize(scanPath).replace(/\\/g, '/');
+
+  // Reject absolute paths (Unix-style and Windows-style)
+  // Windows paths: C:/, D:/, etc. (drive letter followed by colon)
+  const windowsAbsolutePattern = /^[a-zA-Z]:/;
+  if (path.isAbsolute(scanPath) || windowsAbsolutePattern.test(normalizedPath)) {
+    core.warning(`Absolute scan paths not allowed: ${scanPath}. Using default: .`);
+    return '.';
+  }
+
+  // Reject directory traversal attempts
+  if (normalizedPath.includes('..')) {
+    core.warning(`Invalid scan path detected: "${scanPath}". Using default: .`);
+    return '.';
+  }
+
+  // Remove leading './' for consistency
+  const cleaned = normalizedPath.startsWith('./') ? normalizedPath.slice(2) : normalizedPath;
+
+  return cleaned || '.';
+}
+
+/**
  * Input configuration constants for the SCANOSS GitHub Action.
  * All values are loaded from GitHub Actions input parameters or environment variables.
  */
@@ -110,7 +143,7 @@ export const COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explic
 
 // Runtime Configuration
 /** Docker container image for scanoss-py execution */
-export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.37.1';
+export const RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.41.0';
 /** Skip snippet generation during scan */
 export const SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 /** Enable match annotations and commit comments */
@@ -123,6 +156,8 @@ export const SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
 export const SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
 /** Set scan mode (delta or full) */
 export const SCAN_MODE = core.getInput('scanMode') || 'full';
+/** Set scan root */
+export const SCAN_PATH = validateScanPath(core.getInput('scanPath'));
 /** Docker executable command */
 export const EXECUTABLE = 'docker';
 /** Enable debug mode */

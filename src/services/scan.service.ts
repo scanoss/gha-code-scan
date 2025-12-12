@@ -28,13 +28,15 @@ import { ScannerResults } from './result.interfaces';
 import fs from 'fs';
 import * as core from '@actions/core';
 import * as path from 'path';
+import { resolveSettingsPath } from '../utils/path.utils';
 import {
   EXECUTABLE,
   OUTPUT_FILEPATH,
   SCAN_FILES,
   SCANOSS_SETTINGS,
   SETTINGS_FILE_PATH,
-  SKIP_SNIPPETS
+  SKIP_SNIPPETS,
+  SCAN_PATH
 } from '../app.input';
 import { deltaService, DeltaResult } from './delta.service';
 
@@ -323,7 +325,7 @@ export class ScanService {
    */
   private async buildArgs(): Promise<string[]> {
     // Determine scan path: use delta directory if in delta mode, otherwise scan current directory
-    const scanPath = this.deltaResult ? `./${this.deltaResult.deltaDir}` : '.';
+    const scanPath = this.deltaResult ? `./${this.deltaResult.deltaDir}` : SCAN_PATH;
 
     core.debug(`Building scan args with scan path: ${scanPath}`);
 
@@ -380,7 +382,9 @@ export class ScanService {
     if (this.options.scanossSettings) {
       // Validate settings file path before accessing
       const hostPath = this.options.settingsFilePath;
-      const rel = path.isAbsolute(hostPath) ? path.relative(this.options.inputFilepath, hostPath) : hostPath;
+
+      // Resolve settings file path using utility function
+      const { fullPath: abs, githubPath: rel } = resolveSettingsPath(hostPath, SCAN_PATH, this.options.inputFilepath);
 
       if (rel.startsWith('..')) {
         core.error('Settings file must reside under the scan input path');
@@ -388,8 +392,6 @@ export class ScanService {
       }
 
       try {
-        // Resolve to absolute path for file existence check
-        const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, hostPath);
         await fs.promises.access(abs, fs.constants.F_OK);
         // Always pass a container-visible path under /scanoss
         const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;

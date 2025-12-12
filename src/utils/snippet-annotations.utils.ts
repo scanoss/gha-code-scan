@@ -31,6 +31,8 @@ import {
   createFileCommitComment,
   createMainConversationComment
 } from './github-comment-api';
+import { resolveScanPath } from './path.utils';
+import { SCAN_PATH } from '../app.input';
 
 /**
  * Creates hybrid snippet annotations: summary annotations + commit comments
@@ -48,9 +50,12 @@ export async function createSnippetAnnotations(resultsPath: string): Promise<voi
     const snippetMatches: SnippetMatchWithPath[] = [];
     const fileMatches: FileMatchWithPath[] = [];
 
-    // Collect all matches
-    for (const [filePath, matches] of Object.entries(results)) {
+    // Collect all matches and resolve paths from scan-relative to repo-relative
+    for (const [scanRelativePath, matches] of Object.entries(results)) {
       if (!Array.isArray(matches)) continue;
+
+      // Resolve scan-relative path to repo-relative path for GitHub URLs
+      const filePath = resolveScanPath(scanRelativePath, SCAN_PATH);
 
       for (const match of matches) {
         if (match.status === 'pending') {

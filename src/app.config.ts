@@ -26,3 +26,19 @@
  */
 export const CHECK_NAME = 'Policy Check';
 export const STATUS_NAME = 'Status Check';
+
+/**
+ * Formats a check name with scan path context for GitHub status checks.
+ * Appends the scan path to help identify which folder was scanned when running multiple parallel scans.
+ *
+ * @param baseName - The base check name (e.g., "Policy Check: Undeclared")
+ * @param scanPath - The scan subdirectory path (e.g., 'src/folder1' or '.')
+ * @returns Formatted check name like "Policy Check: Undeclared - src/folder1" or just the base name for root
+ *
+ * @example
+ * formatCheckName('Policy Check: Copyleft', '.') // Returns 'Policy Check: Copyleft'
+ * formatCheckName('Policy Check: Copyleft', 'src') // Returns 'Policy Check: Copyleft - src'
+ */
+export function formatCheckName(baseName: string, scanPath: string): string {
+  return scanPath && scanPath !== '.' ? `${baseName} - ${scanPath}` : baseName;
+}

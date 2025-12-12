@@ -125173,11 +125173,27 @@ ZipStream.prototype.finalize = function() {
  */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.STATUS_NAME = exports.CHECK_NAME = void 0;
+exports.formatCheckName = formatCheckName;
 /**
  * Configuration constants for the SCANOSS action.
  */
 exports.CHECK_NAME = 'Policy Check';
 exports.STATUS_NAME = 'Status Check';
+/**
+ * Formats a check name with scan path context for GitHub status checks.
+ * Appends the scan path to help identify which folder was scanned when running multiple parallel scans.
+ *
+ * @param baseName - The base check name (e.g., "Policy Check: Undeclared")
+ * @param scanPath - The scan subdirectory path (e.g., 'src/folder1' or '.')
+ * @returns Formatted check name like "Policy Check: Undeclared - src/folder1" or just the base name for root
+ *
+ * @example
+ * formatCheckName('Policy Check: Copyleft', '.') // Returns 'Policy Check: Copyleft'
+ * formatCheckName('Policy Check: Copyleft', 'src') // Returns 'Policy Check: Copyleft - src'
+ */
+function formatCheckName(baseName, scanPath) {
+    return scanPath && scanPath !== '.' ? `${baseName} - ${scanPath}` : baseName;
+}
 
 
 /***/ }),
@@ -125243,7 +125259,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SCAN_MODE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.MATCH_ANNOTATIONS = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.REPO_DIR = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.HALT_ON_ERROR = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
+exports.setDependencyTrackProjectId = exports.setDependencyTrackUploadToken = exports.DEPENDENCY_TRACK_UPLOAD_TOKEN = exports.DEPENDENCY_TRACK_PROJECT_VERSION = exports.DEPENDENCY_TRACK_PROJECT_NAME = exports.DEPENDENCY_TRACK_PROJECT_ID = exports.DEPENDENCY_TRACK_API_KEY = exports.DEPENDENCY_TRACK_URL = exports.DEPENDENCY_TRACK_ENABLED = exports.DEBUG = exports.EXECUTABLE = exports.SCAN_PATH = exports.SCAN_MODE = exports.SETTINGS_FILE_PATH = exports.SCANOSS_SETTINGS = exports.SCAN_FILES = exports.MATCH_ANNOTATIONS = exports.SKIP_SNIPPETS = exports.RUNTIME_CONTAINER = exports.COPYLEFT_LICENSE_EXPLICIT = exports.COPYLEFT_LICENSE_EXCLUDE = exports.COPYLEFT_LICENSE_INCLUDE = exports.REPO_DIR = exports.GITHUB_TOKEN = exports.OUTPUT_FILEPATH = exports.API_URL = exports.API_KEY = exports.DEPENDENCY_SCOPE_INCLUDE = exports.DEPENDENCY_SCOPE_EXCLUDE = exports.DEPENDENCIES_SCOPE = exports.DEPENDENCIES_ENABLED = exports.HALT_ON_ERROR = exports.POLICIES_HALT_ON_FAILURE = exports.POLICIES = void 0;
 const core = __importStar(__nccwpck_require__(37484));
 const path = __importStar(__nccwpck_require__(16928));
 const url_utils_1 = __nccwpck_require__(44671);
@@ -125277,6 +125293,33 @@ function validateFilename(filename) {
         return `${basename}.json`;
     }
     return basename;
+}
+/**
+ * Validates a scan path to prevent directory traversal and ensure safe operations.
+ * @param scanPath - The scan path to validate
+ * @returns A safe scan path or defaults to current directory
+ */
+function validateScanPath(scanPath) {
+    if (!scanPath) {
+        return '.';
+    }
+    // Normalize and convert to forward slashes for consistency
+    const normalizedPath = path.normalize(scanPath).replace(/\\/g, '/');
+    // Reject absolute paths (Unix-style and Windows-style)
+    // Windows paths: C:/, D:/, etc. (drive letter followed by colon)
+    const windowsAbsolutePattern = /^[a-zA-Z]:/;
+    if (path.isAbsolute(scanPath) || windowsAbsolutePattern.test(normalizedPath)) {
+        core.warning(`Absolute scan paths not allowed: ${scanPath}. Using default: .`);
+        return '.';
+    }
+    // Reject directory traversal attempts
+    if (normalizedPath.includes('..')) {
+        core.warning(`Invalid scan path detected: "${scanPath}". Using default: .`);
+        return '.';
+    }
+    // Remove leading './' for consistency
+    const cleaned = normalizedPath.startsWith('./') ? normalizedPath.slice(2) : normalizedPath;
+    return cleaned || '.';
 }
 /**
  * Input configuration constants for the SCANOSS GitHub Action.
@@ -125319,7 +125362,7 @@ exports.COPYLEFT_LICENSE_EXCLUDE = core.getInput('licenses.copyleft.exclude');
 exports.COPYLEFT_LICENSE_EXPLICIT = core.getInput('licenses.copyleft.explicit');
 // Runtime Configuration
 /** Docker container image for scanoss-py execution */
-exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.37.1';
+exports.RUNTIME_CONTAINER = core.getInput('runtimeContainer') || 'ghcr.io/scanoss/scanoss-py:v1.41.0';
 /** Skip snippet generation during scan */
 exports.SKIP_SNIPPETS = core.getInput('skipSnippets') === 'true';
 /** Enable match annotations and commit comments */
@@ -125332,6 +125375,8 @@ exports.SCANOSS_SETTINGS = core.getInput('scanossSettings') === 'true';
 exports.SETTINGS_FILE_PATH = core.getInput('settingsFilepath') || 'scanoss.json';
 /** Set scan mode (delta or full) */
 exports.SCAN_MODE = core.getInput('scanMode') || 'full';
+/** Set scan root */
+exports.SCAN_PATH = validateScanPath(core.getInput('scanPath'));
 /** Docker executable command */
 exports.EXECUTABLE = 'docker';
 /** Enable debug mode */
@@ -126071,6 +126116,7 @@ const app_input_1 = __nccwpck_require__(37162);
 const exec = __importStar(__nccwpck_require__(95236));
 const copyleft_argument_builder_1 = __nccwpck_require__(96548);
 const github_service_1 = __nccwpck_require__(40304);
+const path_utils_1 = __nccwpck_require__(53141);
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
  * It filters components based on their licenses and looks for those with copyleft obligations.
@@ -126080,7 +126126,7 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
     static policyName = 'Copyleft';
     argumentBuilder;
     constructor(argumentBuilder = new copyleft_argument_builder_1.CopyLeftArgumentBuilder()) {
-        super(`${app_config_1.CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`);
+        super((0, app_config_1.formatCheckName)(`${app_config_1.CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`, app_input_1.SCAN_PATH));
         this.argumentBuilder = argumentBuilder;
     }
     /**
@@ -126099,14 +126145,14 @@ class CopyleftPolicyCheck extends policy_check_1.PolicyCheck {
         let details = stderr;
         // Happy path. All goodness
         if (exitCode === 0) {
-            await this.success('### :white_check_mark: Policy Pass \n #### No copyleft licenses were found', undefined);
+            await this.success(`### :white_check_mark: Policy Pass${(0, path_utils_1.getScanPathSuffix)(app_input_1.SCAN_PATH)} \n #### No copyleft licenses were found`, undefined);
             return;
         }
         else if (exitCode === 1) {
             // Technical error occurred
             core.warning('Copyleft policy check encountered an error');
             core.debug(`Copyleft policy check stderr: ${stderr}`);
-            const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete copyleft license check';
+            const errorSummary = `### :warning: Policy Check Error${(0, path_utils_1.getScanPathSuffix)(app_input_1.SCAN_PATH)} \n #### Unable to complete copyleft license check`;
             const errorDetails = 'Error details: Check debug logs for more information';
             await this.technicalError(errorSummary, errorDetails);
             return;
@@ -126212,6 +126258,7 @@ const exec = __importStar(__nccwpck_require__(95236));
 const dep_track_argument_builder_1 = __nccwpck_require__(69124);
 const github_service_1 = __nccwpck_require__(40304);
 const inputs = __importStar(__nccwpck_require__(37162));
+const path_utils_1 = __nccwpck_require__(53141);
 /**
  * This class performs policy checks using Dependency Track integration.
  * It uploads SBOM (Software Bill of Materials) data to a Dependency Track server
@@ -126224,7 +126271,7 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
     argumentBuilder;
     uploadAttempted = false;
     constructor(argumentBuilder = new dep_track_argument_builder_1.DependencyTrackArgumentBuilder()) {
-        super(`${app_config_1.CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`);
+        super((0, app_config_1.formatCheckName)(`${app_config_1.CHECK_NAME}: ${DepTrackPolicyCheck.policyName}`, inputs.SCAN_PATH));
         this.argumentBuilder = argumentBuilder;
     }
     /**
@@ -126401,7 +126448,7 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
             let summary = stdout;
             let details = stderr;
             if (exitCode === 0) {
-                let successMessage = '### :white_check_mark: Policy Pass \n #### No policy violations were found';
+                let successMessage = `### :white_check_mark: Policy Pass${(0, path_utils_1.getScanPathSuffix)(inputs.SCAN_PATH)} \n #### No policy violations were found`;
                 if (!this.uploadAttempted) {
                     core.warning('No policy violations found, but SBOM upload to Dependency Track was not attempted - may have missed new issues');
                     successMessage +=
@@ -126421,7 +126468,7 @@ class DepTrackPolicyCheck extends policy_check_1.PolicyCheck {
                     errorDetails = details;
                 }
                 core.warning(`Dependency Track policy check encountered an error: ${errorMessage}`);
-                const errorSummary = `### :warning: Policy Check Error \n #### ${errorMessage}`;
+                const errorSummary = `### :warning: Policy Check Error${(0, path_utils_1.getScanPathSuffix)(inputs.SCAN_PATH)} \n #### ${errorMessage}`;
                 await this.technicalError(errorSummary, errorDetails);
                 return;
             }
@@ -126925,6 +126972,7 @@ const github_service_1 = __nccwpck_require__(40304);
 const github_1 = __nccwpck_require__(93228);
 const github_utils_1 = __nccwpck_require__(12205);
 const fs = __importStar(__nccwpck_require__(79896));
+const path_utils_1 = __nccwpck_require__(53141);
 /**
  * Verifies that all components identified in scanner results are declared in the project's SBOM.
  * The run method compares components found by the scanner against those declared in the SBOM.
@@ -126936,7 +126984,7 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
     static policyName = 'Undeclared';
     argumentBuilder;
     constructor(argumentBuilder = new undeclared_argument_builder_1.UndeclaredArgumentBuilder()) {
-        super(`${app_config_1.CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`);
+        super((0, app_config_1.formatCheckName)(`${app_config_1.CHECK_NAME}: ${UndeclaredPolicyCheck.policyName}`, app_input_1.SCAN_PATH));
         this.argumentBuilder = argumentBuilder;
     }
     /**
@@ -126958,14 +127006,14 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             core.warning('Undeclared policy is being used with SCANOSS settings disabled');
         }
         if (exitCode === 0) {
-            await this.success('### :white_check_mark: Policy Pass \n #### No undeclared components were found', undefined);
+            await this.success(`### :white_check_mark: Policy Pass${(0, path_utils_1.getScanPathSuffix)(app_input_1.SCAN_PATH)} \n #### No undeclared components were found`, undefined);
             return;
         }
         if (exitCode === 1) {
             // Technical error occurred
             core.warning('Undeclared policy check encountered an error');
             core.debug(`Undeclared policy check stderr: ${stderr}`);
-            const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete undeclared component check';
+            const errorSummary = `### :warning: Policy Check Error${(0, path_utils_1.getScanPathSuffix)(app_input_1.SCAN_PATH)} \n #### Unable to complete undeclared component check`;
             const errorDetails = 'Error details: Check debug logs for more information';
             await this.technicalError(errorSummary, errorDetails);
             return;
@@ -126989,11 +127037,15 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
                 branchName = pull.head.ref;
             }
         }
-        if (fs.existsSync(app_input_1.SETTINGS_FILE_PATH)) {
+        // Resolve settings file path using utility function
+        const { fullPath: fullSettingsPath, githubPath: githubSettingsPath } = (0, path_utils_1.resolveSettingsPath)(app_input_1.SETTINGS_FILE_PATH, app_input_1.SCAN_PATH, app_input_1.REPO_DIR);
+        if (fs.existsSync(fullSettingsPath)) {
             const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
-            const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${app_input_1.SETTINGS_FILE_PATH}`;
+            // Encode each path segment to handle spaces/special chars while preserving directory structure
+            const encodedPath = githubSettingsPath.split('/').map(encodeURIComponent).join('/');
+            const settingsFileUrl = `https://github.com/${owner}/${repo}/edit/${branchName}/${encodedPath}`;
             // Try to replace the existing JSON with merged version
-            const mergedJson = mergeWithExistingScanossJson(details);
+            const mergedJson = mergeWithExistingScanossJson(details, fullSettingsPath);
             if (mergedJson) {
                 // Replace the complete JSON block with merged version
                 const originalJson = extractJsonFromPolicyDetails(details);
@@ -127003,7 +127055,7 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
                     details = details.replace(fullBlock, newBlock);
                 }
             }
-            details += `[Edit ${app_input_1.SETTINGS_FILE_PATH} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
+            details += `[Edit ${githubSettingsPath} file](${settingsFileUrl}) and replace with the JSON snippet provided above to declare these components and resolve policy violations.`;
         }
         else {
             // Build JSON content from the details output that already contains the structure
@@ -127011,13 +127063,13 @@ class UndeclaredPolicyCheck extends policy_check_1.PolicyCheck {
             if (jsonContent) {
                 const encodedJson = encodeURIComponent(jsonContent);
                 const { owner, repo } = (0, github_utils_1.resolveRepoAndSha)();
-                const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${app_input_1.SETTINGS_FILE_PATH}&value=${encodedJson}`;
-                details += `${app_input_1.SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.\n\n`;
-                details += `[Create ${app_input_1.SETTINGS_FILE_PATH} file](${createFileUrl})`;
+                const createFileUrl = `https://github.com/${owner}/${repo}/new/${branchName}?filename=${encodeURIComponent(githubSettingsPath)}&value=${encodedJson}`;
+                details += `${githubSettingsPath} doesn't exist. Create it in your repository with the JSON snippet provided above to resolve policy violations.\n\n`;
+                details += `[Create ${githubSettingsPath} file](${createFileUrl})`;
             }
             else {
                 core.warning('Could not extract JSON content for file creation link, but continuing with policy failure');
-                details += `${app_input_1.SETTINGS_FILE_PATH} doesn't exist. Create it in your repository root with the JSON snippet provided above to resolve policy violations.`;
+                details += `${githubSettingsPath} doesn't exist. Create it in your repository with the JSON snippet provided above to resolve policy violations.`;
             }
         }
         const { id } = await this.uploadArtifact(details);
@@ -127077,7 +127129,7 @@ function extractJsonFromPolicyDetails(details) {
 /**
  * Merges new undeclared components with existing scanoss.json file
  */
-function mergeWithExistingScanossJson(policyDetails) {
+function mergeWithExistingScanossJson(policyDetails, settingsFilePath) {
     try {
         // Extract new components from policy details
         const jsonContent = extractJsonFromPolicyDetails(policyDetails);
@@ -127091,8 +127143,8 @@ function mergeWithExistingScanossJson(policyDetails) {
             core.warning('No new components found to add');
             return null;
         }
-        // Read existing settings file
-        const existingContent = fs.readFileSync(app_input_1.SETTINGS_FILE_PATH, 'utf8');
+        // Read existing settings file using the full path
+        const existingContent = fs.readFileSync(settingsFilePath, 'utf8');
         const existingConfig = JSON.parse(existingContent);
         // Ensure bom section exists
         if (!existingConfig.bom) {
@@ -127109,12 +127161,12 @@ function mergeWithExistingScanossJson(policyDetails) {
         }
         // Add all new components (no duplicate checking needed)
         existingConfig.bom.include.push(...newComponents);
-        core.info(`Added ${newComponents.length} new components to existing ${app_input_1.SETTINGS_FILE_PATH} structure`);
+        core.info(`Added ${newComponents.length} new components to existing settings file structure`);
         // Return formatted JSON
         return JSON.stringify(existingConfig, null, 2);
     }
     catch (error) {
-        core.warning(`Failed to merge with existing ${app_input_1.SETTINGS_FILE_PATH}: ${error}`);
+        core.warning(`Failed to merge with existing settings file: ${error}`);
         return null;
     }
 }
@@ -127611,7 +127663,7 @@ const app_config_1 = __nccwpck_require__(30454);
  * Service for reporting Dependency Track upload status as a GitHub check
  */
 class DependencyTrackStatusService {
-    checkName = `${app_config_1.STATUS_NAME}: Dependency Track Upload`;
+    checkName = (0, app_config_1.formatCheckName)(`${app_config_1.STATUS_NAME}: Dependency Track Upload`, inputs.SCAN_PATH);
     /**
      * Reports the Dependency Track upload status as a GitHub check run
      * Returns the created check run ID for linking purposes
@@ -128283,6 +128335,7 @@ const github_service_1 = __nccwpck_require__(40304);
 const license_service_1 = __nccwpck_require__(52046);
 const component_service_1 = __nccwpck_require__(85530);
 const inputs = __importStar(__nccwpck_require__(37162));
+const path_utils_1 = __nccwpck_require__(53141);
 /**
  * Generates a summary report for pull request comments.
  * Includes policy check results, component counts, and license statistics.
@@ -128300,7 +128353,7 @@ async function generatePRSummary(policies) {
         success: polCount.success ? `:white_check_mark: ${polCount.success} pass` : '',
         fail: polCount.fail ? `:x: ${polCount.fail} fail` : ''
     };
-    return `### SCANOSS SCAN Completed :rocket:
+    return `### SCANOSS SCAN Completed :rocket:${(0, path_utils_1.getScanPathSuffix)(inputs.SCAN_PATH)}
 - **Detected components:** ${componentSummary.totalComponents}
 - **Undeclared components:** ${componentSummary.undeclaredComponents}
 - **Declared components:** ${componentSummary.declaredComponents}
@@ -128409,8 +128462,12 @@ async function generateJobSummary(policies, uploadResult) {
     if ((0, github_service_1.isOverMaxCharacterLimitAPI)(licenseTable)) {
         licenseTable = 'License table too large to display, omitted from GitHub UI due to length';
     }
+    // Add scan path context if scanning a subfolder
+    const scanPathHeading = inputs.SCAN_PATH && inputs.SCAN_PATH !== '.'
+        ? `Scan Report Section (Scanned: \`${inputs.SCAN_PATH}\`)`
+        : 'Scan Report Section';
     const summary = core.summary
-        .addHeading('Scan Report Section', 2)
+        .addHeading(scanPathHeading, 2)
         .addHeading('Licenses', 3)
         .addCodeBlock(LicensesPie(licenseSummary.licenses), 'mermaid')
         .addRaw(licenseTable)
@@ -128509,6 +128566,7 @@ const inputs = __importStar(__nccwpck_require__(37162));
 const fs_1 = __importDefault(__nccwpck_require__(79896));
 const core = __importStar(__nccwpck_require__(37484));
 const path = __importStar(__nccwpck_require__(16928));
+const path_utils_1 = __nccwpck_require__(53141);
 const app_input_1 = __nccwpck_require__(37162);
 const delta_service_1 = __nccwpck_require__(99491);
 const artifact = new artifact_1.DefaultArtifactClient();
@@ -128713,7 +128771,7 @@ class ScanService {
      */
     async buildArgs() {
         // Determine scan path: use delta directory if in delta mode, otherwise scan current directory
-        const scanPath = this.deltaResult ? `./${this.deltaResult.deltaDir}` : '.';
+        const scanPath = this.deltaResult ? `./${this.deltaResult.deltaDir}` : app_input_1.SCAN_PATH;
         core.debug(`Building scan args with scan path: ${scanPath}`);
         return [
             'run',
@@ -128766,14 +128824,13 @@ class ScanService {
         if (this.options.scanossSettings) {
             // Validate settings file path before accessing
             const hostPath = this.options.settingsFilePath;
-            const rel = path.isAbsolute(hostPath) ? path.relative(this.options.inputFilepath, hostPath) : hostPath;
+            // Resolve settings file path using utility function
+            const { fullPath: abs, githubPath: rel } = (0, path_utils_1.resolveSettingsPath)(hostPath, app_input_1.SCAN_PATH, this.options.inputFilepath);
             if (rel.startsWith('..')) {
                 core.error('Settings file must reside under the scan input path');
                 throw new Error('Settings file must reside under the scan input path');
             }
             try {
-                // Resolve to absolute path for file existence check
-                const abs = path.isAbsolute(hostPath) ? hostPath : path.join(this.options.inputFilepath, hostPath);
                 await fs_1.default.promises.access(abs, fs_1.default.constants.F_OK);
                 // Always pass a container-visible path under /scanoss
                 const containerPath = `/scanoss/${rel.replace(/\\/g, '/')}`;
@@ -129008,6 +129065,8 @@ exports.createFileMatchSummaryAnnotation = createFileMatchSummaryAnnotation;
 const core = __importStar(__nccwpck_require__(37484));
 const github_utils_1 = __nccwpck_require__(12205);
 const line_parsers_1 = __nccwpck_require__(63666);
+const path_utils_1 = __nccwpck_require__(53141);
+const app_input_1 = __nccwpck_require__(37162);
 /**
  * Creates a GitHub URL for the file
  * @param filePath - The file path relative to repository root
@@ -129054,8 +129113,12 @@ function createSnippetSummaryAnnotation(snippetMatches) {
     for (const [filePath, matches] of fileEntries) {
         const firstMatch = matches[0];
         const localLines = (0, line_parsers_1.parseLineRange)(firstMatch.lines);
-        const fileUrl = localLines ? getFileUrlWithLineHighlight(filePath, localLines) : getFileUrl(filePath);
-        message += `- [${filePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
+        // Resolve scan-relative path to repo-relative path for GitHub URLs
+        const repoRelativePath = (0, path_utils_1.resolveScanPath)(filePath, app_input_1.SCAN_PATH);
+        const fileUrl = localLines
+            ? getFileUrlWithLineHighlight(repoRelativePath, localLines)
+            : getFileUrl(repoRelativePath);
+        message += `- [${repoRelativePath}](${fileUrl}) (${matches.length} match${matches.length > 1 ? 'es' : ''})\n`;
     }
     if (Object.keys(fileGroups).length > 10) {
         message += `- ... and ${Object.keys(fileGroups).length - 10} more files\n`;
@@ -129078,9 +129141,11 @@ function createFileMatchSummaryAnnotation(fileMatches) {
     // Limit to avoid annotation length issues
     const limitedMatches = fileMatches.slice(0, 10);
     for (const { filePath, match } of limitedMatches) {
-        const fileUrl = getFileUrl(filePath);
+        // Resolve scan-relative path to repo-relative path for GitHub URLs
+        const repoRelativePath = (0, path_utils_1.resolveScanPath)(filePath, app_input_1.SCAN_PATH);
+        const fileUrl = getFileUrl(repoRelativePath);
         const component = `${match.component}${match.version ? ` v${match.version}` : ''}`;
-        message += `- [${filePath}](${fileUrl}) → ${component}\n`;
+        message += `- [${repoRelativePath}](${fileUrl}) → ${component}\n`;
     }
     if (fileMatches.length > 10) {
         message += `- ... and ${fileMatches.length - 10} more files\n`;
@@ -129917,6 +129982,15 @@ function parseLineRange(lineRange) {
     if (lineRange === 'all') {
         return { start: 1, end: 1 };
     }
+    // Sanitize input first
+    const sanitized = sanitizeLineRange(lineRange);
+    // Try simple single number first (most common case)
+    if (/^\d+$/.test(sanitized)) {
+        const singleLine = parseInt(sanitized, 10);
+        if (!isNaN(singleLine)) {
+            return { start: singleLine, end: singleLine };
+        }
+    }
     // Handle complex ranges like "7-9,47-81,99-158" using regex to get first and last numbers
     const extracted = extractFirstAndLastNumbers(lineRange);
     if (extracted) {
@@ -129925,12 +129999,6 @@ function parseLineRange(lineRange) {
         if (!isNaN(start) && !isNaN(end)) {
             return { start, end };
         }
-    }
-    // Fallback for single number (sanitize first)
-    const sanitized = sanitizeLineRange(lineRange);
-    const singleLine = parseInt(sanitized, 10);
-    if (!isNaN(singleLine)) {
-        return { start: singleLine, end: singleLine };
     }
     return null;
 }
@@ -129994,6 +130062,103 @@ const generateTable = (headers, rows, centeredColumns) => {
   `;
 };
 exports.generateTable = generateTable;
+
+
+/***/ }),
+
+/***/ 53141:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.resolveSettingsPath = resolveSettingsPath;
+exports.resolveScanPath = resolveScanPath;
+exports.getScanPathSuffix = getScanPathSuffix;
+// SPDX-License-Identifier: MIT
+/*
+   Copyright (c) 2025, SCANOSS
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+ */
+const path_1 = __importDefault(__nccwpck_require__(16928));
+/**
+ * Resolves a settings file path to both its full filesystem path and GitHub-relative path.
+ * Handles both absolute and relative paths, accounting for scan subdirectories.
+ *
+ * @param settingsPath - The settings file path (can be absolute or relative)
+ * @param scanPath - The scan subdirectory path (e.g., 'subfolder/')
+ * @param repoDir - The repository root directory
+ * @returns An object containing the full filesystem path and GitHub-relative path
+ */
+function resolveSettingsPath(settingsPath, scanPath, repoDir) {
+    // Build full settings file path accounting for SCAN_PATH
+    const fullPath = path_1.default.isAbsolute(settingsPath) ? settingsPath : path_1.default.join(repoDir, scanPath, settingsPath);
+    // Build the relative path for GitHub URLs (relative to repo root)
+    // Normalize to forward slashes for cross-platform compatibility and GitHub URLs
+    const githubPath = path_1.default.isAbsolute(settingsPath)
+        ? path_1.default.relative(repoDir, settingsPath).replace(/\\/g, '/') // TODO Is this necessary?
+        : path_1.default.join(scanPath, settingsPath).replace(/\\/g, '/');
+    return { fullPath, githubPath };
+}
+/**
+ * Resolves a scan-relative file path to a repository-root-relative path.
+ * When scanning a subfolder, scan results contain paths relative to that subfolder.
+ * This function prepends the scan path to get the correct repository-relative path.
+ *
+ * @param scanRelativePath - Path relative to the scanned subfolder (e.g., 'file.c')
+ * @param scanPath - The scan subdirectory path (e.g., 'src/folder1' or '.')
+ * @returns Path relative to repository root (e.g., 'src/folder1/file.c' or 'file.c')
+ *
+ * @example
+ * // Scanning root directory
+ * resolveScanPath('file.c', '.') // Returns 'file.c'
+ *
+ * @example
+ * // Scanning subfolder
+ * resolveScanPath('file.c', 'src/folder1') // Returns 'src/folder1/file.c'
+ */
+function resolveScanPath(scanRelativePath, scanPath) {
+    // If scanning root ('.'), return path as-is
+    if (!scanPath || scanPath === '.') {
+        return scanRelativePath;
+    }
+    // Join scan path with the file path, normalize separators
+    return path_1.default.join(scanPath, scanRelativePath).replace(/\\/g, '/');
+}
+/**
+ * Returns a formatted scan path suffix for display in titles/headings.
+ * Used to make the scanned folder instantly visible in PR comments and status checks.
+ *
+ * @param scanPath - The scan subdirectory path (e.g., 'src/folder1' or '.')
+ * @returns Formatted suffix like " (📁 `src/folder1`)" or empty string for root
+ *
+ * @example
+ * getScanPathSuffix('.') // Returns ''
+ * getScanPathSuffix('src/folder1') // Returns ' (📁 `src/folder1`)'
+ */
+function getScanPathSuffix(scanPath) {
+    return scanPath && scanPath !== '.' ? ` (📁 \`${scanPath}\`)` : '';
+}
 
 
 /***/ }),
@@ -130065,6 +130230,8 @@ const fs = __importStar(__nccwpck_require__(79896));
 const github_1 = __nccwpck_require__(93228);
 const annotation_creators_1 = __nccwpck_require__(77640);
 const github_comment_api_1 = __nccwpck_require__(18271);
+const path_utils_1 = __nccwpck_require__(53141);
+const app_input_1 = __nccwpck_require__(37162);
 /**
  * Creates hybrid snippet annotations: summary annotations + commit comments
  */
@@ -130078,10 +130245,12 @@ async function createSnippetAnnotations(resultsPath) {
         const results = JSON.parse(resultsContent);
         const snippetMatches = [];
         const fileMatches = [];
-        // Collect all matches
-        for (const [filePath, matches] of Object.entries(results)) {
+        // Collect all matches and resolve paths from scan-relative to repo-relative
+        for (const [scanRelativePath, matches] of Object.entries(results)) {
             if (!Array.isArray(matches))
                 continue;
+            // Resolve scan-relative path to repo-relative path for GitHub URLs
+            const filePath = (0, path_utils_1.resolveScanPath)(scanRelativePath, app_input_1.SCAN_PATH);
             for (const match of matches) {
                 if (match.status === 'pending') {
                     if (match.id === 'snippet') {

@@ -22,13 +22,14 @@
  */
 
 import * as core from '@actions/core';
-import { CHECK_NAME } from '../app.config';
+import { CHECK_NAME, formatCheckName } from '../app.config';
 import { PolicyCheck } from './policy-check';
-import { EXECUTABLE } from '../app.input';
+import { EXECUTABLE, SCAN_PATH } from '../app.input';
 import * as exec from '@actions/exec';
 import { CopyLeftArgumentBuilder } from './argument_builders/licenses/copyleft-argument-builder';
 import { ArgumentBuilder } from './argument_builders/argument-builder';
 import { isOverMaxCharacterLimitAPI } from '../services/github.service';
+import { getScanPathSuffix } from '../utils/path.utils';
 
 /**
  * This class checks if any of the components identified in the scanner results are subject to copyleft licenses.
@@ -40,7 +41,7 @@ export class CopyleftPolicyCheck extends PolicyCheck {
   private argumentBuilder: ArgumentBuilder;
 
   constructor(argumentBuilder: CopyLeftArgumentBuilder = new CopyLeftArgumentBuilder()) {
-    super(`${CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`);
+    super(formatCheckName(`${CHECK_NAME}: ${CopyleftPolicyCheck.policyName}`, SCAN_PATH));
     this.argumentBuilder = argumentBuilder;
   }
 
@@ -61,13 +62,16 @@ export class CopyleftPolicyCheck extends PolicyCheck {
     let details = stderr;
     // Happy path. All goodness
     if (exitCode === 0) {
-      await this.success('### :white_check_mark: Policy Pass \n #### No copyleft licenses were found', undefined);
+      await this.success(
+        `### :white_check_mark: Policy Pass${getScanPathSuffix(SCAN_PATH)} \n #### No copyleft licenses were found`,
+        undefined
+      );
       return;
     } else if (exitCode === 1) {
       // Technical error occurred
       core.warning('Copyleft policy check encountered an error');
       core.debug(`Copyleft policy check stderr: ${stderr}`);
-      const errorSummary = '### :warning: Policy Check Error \n #### Unable to complete copyleft license check';
+      const errorSummary = `### :warning: Policy Check Error${getScanPathSuffix(SCAN_PATH)} \n #### Unable to complete copyleft license check`;
       const errorDetails = 'Error details: Check debug logs for more information';
       await this.technicalError(errorSummary, errorDetails);
       return;

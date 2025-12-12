@@ -25,7 +25,7 @@ import * as core from '@actions/core';
 import { context, getOctokit } from '@actions/github';
 import { getSHA } from '../utils/github.utils';
 import * as inputs from '../app.input';
-import { STATUS_NAME } from '../app.config';
+import { STATUS_NAME, formatCheckName } from '../app.config';
 
 export interface DependencyTrackUploadResult {
   success: boolean;
@@ -45,7 +45,7 @@ export interface DependencyTrackUploadResult {
  * Service for reporting Dependency Track upload status as a GitHub check
  */
 export class DependencyTrackStatusService {
-  private readonly checkName = `${STATUS_NAME}: Dependency Track Upload`;
+  private readonly checkName = formatCheckName(`${STATUS_NAME}: Dependency Track Upload`, inputs.SCAN_PATH);
 
   /**
    * Reports the Dependency Track upload status as a GitHub check run
