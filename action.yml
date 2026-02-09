@@ -59,7 +59,7 @@ inputs:
     required: false
   runtimeContainer:
     description: 'Specify runtime container to perform the scan.'
-    default: 'ghcr.io/scanoss/scanoss-py:v1.41.0'
+    default: 'ghcr.io/scanoss/scanoss-py:v1.45.0'
     required: false
   skipSnippets:
     description: 'Skip the generation of snippets.'
