@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [1.6.0] - 2026-03-05
+### Changed
+- Replaced `vercel/ncc` by `esbuild` to support ESM modules
+
 ### Fixed
 - Fixed corrupted artifact files
 
