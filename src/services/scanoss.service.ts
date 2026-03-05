@@ -87,7 +87,8 @@ export class ScanOssService {
         await fs.promises.access(filename, fs.constants.F_OK);
         await uploadToArtifacts(filename);
         core.info(`Successfully converted results into ${format} format`);
-      } catch (fileError) {
+      } catch (fileError: any) {
+        core.debug(fileError.message);
         // File doesn't exist - this can happen with empty repos
         core.info(`${format} conversion completed but no file generated (likely empty repository)`);
       }

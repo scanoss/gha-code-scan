@@ -10,9 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.6.0] - 2026-03-05
 ### Changed
 - Replaced `vercel/ncc` by `esbuild` to support ESM modules
+- Migrated ESLint 8 to ESLint 9 with flat config (`eslint.config.mjs`)
+- Upgraded `@typescript-eslint` from v6 to v8 for TypeScript 5.9 compatibility
+- Upgraded `eslint-plugin-github` from v4 to v5 and `eslint-plugin-jest` from v27 to v28
+- Removed redundant `linter.yml` workflow (linting already covered by `ci.yml`)
+- Upgraded `scanoss.py` runtime container to v1.46.0
 
 ### Fixed
 - Fixed corrupted artifact files
+- Fixed `@actions/artifact` ESM module resolution in Jest tests
 
 ## [1.5.0] - 2026-02-09
 ### Added
@@ -183,4 +189,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.3.1]: https://github.com/scanoss/gha-code-scan/compare/v1.3.0...v1.3.1
 [1.4.0]: https://github.com/scanoss/gha-code-scan/compare/v1.3.1...v1.4.0
 [1.5.0]: https://github.com/scanoss/gha-code-scan/compare/v1.4.0...v1.5.0
-[1.5.0]: https://github.com/scanoss/gha-code-scan/compare/v1.5.0...v1.6.0
+[1.6.0]: https://github.com/scanoss/gha-code-scan/compare/v1.5.0...v1.6.0
