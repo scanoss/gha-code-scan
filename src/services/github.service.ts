@@ -39,5 +39,6 @@ export function isOverMaxCharacterLimitAPI(content: string): boolean {
  */
 export async function uploadToArtifacts(artifactName: string): Promise<UploadArtifactResponse> {
   const artifact = new DefaultArtifactClient();
-  return await artifact.uploadArtifact(path.basename(artifactName), [artifactName], path.dirname(artifactName));
+  const name = path.basename(artifactName, path.extname(artifactName)) + '.zip';
+  return await artifact.uploadArtifact(name, [artifactName], path.dirname(artifactName));
 }

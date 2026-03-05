@@ -247,8 +247,9 @@ export abstract class PolicyCheck {
   async uploadArtifact(file: string): Promise<UploadArtifactResponse> {
     await fs.writeFile(this.artifactPolicyFileName(), file);
     const artifact = new DefaultArtifactClient();
+    const name = path.basename(this.artifactPolicyFileName(), path.extname(this.artifactPolicyFileName())) + '.zip';
     return await artifact.uploadArtifact(
-      path.basename(this.artifactPolicyFileName()),
+      name,
       [this.artifactPolicyFileName()],
       path.dirname(this.artifactPolicyFileName())
     );
