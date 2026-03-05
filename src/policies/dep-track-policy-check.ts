@@ -174,8 +174,8 @@ export class DepTrackPolicyCheck extends PolicyCheck {
         if (!['http:', 'https:'].includes(url.protocol)) {
           invalidParams.push('deptrack.url (must use http:// or https://)');
         }
-      } catch (error) {
-        invalidParams.push('deptrack.url (invalid URL format)');
+      } catch (error: any) {
+        invalidParams.push(`deptrack.url (invalid URL format): ${error.message}`);
       }
     }
 

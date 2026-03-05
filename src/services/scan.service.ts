@@ -399,6 +399,7 @@ export class ScanService {
         return ['--settings', containerPath];
       } catch (error: any) {
         if (this.options.settingsFilePath === this.DEFAULT_SETTING_FILE_PATH) return [];
+        core.debug(`>${error.message}<`);
         core.warning(`SCANOSS settings file not found at '${this.options.settingsFilePath}'.
         Please provide a valid SCANOSS settings file path.`);
         return [];
