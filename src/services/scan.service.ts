@@ -46,8 +46,9 @@ const artifact = new DefaultArtifactClient();
  * Uploads scan results to GitHub Actions artifacts for later retrieval.
  */
 export async function uploadResults(): Promise<void> {
+  const name = path.basename(inputs.OUTPUT_FILEPATH, path.extname(inputs.OUTPUT_FILEPATH)) + '.zip';
   await artifact.uploadArtifact(
-    path.basename(inputs.OUTPUT_FILEPATH),
+    name,
     [inputs.OUTPUT_FILEPATH],
     path.dirname(inputs.OUTPUT_FILEPATH)
   );

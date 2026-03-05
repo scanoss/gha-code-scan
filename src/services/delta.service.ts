@@ -288,7 +288,7 @@ export class DeltaService {
    * @private
    */
   private async uploadDeltaResults(filename: string): Promise<void> {
-    await artifact.uploadArtifact('delta-file-list.txt', [filename], '.');
+    await artifact.uploadArtifact('delta-file-list.zip', [filename], '.');
   }
 
   /**

@@ -126777,7 +126777,8 @@ class PolicyCheck {
     async uploadArtifact(file) {
         await fs_1.promises.writeFile(this.artifactPolicyFileName(), file);
         const artifact = new artifact_1.DefaultArtifactClient();
-        return await artifact.uploadArtifact(path_1.default.basename(this.artifactPolicyFileName()), [this.artifactPolicyFileName()], path_1.default.dirname(this.artifactPolicyFileName()));
+        const name = path_1.default.basename(this.artifactPolicyFileName(), path_1.default.extname(this.artifactPolicyFileName())) + '.zip';
+        return await artifact.uploadArtifact(name, [this.artifactPolicyFileName()], path_1.default.dirname(this.artifactPolicyFileName()));
     }
 }
 exports.PolicyCheck = PolicyCheck;
@@ -127564,7 +127565,7 @@ class DeltaService {
      * @private
      */
     async uploadDeltaResults(filename) {
-        await artifact.uploadArtifact('delta-file-list.txt', [filename], '.');
+        await artifact.uploadArtifact('delta-file-list.zip', [filename], '.');
     }
     /**
      * @brief Cleans up temporary files created during delta scan preparation
@@ -128168,7 +128169,8 @@ function isOverMaxCharacterLimitAPI(content) {
  */
 async function uploadToArtifacts(artifactName) {
     const artifact = new artifact_1.DefaultArtifactClient();
-    return await artifact.uploadArtifact(path_1.default.basename(artifactName), [artifactName], path_1.default.dirname(artifactName));
+    const name = path_1.default.basename(artifactName, path_1.default.extname(artifactName)) + '.zip';
+    return await artifact.uploadArtifact(name, [artifactName], path_1.default.dirname(artifactName));
 }
 
 
@@ -128574,7 +128576,8 @@ const artifact = new artifact_1.DefaultArtifactClient();
  * Uploads scan results to GitHub Actions artifacts for later retrieval.
  */
 async function uploadResults() {
-    await artifact.uploadArtifact(path.basename(inputs.OUTPUT_FILEPATH), [inputs.OUTPUT_FILEPATH], path.dirname(inputs.OUTPUT_FILEPATH));
+    const name = path.basename(inputs.OUTPUT_FILEPATH, path.extname(inputs.OUTPUT_FILEPATH)) + '.zip';
+    await artifact.uploadArtifact(name, [inputs.OUTPUT_FILEPATH], path.dirname(inputs.OUTPUT_FILEPATH));
 }
 /**
  * @class ScannerService
