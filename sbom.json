@@ -1,7 +1,0 @@
-{
-    "components": [
-        {
-            "purl": "pkg:github/scanoss/code-scan-action"
-        }
-    ]
-}
