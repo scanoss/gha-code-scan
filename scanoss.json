@@ -1,0 +1,12 @@
+{
+  "bom": {
+    "include": [
+      {
+        "purl": "pkg:github/scanoss/gha-code-scan"
+      },
+      {
+        "purl": "pkg:github/plinioh/setup-binary-action"
+      }
+    ]
+  }
+}
