@@ -24510,10 +24510,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("error", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.error = error9;
-    function warning14(message, properties = {}) {
+    function warning15(message, properties = {}) {
       (0, command_1.issueCommand)("warning", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
-    exports2.warning = warning14;
+    exports2.warning = warning15;
     function notice2(message, properties = {}) {
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
@@ -134085,6 +134085,15 @@ var PolicyCheck = class {
     this._status = "RUNNING" /* RUNNING */;
   }
   /**
+   * Cancels the policy check when the workflow fails before policy execution.
+   * Only acts on check runs that were started but not yet finished.
+   */
+  async cancel(summary3) {
+    if (this._status === "FINISHED" /* FINISHED */ || this._status === "UNINITIALIZED" /* UNINITIALIZED */) return;
+    this._conclusion = "cancelled" /* Cancelled */;
+    await this.finish(summary3);
+  }
+  /**
    * Marks the policy check as successful.
    */
   async success(summary3, text) {
@@ -136503,13 +136512,13 @@ async function createSnippetAnnotations(resultsPath) {
 
 // src/main.ts
 async function run() {
+  const policies = policyManager.getPolicies();
   try {
     if (API_KEY) core21.setSecret(API_KEY);
     if (GITHUB_TOKEN) core21.setSecret(GITHUB_TOKEN);
     core21.debug(`SCANOSS Scan Action started...`);
     core21.debug(`Creating policies`);
     const firstRunId = await getFirstRunId();
-    const policies = policyManager.getPolicies();
     for (const policy of policies) {
       await policy.start(firstRunId);
     }
@@ -136541,6 +136550,13 @@ async function run() {
     core21.setOutput(RESULT_FILEPATH, OUTPUT_FILEPATH);
     core21.setOutput(STDOUT_SCAN_COMMAND, stdout);
   } catch (error9) {
+    for (const policy of policies) {
+      try {
+        await policy.cancel(error9 instanceof Error ? error9.message : "Workflow failed");
+      } catch (e) {
+        core21.warning(`Failed to cancel policy check "${policy.name}": ${e instanceof Error ? e.message : e}`);
+      }
+    }
     if (error9 instanceof Error) core21.setFailed(error9.message);
   }
 }

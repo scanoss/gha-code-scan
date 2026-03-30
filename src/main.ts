@@ -28,6 +28,7 @@ import * as inputs from './app.input';
 import * as outputs from './app.output';
 import { scanService, uploadResults } from './services/scan.service';
 import { policyManager } from './policies/policy.manager';
+import { PolicyCheck } from './policies/policy-check';
 import { DepTrackPolicyCheck } from './policies/dep-track-policy-check';
 import { dependencyTrackService } from './services/dependency-track.service';
 import { dependencyTrackStatusService } from './services/dependency-track-status.service';
@@ -39,6 +40,7 @@ import { createSnippetAnnotations } from './utils/snippet-annotations.utils';
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 export async function run(): Promise<void> {
+  let policies: PolicyCheck[] = [];
   try {
     // Mask sensitive inputs to prevent accidental leakage in logs
     if (inputs.API_KEY) core.setSecret(inputs.API_KEY);
@@ -49,9 +51,7 @@ export async function run(): Promise<void> {
     // create policies
     core.debug(`Creating policies`);
     const firstRunId = await getFirstRunId();
-
-    //Read declared policies on input parameter 'policies' and create an instance for each one.
-    const policies = policyManager.getPolicies();
+    policies = policyManager.getPolicies();
     for (const policy of policies) {
       await policy.start(firstRunId);
     }
@@ -99,6 +99,14 @@ export async function run(): Promise<void> {
     core.setOutput(outputs.RESULT_FILEPATH, inputs.OUTPUT_FILEPATH);
     core.setOutput(outputs.STDOUT_SCAN_COMMAND, stdout);
   } catch (error) {
+    // Cancel any pending policy check runs so they don't remain in "queued" status
+    for (const policy of policies) {
+      try {
+        await policy.cancel(error instanceof Error ? error.message : 'Workflow failed');
+      } catch (e) {
+        core.warning(`Failed to cancel policy check "${policy.name}": ${e instanceof Error ? e.message : e}`);
+      }
+    }
     // fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message);
   }
