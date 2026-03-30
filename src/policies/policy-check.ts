@@ -162,6 +162,16 @@ export abstract class PolicyCheck {
   }
 
   /**
+   * Cancels the policy check when the workflow fails before policy execution.
+   * Only acts on check runs that were started but not yet finished.
+   */
+  async cancel(summary: string): Promise<void> {
+    if (this._status === STATUS.FINISHED || this._status === STATUS.UNINITIALIZED) return;
+    this._conclusion = CONCLUSION.Cancelled;
+    await this.finish(summary);
+  }
+
+  /**
    * Marks the policy check as successful.
    */
   protected async success(summary: string, text?: string): Promise<void> {
