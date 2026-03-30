@@ -1,4 +1,4 @@
-/*! scanoss-code-scan-action v1.6.0 | MIT */
+/*! scanoss-code-scan-action v1.6.1 | MIT */
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -136512,13 +136512,14 @@ async function createSnippetAnnotations(resultsPath) {
 
 // src/main.ts
 async function run() {
-  const policies = policyManager.getPolicies();
+  let policies = [];
   try {
     if (API_KEY) core21.setSecret(API_KEY);
     if (GITHUB_TOKEN) core21.setSecret(GITHUB_TOKEN);
     core21.debug(`SCANOSS Scan Action started...`);
     core21.debug(`Creating policies`);
     const firstRunId = await getFirstRunId();
+    policies = policyManager.getPolicies();
     for (const policy of policies) {
       await policy.start(firstRunId);
     }
