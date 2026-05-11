@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-05-11
+### Changed
+- Upgraded `scanoss.py` runtime container to v1.52.1
+
 ## [1.6.1] - 2026-03-30
 ### Fixed
 - Fixed policy check runs remaining in "queued" status when the workflow fails before policy execution
@@ -195,3 +199,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.5.0]: https://github.com/scanoss/gha-code-scan/compare/v1.4.0...v1.5.0
 [1.6.0]: https://github.com/scanoss/gha-code-scan/compare/v1.5.0...v1.6.0
 [1.6.1]: https://github.com/scanoss/gha-code-scan/compare/v1.6.0...v1.6.1
+[1.6.2]: https://github.com/scanoss/gha-code-scan/compare/v1.6.1...v1.6.2

@@ -1,4 +1,4 @@
-/*! scanoss-code-scan-action v1.6.1 | MIT */
+/*! scanoss-code-scan-action v1.6.2 | MIT */
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -96524,7 +96524,7 @@ var REPO_DIR = process.env.GITHUB_WORKSPACE;
 var COPYLEFT_LICENSE_INCLUDE = core.getInput("licenses.copyleft.include");
 var COPYLEFT_LICENSE_EXCLUDE = core.getInput("licenses.copyleft.exclude");
 var COPYLEFT_LICENSE_EXPLICIT = core.getInput("licenses.copyleft.explicit");
-var RUNTIME_CONTAINER = core.getInput("runtimeContainer") || "ghcr.io/scanoss/scanoss-py:v1.46.0";
+var RUNTIME_CONTAINER = core.getInput("runtimeContainer") || "ghcr.io/scanoss/scanoss-py:v1.52.1";
 var SKIP_SNIPPETS = core.getInput("skipSnippets") === "true";
 var MATCH_ANNOTATIONS = core.getInput("matchAnnotations") === "true";
 var SCAN_FILES = core.getInput("scanFiles") === "true";
