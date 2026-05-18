@@ -69,19 +69,12 @@ jest.mock('@actions/github', () => ({
 
 const mockGetExecOutput = jest.spyOn(exec, 'getExecOutput');
 
-// Mock core.warning at the module level
-jest.mock('@actions/core', () => ({
-  ...jest.requireActual('@actions/core'),
-  warning: jest.fn()
-}));
-
 const mockCoreWarning = core.warning as jest.MockedFunction<typeof core.warning>;
 
 describe('DepTrackPolicyCheck', () => {
   let depTrackPolicyCheck: DepTrackPolicyCheck;
   const appInput = jest.requireMock('../src/app.input');
-  const TEST_DIR = __dirname;
-  const TEST_REPO_DIR = path.join(TEST_DIR, 'data');
+  const TEST_REPO_DIR = path.join(__dirname, 'data');
 
   beforeEach(() => {
     appInput.REPO_DIR = TEST_REPO_DIR;

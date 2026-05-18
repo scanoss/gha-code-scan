@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-05-18
+### Changed
+- Upgraded Node.js to 24
+- Upgraded eslint-plugin jest to 29.15.2
+- Upgraded @types/node to 25.3.5
+- Upgraded @actions/core to 3.0.0
+- Upgraded globals to 17.4.0
+- Upgraded actions/upload-artifact to 7
+- Added __mocks__/@actions/core.ts to mock @actions/core for tests
+
 ## [1.6.2] - 2026-05-11
 ### Changed
 - Upgraded `scanoss.py` runtime container to v1.52.1

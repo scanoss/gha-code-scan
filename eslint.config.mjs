@@ -90,7 +90,7 @@ export default tseslint.config(
 
   // Test files — relax rules that conflict with jest patterns
   {
-    files: ['__tests__/**/*.ts'],
+    files: ['__tests__/**/*.ts', '__mocks__/**/*.ts'],
     ...jest.configs['flat/recommended'],
     languageOptions: {
       globals: { ...globals.jest }
