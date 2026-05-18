@@ -11,7 +11,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-@actions/core@3.0.0
+@actions/core@3.0.1
 The MIT License (MIT)
 
 Copyright 2019 GitHub
