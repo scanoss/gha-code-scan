@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgraded globals to 17.4.0
 - Upgraded actions/upload-artifact to 7
 - Added __mocks__/@actions/core.ts to mock @actions/core for tests
+- Updated actions/checkout to v6 in README.md
+### Fixed
+- Changed 'code-scan-action' to 'gha-code-scan' in README.md
 
 ## [1.6.2] - 2026-05-11
 ### Changed
