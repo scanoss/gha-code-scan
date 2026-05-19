@@ -175,6 +175,8 @@ When Dependency Track integration is enabled, you'll see these checks in your Gi
 
 ### Configuration
 
+**Note:** Please note that the action name has changed from `code-scan-action` to `gha-code-scan`.
+
 #### Basic Configuration
 ```yaml
 - name: Run SCANOSS Code Scan with Dependency Track
