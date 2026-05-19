@@ -1,9 +1,9 @@
 # SCANOSS Code Scan Action
 
-[![GitHub Super-Linter](https://github.com/scanoss/code-scan-action/actions/workflows/linter.yml/badge.svg)](https://github.com/super-linter/super-linter)
-![CI](https://github.com/scanoss/code-scan-action/actions/workflows/ci.yml/badge.svg)
-[![Check dist/](https://github.com/scanoss/code-scan-action/actions/workflows/check-dist.yml/badge.svg)](https://github.com/scanoss/scanoss-code-scan-step/actions/workflows/check-dist.yml)
-[![CodeQL](https://github.com/scanoss/code-scan-action/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/scanoss/scanoss-code-scan-step/actions/workflows/codeql-analysis.yml)
+[![GitHub Super-Linter](https://github.com/scanoss/gha-code-scan/actions/workflows/linter.yml/badge.svg)](https://github.com/super-linter/super-linter)
+![CI](https://github.com/scanoss/gha-code-scan/actions/workflows/ci.yml/badge.svg)
+[![Check dist/](https://github.com/scanoss/gha-code-scan/actions/workflows/check-dist.yml/badge.svg)](https://github.com/scanoss/scanoss-code-scan-step/actions/workflows/check-dist.yml)
+[![CodeQL](https://github.com/scanoss/gha-code-scan/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/scanoss/scanoss-code-scan-step/actions/workflows/codeql-analysis.yml)
 ![Coverage](./badges/coverage.svg)
 
 The SCANOSS Code Scan Action enhances your software development process by automatically scanning your code for security
@@ -77,11 +77,11 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run SCANOSS Code Scan
         id: scanoss-code-scan-step
-        uses: scanoss/code-scan-action@v1
+        uses: scanoss/gha-code-scan@v1
 ```
 
 For example workflow runs, check out our
@@ -175,10 +175,12 @@ When Dependency Track integration is enabled, you'll see these checks in your Gi
 
 ### Configuration
 
+**Note:** Please note that the action name has changed from `code-scan-action` to `gha-code-scan`.
+
 #### Basic Configuration
 ```yaml
 - name: Run SCANOSS Code Scan with Dependency Track
-  uses: scanoss/code-scan-action@v1
+  uses: scanoss/gha-code-scan@v1
   with:
     deptrack.upload: true
     deptrack.url: 'https://your-dt-instance.com'
@@ -190,7 +192,7 @@ When Dependency Track integration is enabled, you'll see these checks in your Gi
 #### Advanced Configuration with Policies
 ```yaml
 - name: Run SCANOSS Code Scan with Full Dependency Track Integration
-  uses: scanoss/code-scan-action@v1
+  uses: scanoss/gha-code-scan@v1
   with:
     policies: copyleft, undeclared, dt  # Enable all policies including Dependency Track
     deptrack.upload: true
@@ -237,11 +239,11 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run SCANOSS Code Scan
         id: scanoss-code-scan-step
-        uses: scanoss/code-scan-action@v1
+        uses: scanoss/gha-code-scan@v1
         with:
           policies: copyleft, undeclared, dt
           scanMode: 'delta'
