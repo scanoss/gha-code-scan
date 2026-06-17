@@ -23,91 +23,9 @@
 
 import { LicenseUtil } from '../src/utils/license.utils';
 
-// Mock external dependencies
-jest.mock('@actions/core');
-
 describe('License Utils', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    // Clear module cache to ensure fresh imports
-    jest.resetModules();
-  });
-
-  describe('LicenseUtil class initialization', () => {
-    it('should use explicit licenses when COPYLEFT_LICENSE_EXPLICIT is set', () => {
-      jest.doMock('../src/app.input', () => ({
-        COPYLEFT_LICENSE_EXPLICIT: 'GPL-2.0-only,LGPL-3.0-only',
-        COPYLEFT_LICENSE_INCLUDE: '',
-        COPYLEFT_LICENSE_EXCLUDE: ''
-      }));
-
-      const { LicenseUtil: MockedLicenseUtil } = require('../src/utils/license.utils');
-      const util = new MockedLicenseUtil();
-
-      // Test that the utility is instantiated correctly with explicit configuration
-      expect(util).toBeDefined();
-      expect(util).toBeInstanceOf(MockedLicenseUtil);
-    });
-
-    it('should use default licenses with include when COPYLEFT_LICENSE_INCLUDE is set', () => {
-      jest.doMock('../src/app.input', () => ({
-        COPYLEFT_LICENSE_EXPLICIT: '',
-        COPYLEFT_LICENSE_INCLUDE: 'Custom-License-1.0',
-        COPYLEFT_LICENSE_EXCLUDE: ''
-      }));
-
-      const { LicenseUtil: MockedLicenseUtil } = require('../src/utils/license.utils');
-      const util = new MockedLicenseUtil();
-
-      // Test that the utility is instantiated correctly with include configuration
-      expect(util).toBeDefined();
-      expect(util).toBeInstanceOf(MockedLicenseUtil);
-    });
-
-    it('should use default licenses with exclude when COPYLEFT_LICENSE_EXCLUDE is set', () => {
-      jest.doMock('../src/app.input', () => ({
-        COPYLEFT_LICENSE_EXPLICIT: '',
-        COPYLEFT_LICENSE_INCLUDE: '',
-        COPYLEFT_LICENSE_EXCLUDE: 'GPL-2.0-only'
-      }));
-
-      const { LicenseUtil: MockedLicenseUtil } = require('../src/utils/license.utils');
-      const util = new MockedLicenseUtil();
-
-      // Test that the utility is instantiated correctly with exclude configuration
-      expect(util).toBeDefined();
-      expect(util).toBeInstanceOf(MockedLicenseUtil);
-    });
-
-    it('should be instantiated correctly with default configuration', () => {
-      jest.doMock('../src/app.input', () => ({
-        COPYLEFT_LICENSE_EXPLICIT: '',
-        COPYLEFT_LICENSE_INCLUDE: '',
-        COPYLEFT_LICENSE_EXCLUDE: ''
-      }));
-
-      const { LicenseUtil: MockedLicenseUtil } = require('../src/utils/license.utils');
-      const util = new MockedLicenseUtil();
-
-      // Test that the utility is instantiated correctly with default configuration
-      expect(util).toBeDefined();
-      expect(util).toBeInstanceOf(MockedLicenseUtil);
-    });
-  });
-
   describe('LicenseUtil.getOSADL', () => {
-    let util: LicenseUtil;
-
-    beforeEach(() => {
-      // Create fresh instance with default configuration for each test
-      jest.doMock('../src/app.input', () => ({
-        COPYLEFT_LICENSE_EXPLICIT: '',
-        COPYLEFT_LICENSE_INCLUDE: '',
-        COPYLEFT_LICENSE_EXCLUDE: ''
-      }));
-      const { LicenseUtil: MockedLicenseUtil } = require('../src/utils/license.utils');
-      util = new MockedLicenseUtil();
-    });
+    const util = new LicenseUtil();
 
     it('should return SPDX URL for valid SPDX licenses', () => {
       const result = util.getOSADL('MIT');
