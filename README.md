@@ -138,7 +138,7 @@ The SCANOSS scan engine supports [scan tuning parameters](https://github.com/sca
 The SCANOSS Code Scan Action includes three configurable policies:
 
 1. **Copyleft** (`copyleft or cpl`): This policy checks if any component or code snippet is associated with a copyleft license. If such a
-   license is detected, the pull request (PR) is rejected. The default list of Copyleft licenses is defined in the following [file](https://github.com/scanoss/gha-code-scan/blob/main/src/utils/license.utils.ts).
+   license is detected, the pull request (PR) is rejected. The copyleft determination is performed by [scanoss.py](https://github.com/scanoss/scanoss.py) (`scanoss-py inspect copyleft`), which uses the [OSADL copyleft checklist](https://www.osadl.org/fileadmin/checklists/copyleft.json) as the default list. Both strong (`Yes`) and weak/restricted (`Yes (restricted)`) copyleft entries are treated as copyleft, and this includes `-or-later` variants (e.g. `GPL-2.0-or-later`, `AGPL-3.0-or-later`). The default list can be customized with the `licenses.copyleft.include`, `licenses.copyleft.exclude`, and `licenses.copyleft.explicit` inputs.
 
 2. **Undeclared** (`undeclared or und`): This policy compares the components detected in the repository against those declared in scanoss.json
    file (customizable through the settingsFilepath parameter). If there are undeclared components, the PR is rejected.
