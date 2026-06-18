@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.4] - 2026-06-18
+### Fixed
+- Corrected copyleft documentation in `README.md`: copyleft is determined by `scanoss.py` (`scanoss-py inspect copyleft`) using the OSADL checklist, including `-or-later` licenses, rather than the internal `license.utils.ts` list
+### Removed
+- Removed the unused default copyleft license list and its include/exclude/explicit parsing from `license.utils.ts` (dead code)
+
 ## [1.6.3] - 2026-05-19
 ### Changed
 - Upgraded Node.js to 24
