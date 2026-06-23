@@ -43,6 +43,8 @@ export interface SnippetMatch {
   url?: string;
   purl?: string[];
   licenses?: LicenseInfo[];
+  /** MD5 of the matched OSS file, used to retrieve its contents via the SCANOSS file_contents API */
+  file_hash?: string;
 }
 
 /**
