@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-06-25
+### Added
+- Snippet and full file match comments now link to the matched OSS file (and line range, for snippets) for GitHub-hosted components, instead of only referencing the repository
+- Match comments display an informational note when the matched component is registry-sourced (e.g. npm, PyPI), where a browsable source link cannot be generated
+
+### Notes
+- The matched file link is only generated for GitHub-hosted components (where the source `url` points to `github.com`). For components sourced from package registries (e.g. npm, PyPI), the registry version and packaged file paths do not map to a GitHub source location, so these comments keep the repository `Source` and show the note instead
+
 ## [1.6.4] - 2026-06-18
 ### Fixed
 - Corrected copyleft documentation in `README.md`: copyleft is determined by `scanoss.py` (`scanoss-py inspect copyleft`) using the OSADL checklist, including `-or-later` licenses, rather than the internal `license.utils.ts` list
@@ -220,3 +228,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.6.1]: https://github.com/scanoss/gha-code-scan/compare/v1.6.0...v1.6.1
 [1.6.2]: https://github.com/scanoss/gha-code-scan/compare/v1.6.1...v1.6.2
 [1.6.3]: https://github.com/scanoss/gha-code-scan/compare/v1.6.2...v1.6.3
+[1.7.0]: https://github.com/scanoss/gha-code-scan/compare/v1.6.3...v1.7.0
