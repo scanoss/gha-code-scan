@@ -128,6 +128,16 @@ the output into your custom workflow
 | result-filepath     | Scanner results filepath |  
 | stdout-scan-command | Scanner command output   |
 
+## Match Comments
+
+On pull requests, the action posts a commit comment for each snippet and full file match, including the matched **Component**, **License**, and **Source**.
+
+- For **GitHub-hosted** components, the comment also includes a **File** link pointing directly to the matched source file. For snippets, the matched **OSS Lines** link to the corresponding line range.
+- For components sourced from package registries (e.g. npm, PyPI), a browsable source link cannot be generated — the registry version and packaged file paths do not map to a GitHub source location — so the comment shows a note instead:
+
+> [!NOTE]
+> A browsable source link is not available for registry-sourced components.
+
 ## Scan Tuning Parameters
 
 The SCANOSS scan engine supports [scan tuning parameters](https://github.com/scanoss/scanoss.py/blob/main/docs/source/scanoss_settings_schema.rst#scan-tuning-parameters) for snippet matching.

@@ -1,4 +1,4 @@
-/*! scanoss-code-scan-action v1.6.4 | MIT */
+/*! scanoss-code-scan-action v1.7.0 | MIT */
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
