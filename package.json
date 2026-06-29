@@ -68,7 +68,7 @@
     ]
   },
   "dependencies": {
-    "@actions/artifact": "6.2.0",
+    "@actions/artifact": "6.2.1",
     "@actions/core": "^3.0.0",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.1"
