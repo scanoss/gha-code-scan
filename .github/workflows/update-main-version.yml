@@ -20,6 +20,8 @@ on:
 jobs:
   tag:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     # Note this update workflow can also be used as a rollback tool.
     # For that reason, it's best to pin `scanoss/code-scan-action` to a known, stable version.
